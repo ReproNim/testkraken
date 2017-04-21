@@ -4,8 +4,8 @@ import numpy as np
 import pdb
 
 def test_mcflirt_run():
-    file_inp = "data_input/ds000114_sub-01_T1w.nii.gz"
-    file_out_ref = "data_ref/ds000114_sub-01_T1w_mcf.nii.gz"
+    file_inp = "data_input/sub-02_task-fingerfootlips_bold.nii.gz"
+    file_out_ref = "data_ref/sub-02_task-fingerfootlips_bold_MCF.nii.gz"
 
 
     mcflt = MCFLIRT()
