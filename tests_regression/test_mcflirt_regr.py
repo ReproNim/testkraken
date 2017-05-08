@@ -1,11 +1,14 @@
 from nipype.interfaces.fsl import MCFLIRT
 import nibabel as nb
 import numpy as np
+import os
 import pdb
 
+Data_dir = os.path.abspath(__file__ + "/../..")
+
 def test_mcflirt_run():
-    file_inp = "data_input/sub-02_task-fingerfootlips_bold.nii.gz"
-    file_out_ref = "data_ref/sub-02_task-fingerfootlips_bold_MCF.nii.gz"
+    file_inp = os.path.join(Data_dir, "data_input/sub-02_task-fingerfootlips_bold.nii.gz")
+    file_out_ref = os.path.join(Data_dir, "data_ref/sub-02_task-fingerfootlips_bold_MCF.nii.gz")
 
 
     mcflt = MCFLIRT()
