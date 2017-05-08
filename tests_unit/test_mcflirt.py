@@ -2,21 +2,14 @@ from nipype.interfaces.fsl import MCFLIRT
 import nibabel as nb
 import numpy as np
 import pytest, pdb
-
-
-@pytest.fixture(scope="module")
-def image_fmri():
-    file_inp = "data_input/sub-02_task-fingerfootlips_bold.nii.gz"
-    image_inp = nb.load(file_inp)
-    data_inp = image_inp.get_data()
-    return file_inp, image_inp, data_inp
+from common_tests import image_fmri_nii, image_copy_fmri_nii, image_translate_nii
 
 
 @pytest.mark.parametrize("cost_function",
                          ["mutualinfo", "woods", "corratio", "normcorr",
                           "normmi", "leastsquares"])
-def test_mcflirt_run(image_fmri, cost_function):
-    file_inp, _, data_inp = image_fmri
+def test_mcflirt_run(image_fmri_nii, cost_function):
+    file_inp, _, data_inp = image_fmri_nii
 
     mcflt = MCFLIRT()
 
@@ -37,24 +30,15 @@ def test_mcflirt_run(image_fmri, cost_function):
         assert np.allclose(data_inp[:,:,:,i].sum(), data_out[:,:,:,i].sum(), rtol=5e-3)
 
 
-def test_mcflirt_run_copy_image(image_fmri):
-    _, image_inp, data_inp = image_fmri
+def test_mcflirt_run_copy_image(image_fmri_nii, image_copy_fmri_nii):
+    _, image_inp, data_inp = image_fmri_nii
+    filename_copy, data_copy = image_copy_fmri_nii
 
     mcflt = MCFLIRT()
 
-    new_array = np.zeros((64, 64, 30, 3))
-    first_image = data_inp[:,:,:,0]
-    for i in range(3):
-        new_array[:,:,:,i] = first_image
-
-    new_image = nb.Nifti1Image(new_array, affine=image_inp.affine)
-    new_image.to_filename("new_file.nii.gz")
-
-
-    mcflt.inputs.in_file = "new_file.nii.gz"
+    mcflt.inputs.in_file = filename_copy
     mcflt.inputs.out_file = "output_mcf_copy.nii.gz"
     mcflt.basedir = "test"
-    pdb.set_trace()
 
     mcflt.run()
 
@@ -62,33 +46,18 @@ def test_mcflirt_run_copy_image(image_fmri):
     data_out = img_out.get_data()
 
     # since all images are the same mcflirt shouldn't do anything
-    assert (new_array == data_out).all()
+    assert (data_copy == data_out).all()
 
 
-@pytest.mark.xfail(reason="have to find better error mtric")
-def test_mcflirt_translate_image(image_fmri):
-    _, image_inp, data_inp = image_fmri
+@pytest.mark.xfail(reason="the error is too big")
+def test_mcflirt_translate_image(image_fmri_nii):
+    _, image_inp, data_inp = image_fmri_nii
 
     mcflt = MCFLIRT()
 
+    filename_trans, data_trans = image_translate_nii(data_inp, image_inp)
 
-    new_array = np.zeros((64, 64, 30, 3))
-    first_image = data_inp[:,:,:,0]
-    # just to make the task easier
-    first_clean = np.where(first_image>120, first_image, 0)
-
-
-    new_array[:,:,:,1] = first_clean
-    # the first and third image will be translate in one direction
-    new_array[:63,:,:,0] = first_clean[1:]
-    new_array[:63,:,:,2] = first_clean[1:]
-
-
-    new_image = nb.Nifti1Image(new_array, affine=image_inp.affine)
-    new_image.to_filename("new_translation_file.nii.gz")
-
-
-    mcflt.inputs.in_file = "new_translation_file.nii.gz"
+    mcflt.inputs.in_file = filename_trans
     mcflt.inputs.out_file = "output_mcf_trans.nii.gz"
     mcflt.basedir = "test"
     mcflt.inputs.smooth = 0.
