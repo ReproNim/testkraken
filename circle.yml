@@ -8,4 +8,5 @@ dependencies:
 
 test:
   override:
+    - docker run --rm kaczmarj/neurodocker -b ubuntu:17.04 -p apt --ants version=2.1.0 --fsl version=5.0.10 --miniconda python_version=3.5.1 conda_install=traits,pandas pip_install=nipype --no-check-urls
     - pytest tests_unit/test_temp.py
