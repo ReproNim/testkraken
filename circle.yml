@@ -1,0 +1,11 @@
+dependencies:
+  cache_directories:
+    - "~/nipype_data"
+  override:
+    - pip install --upgrade pip
+    - pip install docker numpy pytest
+    - pip install https://github.com/kaczmarj/neurodocker/archive/master.tar.gz
+
+test:
+  override:
+    - pytest tests_unit/test_temp.py
