@@ -11,10 +11,11 @@ dependencies:
     - pip install --upgrade pip
     - pip install docker numpy pytest
     - pip install https://github.com/kaczmarj/neurodocker/archive/master.tar.gz
+    - neurodocker -b centos:7 -p yum --ants version=2.1.0 --miniconda python_version=3.5.1 conda_install=traits,pandas,pytest pip_install=nipype --no-check-urls --no-print-df -o Dockerfile_test
+    - docker build -f Dockerfile_test -t myimage_test .
+
 
 test:
   override:
-    - neurodocker -b centos:7 -p yum --ants version=2.1.0 --miniconda python_version=3.5.1 conda_install=traits,pandas,pytest pip_install=nipype --no-check-urls --no-print-df -o Dockerfile_test
-    - docker build -f Dockerfile_test -t myimage_test .
-    - docker run myimage_test pytest tests_unit/test_temp.py
+    - docker run -v $PWD:/home myimage_test pytest /home/tests_unit/test_temp.py
     - pytest tests_unit/test_temp.py
