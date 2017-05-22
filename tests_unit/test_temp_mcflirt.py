@@ -1,2 +1,2 @@
 def test_import():
-    from nipype.interfaces.fsl import MCFLIRT
+    import nipype.interfaces.fsl
