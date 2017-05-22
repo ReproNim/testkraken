@@ -20,4 +20,4 @@ dependencies:
 test:
   override:
     - docker run -v $PWD:/home myimage_test pytest /home/tests_unit/test_mcflirt.py /home/tests_regression/test_mcflirt_regr.py : 
-      timeout: 6000
+        timeout: 6000
