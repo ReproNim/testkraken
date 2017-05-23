@@ -1,5 +1,6 @@
 from nipype.interfaces.fsl import MCFLIRT
 import nibabel as nb
+import os
 import numpy as np
 import pytest, pdb
 from common_tests import image_fmri_nii, image_copy_fmri_nii, image_translate_nii
@@ -8,13 +9,13 @@ from common_tests import image_fmri_nii, image_copy_fmri_nii, image_translate_ni
 @pytest.mark.parametrize("cost_function",
                          ["mutualinfo", "woods", "corratio", "normcorr",
                           "normmi", "leastsquares"])
-def test_mcflirt_run(image_fmri_nii, cost_function):
+def test_mcflirt_run(image_fmri_nii, cost_function, tmpdir):
     file_inp, _, data_inp = image_fmri_nii
 
     mcflt = MCFLIRT()
 
     mcflt.inputs.in_file = file_inp
-    mcflt.inputs.out_file = "output_mcf.nii.gz"
+    mcflt.inputs.out_file = str(tmpdir.join("output_mcf.nii.gz"))
     mcflt.basedir = "test"
     setattr(mcflt.inputs, "cost", cost_function)
 
@@ -30,35 +31,35 @@ def test_mcflirt_run(image_fmri_nii, cost_function):
         assert np.allclose(data_inp[:,:,:,i].sum(), data_out[:,:,:,i].sum(), rtol=5e-3)
 
 
-def test_mcflirt_run_copy_image(image_fmri_nii, image_copy_fmri_nii):
-    _, image_inp, data_inp = image_fmri_nii
+def test_mcflirt_run_copy_image(image_fmri_nii, image_copy_fmri_nii, tmpdir):
+    file_inp, image_inp, data_inp = image_fmri_nii
     filename_copy, data_copy = image_copy_fmri_nii
 
     mcflt = MCFLIRT()
-
+    #pdb.set_trace()
     mcflt.inputs.in_file = filename_copy
-    mcflt.inputs.out_file = "output_mcf_copy.nii.gz"
+    mcflt.inputs.out_file = str(tmpdir.join("output_mcf_copy_im.nii.gz"))
     mcflt.basedir = "test"
 
     mcflt.run()
 
     img_out = nb.load(mcflt.inputs.out_file)
     data_out = img_out.get_data()
-
+    #pdb.set_trace()
     # since all images are the same mcflirt shouldn't do anything
     assert (data_copy == data_out).all()
 
 
 @pytest.mark.xfail(reason="the error is too big")
-def test_mcflirt_translate_image(image_fmri_nii):
-    _, image_inp, data_inp = image_fmri_nii
+def test_mcflirt_translate_image(image_fmri_nii, tmpdir):
+    file_inp, image_inp, data_inp = image_fmri_nii
 
     mcflt = MCFLIRT()
 
     filename_trans, data_trans = image_translate_nii(data_inp, image_inp)
 
     mcflt.inputs.in_file = filename_trans
-    mcflt.inputs.out_file = "output_mcf_trans.nii.gz"
+    mcflt.inputs.out_file = str(tmpdir.join("output_mcf_translate.nii.gz"))
     mcflt.basedir = "test"
     mcflt.inputs.smooth = 0.
     

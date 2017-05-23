@@ -20,6 +20,5 @@ dependencies:
 
 test:
   override:
-#    - docker run -v $PWD:/home myimage_test pytest /home/tests_unit/test_temp_mcflirt.py : 
-     - docker run  myimage_test ls -l /opt/fsl :
+    - docker run -it -v $PWD:/home myimage_test pytest /home/tests_unit/test_mcflirt.py : 
          timeout: 2000
