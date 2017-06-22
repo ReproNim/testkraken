@@ -20,5 +20,5 @@ dependencies:
 
 test:
   override:
-    - docker run -it -v $PWD:/home myimage_test pytest /home/tests_unit/test_mcflirt.py : 
+    - docker run -it -v $PWD:/home myimage_test bash -c ". /etc/profile.d/fsl.sh; pytest /home/tests_unit/test_mcflirt.py" : 
          timeout: 2000
