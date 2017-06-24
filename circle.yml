@@ -1,4 +1,6 @@
 machine:
+  Version:
+    ubuntu-14.04-XXL-1167-271bbe4
   python:
     version: 3.5.0
   services:
@@ -7,6 +9,12 @@ machine:
 dependencies:
 #  cache_directories:
 #    - "~/nipype_data"
+  pre:
+    -  bash <(wget -q -O- http://neuro.debian.net/_files/neurodebian-travis.sh)
+    - sudo apt-get -y update
+    - sudo apt-get install git-annex-standalone
+
+
   override:
     - pip install --upgrade pip
     - pip install docker numpy pytest
@@ -20,5 +28,11 @@ dependencies:
 
 test:
   override:
+    - git fetch origin git-annex:git-annex
+    #git-annex
+    - git annex init
+    - git annex enableremote cloud5
+    - git annex get
+
     - docker run -it -v $PWD:/home myimage_test bash -c ". /etc/profile.d/fsl.sh; pytest /home/tests_unit/test_mcflirt.py" : 
          timeout: 2000
