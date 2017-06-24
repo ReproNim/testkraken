@@ -32,7 +32,7 @@ test:
     #git-annex
     - git annex init
     - git annex enableremote datas3
-    - git annex get
+    - git annex get -J3
 
     - docker run -it -v $PWD:/home myimage_test bash -c ". /etc/profile.d/fsl.sh; pytest /home/tests_unit/test_mcflirt.py" : 
          timeout: 2000
