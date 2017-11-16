@@ -21,7 +21,7 @@ dependencies:
     - rm -rf tests_unit/__pycache__/ 
     - rm -rf tests_regression/__pycache__/
     - pip install https://github.com/kaczmarj/neurodocker/archive/master.tar.gz
-    - neurodocker -b centos:7 -p yum --ants version=2.1.0 --fsl version=5.0.10 --miniconda python_version=3.5.1 conda_install=traits,pandas,pytest pip_install=nipype --no-check-urls --no-print-df -o Dockerfile_test
+    - neurodocker -b centos:7 -p yum --ants version=2.2.0 --fsl version=5.0.10 --miniconda env_name="neuro" conda_install="python=3.5.1 traits pandas pytest" pip_install="nipype" --no-check-urls > Dockerfile_test
     - docker build -f Dockerfile_test -t myimage_test . :
         timeout: 2000
 
