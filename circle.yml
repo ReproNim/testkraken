@@ -19,7 +19,7 @@ dependencies:
     - rm -rf tests_unit/__pycache__/ 
     - rm -rf tests_regression/__pycache__/
     - pip install https://github.com/kaczmarj/neurodocker/archive/master.tar.gz
-    - neurodocker generate -b neurodebian:stretch-non-free -p apt --install ants fsl --add-to-entrypoint "source /etc/fsl/fsl.sh"  --spm version=12 matlab_version=R2017a --miniconda env_name="neuro" conda_install="python=3.5.1 traits pandas pytest" pip_install="nipype" activate=True --no-check-urls > Dockerfile_test
+    - neurodocker generate -b neurodebian:stretch-non-free -p apt --install ants fsl --add-to-entrypoint "source /etc/fsl/fsl.sh" --spm version=12 matlab_version=R2017a --miniconda env_name="neuro" conda_install="python=3.5.1 traits pandas pytest" pip_install="nipype" activate=True --no-check-urls > Dockerfile_test
     - cat Dockerfile_test | docker build -t myimage_test - :
         timeout: 2000
 
