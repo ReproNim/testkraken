@@ -1,8 +1,6 @@
 machine:
   Version:
     ubuntu-14.04-XXL-1167-271bbe4
-  python:
-    version: 3.5.0
   services:
     - docker
 
@@ -21,7 +19,7 @@ dependencies:
     - rm -rf tests_unit/__pycache__/ 
     - rm -rf tests_regression/__pycache__/
     - pip install https://github.com/kaczmarj/neurodocker/archive/master.tar.gz
-    - neurodocker generate -b neurodebian:stretch-non-free -p apt --install ants fsl --add-to-entrypoint "source /etc/fsl/fsl.sh"  --miniconda env_name="neuro" conda_install="python=3.5.1 traits pandas pytest" pip_install="nipype" activate=True --no-check-urls > Dockerfile_test
+    - docker run --rm kaczmarj/neurodocker:master generate -b neurodebian:stretch-non-free -p apt --install ants fsl --add-to-entrypoint "source /etc/fsl/fsl.sh" --spm version=12 matlab_version=R2017a --miniconda env_name="neuro" conda_install="python=3.5.1 traits pandas pytest" pip_install="nipype" activate=True --no-check-urls > Dockerfile_test
     - cat Dockerfile_test | docker build -t myimage_test - :
         timeout: 2000
 
@@ -34,5 +32,5 @@ test:
     - git annex enableremote datas3
     - e=1 && for i in {1..5}; do git annex get -J3 && e=0 && break || sleep 15; done && [ "$e" -eq "0" ]
 
-    - docker run -it -v $PWD:/home myimage_test pytest /home/tests_unit/test_mcflirt.py : 
+    - docker run -it -v $PWD:/home myimage_test pytest /home/tests_regression_nipype : 
          timeout: 2000
