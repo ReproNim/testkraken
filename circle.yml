@@ -34,5 +34,5 @@ test:
     - git annex enableremote datas3
     - e=1 && for i in {1..5}; do git annex get -J3 && e=0 && break || sleep 15; done && [ "$e" -eq "0" ]
 
-    - docker run -it -v $PWD:/home myimage_test pytest /home/tests_unit/test_mcflirt.py : 
+    - docker run -it -v $PWD:/home myimage_test pytest /home/tests_ : 
          timeout: 2000
