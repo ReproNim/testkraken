@@ -1,8 +1,6 @@
 machine:
   Version:
     ubuntu-14.04-XXL-1167-271bbe4
-  python:
-    version: 3.5.0
   services:
     - docker
 
