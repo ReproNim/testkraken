@@ -1,0 +1,46 @@
+version: 2
+jobs:
+  build:
+    machine:
+      # Ubuntu 14.04 with Docker 17.10.0-ce
+      image: circleci/classic:201710-02
+    working_directory: /home/circleci/regtests
+    steps:
+      - checkout:
+          path: /home/circleci/regtests
+      - run:
+          name: Build Docker image
+          no_output_timeout: 60m
+          command: |
+            docker run --rm kaczmarj/neurodocker:master generate \
+              -b neurodebian:stretch-non-free -p apt \
+              --install ants fsl \
+              --add-to-entrypoint "source /etc/fsl/fsl.sh" \
+              --spm version=12 matlab_version=R2017a \
+              --miniconda env_name="neuro" \
+                          conda_install="python=3.5.1 pandas pytest traits" \
+                          pip_install="https://github.com/nipy/nipype/tarball/master" \
+                          activate=true \
+              --no-check-urls | docker build -t repronim/regtests -
+      - run:
+          name: Install dependencies
+          command: |
+            bash <(wget -q -O- http://neuro.debian.net/_files/neurodebian-travis.sh)
+            sudo apt-get update
+            sudo apt-get install -y git-annex-standalone
+      - run:
+          name: Get testing data
+          no_output_timeout: 60m
+          command: |
+            git fetch origin git-annex:git-annex
+            git annex init
+            git annex enableremote datas3
+            e=1 && for i in {1..5}; do
+              git annex get -J3 && e=0 && break || sleep 15
+            done && [ "$e" -eq "0" ]
+      - run:
+          name: Run tests
+          no_output_timeout: 60m
+          command: |
+            docker run -it -v $(pwd):/home/regtests repronim/regtests \
+              pytest /home/regtests/tests_regression_nipype
