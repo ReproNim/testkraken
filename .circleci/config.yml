@@ -32,6 +32,7 @@ jobs:
           name: Get testing data
           no_output_timeout: 60m
           command: |
+            git config --global user.name "regtests"
             git fetch origin git-annex:git-annex
             git annex init
             git annex enableremote datas3
