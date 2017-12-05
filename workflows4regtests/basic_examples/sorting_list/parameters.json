@@ -1,0 +1,14 @@
+{
+    "command": "python", 
+    "env": {
+        "python": [
+            2.7, 
+            3.5
+        ]
+    }, 
+    "script": "sorting.py", 
+    "test": [
+        "list_sorted.json", 
+        "test_list_eq.py"
+    ]
+}
