@@ -10,7 +10,7 @@
     "tests": [
         [
             "list_sorted.json",
-            "test_list_eq.py"
+            "test_list_eq"
         ]
     ]
 }

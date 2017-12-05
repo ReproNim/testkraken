@@ -28,10 +28,18 @@ class WorkflowRegtest(object):
 
     def testing_workflow(self):
         """run workflow for all env combination, testing for all tests"""
+        with open("report_tests.txt", "w") as ft:
+            ft.write("Test that fail:\n\n")
         for software_vers in self.software_vers_gen:
             dockerfile = self.calling_neurodocker(software_vers)
             image = self.building_image(dockerfile)
             self.run_cwl("test/cwl_regtest") #TODO: for testing only
+
+            with open("report_tests.txt", "a") as ft:
+                ft.write("\n\n * Environment:\n")
+                for ii, soft in enumerate(self.software_names):
+                    ft.write("{}: {}\n".format(soft, software_vers[ii]))
+                ft.write("\nTests:\n")
             self.run_tests()
 
     # TODO
@@ -62,7 +70,14 @@ class WorkflowRegtest(object):
         "    type: File\n"
         "    inputBinding:\n"
         "      position: 1\n\n"
-        "outputs: []\n").format(self.command, image) #TODO
+        "outputs:\n").format(self.command, image) #TODO
+
+        for (ii, test_tuple) in enumerate(self.tests):
+            cmd_cwl += ("  output_files_{}:\n"
+            "    type: File\n"
+            "    outputBinding:\n"
+            "      glob: {}\n").format(ii, test_tuple[0])
+
 
         with open("cwl.cwl", "w") as cwl_file:
             cwl_file.write(cmd_cwl)
@@ -79,7 +94,8 @@ class WorkflowRegtest(object):
 
     def run_tests(self):
         for (output, test) in self.tests:
-            pass
+            testing_module = __import__("testing_functions")
+            getattr(testing_module, test)(output, os.path.join(self.workflow_path, "data_ref", output))
             # either use pytest.main() https://docs.pytest.org/en/latest/usage.html#calling-pytest-from-python-code
             # or another cwl runner
 
