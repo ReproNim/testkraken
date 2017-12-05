@@ -1,5 +1,6 @@
 import os, subprocess
 import itertools
+import pdb
 
 Workflow_dir = os.path.join(os.path.realpath(__file__), "workflow4regtests")
 
@@ -40,7 +41,7 @@ class WorkflowRegtest(object):
         
     def calling_neurodocker(self, software_vers):
         #use self.software_names
-
+        pass
     
     def run_cwl(self, image):
         self.creating_cwl(image)
@@ -49,28 +50,28 @@ class WorkflowRegtest(object):
 
 
     def creating_cwl(self):
-        cmd_cwl = "#!/usr/bin/env cwl-runner\n" + 
-        "cwlVersion: v1.0\n" + 
-        "class: CommandLineTool\n" +
-        "baseCommand: {}\n".format(self.command) +
-        "hints:\n" + 
-        "  DockerRequirement:\n" +
-        "    dockerPull: {}\n".format(image) +
-        "inputs:\n" +
-        "  script:\n" + 
-        "    type: File\n" + 
-        "    inputBinding:\n" +
-        "      position: 1\n\n" +
-        "outputs: []\n" #TODO
+        cmd_cwl = ("#!/usr/bin/env cwl-runner\n"
+        "cwlVersion: v1.0\n"
+        "class: CommandLineTool\n"
+        "baseCommand: {}\n"
+        "hints:\n"
+        "  DockerRequirement:\n"
+        "    dockerPull: {}\n"
+        "inputs:\n" 
+        "  script:\n" 
+        "    type: File\n"
+        "    inputBinding:\n"
+        "      position: 1\n\n"
+        "outputs: []\n").format(self.command, image) #TODO
         
         with open("cwl.cwl", "w") as cwl_file:
             cwl_file.write(cmd_cwl)
 
 
     def creating_cwl_input(self):
-        cmd_in = "script:\n" + 
-        "  class: File\n" + 
-        "  path: /workflow/{}\n".format(self.script)
+        cmd_in = ("script:\n" 
+        "  class: File\n"
+        "  path: /workflow/{}\n").format(self.script)
         
         with open("input.yml", "w") as inp_file:
             inp_file.write(cmd_in)
@@ -82,9 +83,10 @@ class WorkflowRegtest(object):
             # either use pytest.main() https://docs.pytest.org/en/latest/usage.html#calling-pytest-from-python-code
             # or another cwl runner
 
-
-for workflow in next(os.walk(Workflow_dir)):
+pdb.set_trace()
+for workflow in next(os.walk(Workflow_dir))[1]: #TODO doesnt work
     wf = WorkflowRegtest(os.path.join(Workflow_dir, workflow))
+    pdb.set_trace()
     wf.testing_workflow()
 
                          
