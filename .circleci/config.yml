@@ -20,6 +20,7 @@ jobs:
               --miniconda env_name="neuro" \
                           conda_install="python=3.5.1" \
                           activate=true \
+              --copy ../workflows4regtests/basic_examples/sorting_list/data_input "/data_input" \
               --no-check-urls | docker build -t test/cwl_regtest -
       - run:
           name: Run tests
