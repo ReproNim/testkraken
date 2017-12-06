@@ -13,25 +13,6 @@ jobs:
             pyenv global 3.5.2
             pip install cwlref-runner
       - run:
-          name: temporary image build
-          no_output_timeout: 60m
-          command: |
-            docker run --rm kaczmarj/neurodocker:master generate \
-              -b neurodebian:stretch-non-free -p apt \
-              --user=neuro \
-              --miniconda env_name="neuro" \
-                          conda_install="python=3.5.1" \
-                          env_name="neuro" \
-                          activate=true \
-              --run-bash "source activate neuro" \
-              --user=root \
-              --run 'mkdir /data_input && chmod 777 /data_input && chmod a+s /data_input' \
-              --user=neuro \
-              --copy workflows4regtests/basic_examples/sorting_list/data_input "/data_input" \
-              --workdir /home/neuro \
-              --no-check-urls > Dockerfile
-            docker build -t test/cwl_regtest .
-      - run:
           name: Run tests
           no_output_timeout: 60m
           command: |
