@@ -2,7 +2,6 @@ version: 2
 jobs:
   build:
     machine:
-      # Ubuntu 14.04 with Docker 17.10.0-ce
       image: circleci/classic:201710-02
     working_directory: /home/circleci/regtests
     steps:
@@ -10,12 +9,5 @@ jobs:
           path: /home/circleci/regtests
       - run:
           name: install python lib
-	  command: |
-	    pip install cwlref-runner
-
-#      - run:
-#          name: Run tests
-#          no_output_timeout: 60m
-#          command: |
-#            docker run -it -v $(pwd):/home/regtests repronim/regtests \
-#              python /home/regtests/testrunner.py
+          command: |
+            pip install cwlref-runner
