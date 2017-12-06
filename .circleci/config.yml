@@ -17,12 +17,10 @@ jobs:
           command: |
             docker run --rm kaczmarj/neurodocker:master generate \
               -b neurodebian:stretch-non-free -p apt \
-              --install ants fsl \
-              --add-to-entrypoint "source /etc/fsl/fsl.sh" \
-              --spm version=12 matlab_version=R2017a \
+              --user=neuro \
               --miniconda env_name="neuro" \
-                          conda_install="python=3.5.1 pandas pytest traits" \
-                          pip_install="https://github.com/nipy/nipype/tarball/master" \
+                          conda_install="python=3.5.1" \
+                          env_name="neuro" \
                           activate=true \
               --no-check-urls | docker build -t repronim/regtests -
       - run:
