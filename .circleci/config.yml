@@ -8,8 +8,9 @@ jobs:
       - checkout:
           path: /home/circleci/regtests
       - run:
-          name: install python lib
+          name: Change to Python 3.5.2 and install python dependencies
           command: |
+            pyenv global 3.5.2
             pip install cwlref-runner
       - run:
           name: temporary image build

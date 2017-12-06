@@ -37,6 +37,7 @@ finally:
 import itertools
 import json
 import os
+import subprocess
 
 
 def create_matrix_of_envs(env_params):
@@ -105,15 +106,15 @@ def get_dictionary_hash(d):
 
 def get_dict_of_neurodocker_dicts(env_matrix):
     """Return dictionary of Neurodocker dictionaries given a matrix of
-    environment parameters. Keys are the SHA-1 hashes of the Neurodocker
-    dictionaries.
+    environment parameters. Keys are the SHA-1 hashes of the 'instructions'
+    portion of the Neurodocker dictionary.
     """
     dict_of_neurodocker_dicts = {}
     for ii, params in enumerate(env_matrix):
         instructions = tuple(list_to_neurodocker_instruction(ii)
                              for ii in params)
         neurodocker_dict = instructions_to_neurodocker_specs(instructions)
-        this_hash = get_dictionary_hash(neurodocker_dict)
+        this_hash = get_dictionary_hash(neurodocker_dict['instructions'])
         dict_of_neurodocker_dicts[this_hash] = neurodocker_dict
     return dict_of_neurodocker_dicts
 
@@ -122,8 +123,6 @@ def _generate_dockerfile(dir_, neurodocker_dict, sha1):
     """Return string representation of Dockerfile with the Neurodocker Docker
     image.
     """
-    import subprocess
-
     filepath = os.path.join(dir_, "json", "{}.json".format(sha1))
 
     with open(filepath, "w") as fp:
@@ -149,3 +148,37 @@ def generate_dockerfile(dir_, neurodocker_dict, sha1):
 
     with open(path, 'w') as fp:
         fp.write(dockerfile)
+
+
+def build_image(filepath, build_context=None, tag=None, build_opts=None):
+    """Build Docker image.
+
+    Parameters
+    ----------
+    filepath : path-like
+        Path to Dockerfile. May be absolute or relative. If `build_context`
+        if provided, `filepath` is joined to `build_context`.
+    build_context : path-like
+        Path to build context. If None, Docker image is built without build
+        context. Dockerfile instructions that require a context
+        (e.g., `ADD` and `COPY`) will fail.
+    tag : str
+        Docker image tag. E.g., "kaczmarj/myimage:v0.1.0".
+    build_opts : str
+        String of options to pass to `docker build`.
+    """
+    tag = '' if tag is None else "-t {}".format(tag)
+    build_opts = '' if build_opts is None else build_opts
+
+    cmd_base = "docker build {tag} {build_opts}"
+    cmd = cmd_base.format(tag=tag, build_opts=build_opts)
+
+    if build_context is not None:
+        build_context = os.path.abspath(build_context)
+        filepath = os.path.join(build_context, filepath)
+        cmd += " -f {} {}".format(filepath, build_context)
+    else:
+        filepath = os.path.abspath(filepath)
+        cmd += " - < {}".format(filepath)
+
+    subprocess.run(cmd, shell=True, check=True)
