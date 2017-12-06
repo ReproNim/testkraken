@@ -42,21 +42,26 @@ class WorkflowRegtest(object):
         """run workflow for all env combination, testing for all tests"""
         with open("report_tests.txt", "w") as ft:
             ft.write("Test that fail:\n\n")
-        for software_vers in self.software_vers_gen:
-            self.run_cwl("test/cwl_regtest") #TODO: for testing only
+
+        sha_list = [key for key in self.mapping]
+        for ii, software_vers in enumerate(self.matrix):
+            image = "repronim/regtests:{}".format(sha_list[ii])
+            self.run_cwl(image)
+            #self.run_cwl("test/cwl_regtest") #TODO: for testing only
 
             with open("report_tests.txt", "a") as ft:
                 ft.write("\n\n * Environment:\n")
-                for ii, soft in enumerate(self.software_names):
-                    ft.write("{}: {}\n".format(soft, software_vers[ii]))
+                ft.write(str(software_vers))
+                #for ii, soft in enumerate(self.software_names):
+                #    ft.write("{}: {}\n".format(soft, software_vers[ii]))
                 ft.write("\nTests:\n")
             self.run_tests()
 
 
     # TODO, just copied from Jakub example
     def generate_dockerfiles(self):
-        matrix = cg.create_matrix_of_envs(self.parameters['env'])
-        self.mapping = cg.get_dict_of_neurodocker_dicts(matrix)
+        self.matrix = cg.create_matrix_of_envs(self.parameters['env'])
+        self.mapping = cg.get_dict_of_neurodocker_dicts(self.matrix)
 
         os.mkdir(os.path.join(self.tmpdir.name, 'json'))
         try:
