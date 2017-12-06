@@ -14,7 +14,6 @@ jobs:
       - run:
           name: temporary image build
           no_output_timeout: 60m
-          working_directory: /tmp/docker
           command: |
             docker run --rm kaczmarj/neurodocker:master generate \
               -b neurodebian:stretch-non-free -p apt \
