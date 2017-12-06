@@ -14,6 +14,7 @@ jobs:
       - run:
           name: temporary image build
           no_output_timeout: 60m
+          working_directory: /tmp/docker
           command: |
             docker run --rm kaczmarj/neurodocker:master generate \
               -b neurodebian:stretch-non-free -p apt \
@@ -28,7 +29,8 @@ jobs:
               --user=neuro \
               --copy workflows4regtests/basic_examples/sorting_list/data_input "/data_input" \
               --workdir /home/neuro \
-              --no-check-urls | docker build -t test/cwl_regtest -
+              --no-check-urls > Dockerfile
+            docker build -t test/cwl_regtest .
       - run:
           name: Run tests
           no_output_timeout: 60m
