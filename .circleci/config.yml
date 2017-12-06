@@ -11,3 +11,8 @@ jobs:
           name: install python lib
           command: |
             pip install cwlref-runner
+      - run:
+          name: Run tests
+          no_output_timeout: 60m
+          command: |
+            python testrunner.py
