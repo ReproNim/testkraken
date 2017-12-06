@@ -12,6 +12,16 @@ jobs:
           command: |
             pip install cwlref-runner
       - run:
+          name: temporary image build
+          no_output_timeout: 60m
+          command: |
+            docker run --rm kaczmarj/neurodocker:master generate \
+              -b neurodebian:stretch-non-free -p apt \
+              --miniconda env_name="neuro" \
+                          conda_install="python=3.5.1" \
+                          activate=true \
+              --no-check-urls | docker build -t test/cwl_regtest -
+      - run:
           name: Run tests
           no_output_timeout: 60m
           command: |
