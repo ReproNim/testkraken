@@ -5,6 +5,7 @@ import json
 import os
 import subprocess
 import tempfile
+import pdb
 
 import container_generator as cg
 
@@ -20,7 +21,7 @@ class WorkflowRegtest(object):
         self.command = self.parameters["command"] # TODO: adding arg
         self.tests = self.parameters["tests"] # should be a tuple (output_name, test_name)
         self.software_names, self.software_vers_gen = self.environment_map()
-
+        self.inputs = self.parameters["inputs"]
         self.tmpdir = tempfile.TemporaryDirectory(
             prefix="tmp-workflowregtest-", dir=os.getcwd()
         )
@@ -67,6 +68,7 @@ class WorkflowRegtest(object):
         except Exception as e:
             raise
 
+
     def build_images(self):
         for sha1 in self.mapping:
             filepath = os.path.join(
@@ -75,10 +77,12 @@ class WorkflowRegtest(object):
             tag = "repronim/regtests:{}".format(sha1)
             cg.build_image(filepath, build_context=None, tag=tag)
 
+
     def run_cwl(self, image):
         self.creating_cwl(image)
         self.creating_cwl_input()
         subprocess.call(["cwl-runner", "cwl.cwl", "input.yml"])
+
 
     def creating_cwl(self, image):
         cmd_cwl = (
@@ -94,8 +98,18 @@ class WorkflowRegtest(object):
             "    type: File\n"
             "    inputBinding:\n"
             "      position: 1\n\n"
-            "outputs:\n"
-        ).format(self.command, image) #TODO
+        ).format(self.command, image)
+
+        for (ii, input_tuple) in enumerate(self.inputs):
+            cmd_cwl += (
+                "  input_files_{}:\n"
+                "    type: File\n"
+                "    inputBinding:\n"
+                "      position: {}\n"
+                "      prefix: {}\n"
+                ).format(ii, ii+2, input_tuple[0])
+
+        cmd_cwl += "outputs:\n"
 
         for (ii, test_tuple) in enumerate(self.tests):
             cmd_cwl += (
@@ -115,12 +129,20 @@ class WorkflowRegtest(object):
             "  path: {}\n"
         ).format(self.script)
 
+        for (ii, input_tuple) in enumerate(self.inputs):
+            cmd_in += (
+                "input_files_{}:\n"
+                "  class: File\n"
+                "  path: {}\n"
+                ).format(ii, os.path.join(self.workflow_path, "data_input",
+                                          input_tuple[1]))
+
         with open("input.yml", "w") as inp_file:
             inp_file.write(cmd_in)
 
     def run_tests(self):
+        import testing_functions
         for (output, test) in self.tests:
-            testing_module = __import__("testing_functions")
-            getattr(testing_module, test)(output, os.path.join(self.workflow_path, "data_ref", output))
+            getattr(testing_functions, test)(output, os.path.join(self.workflow_path, "data_ref", output))
             # either use pytest.main() https://docs.pytest.org/en/latest/usage.html#calling-pytest-from-python-code
             # or another cwl runner

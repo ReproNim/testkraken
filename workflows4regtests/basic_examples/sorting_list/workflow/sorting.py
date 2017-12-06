@@ -12,8 +12,13 @@ def sorting(filename):
         
     print("sorted list: {}".format(list2sort))
 
-sorting('/data_input/list2sort.json')
-#for testing
-#with open('tmp_list.json', 'w') as outfile:
-#    json.dump([10, 3, 9], outfile)
-#sorting("tmp_list.json")
+
+if __name__ == '__main__':
+    from argparse import ArgumentParser, RawTextHelpFormatter
+    parser = ArgumentParser(description=__doc__,
+                            formatter_class=RawTextHelpFormatter)
+    parser.add_argument("-f", dest="filename",
+                        help="file with a list to sort")
+    args = parser.parse_args()
+
+    sorting(args.filename)
