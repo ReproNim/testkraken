@@ -1,7 +1,9 @@
-import os, subprocess, json
+import os, subprocess, json 
+import tempfile
 import itertools
 import pdb
 
+import container_generator as cg
 
 class WorkflowRegtest(object):
     def __init__(self, workflow_path):
@@ -16,6 +18,8 @@ class WorkflowRegtest(object):
         self.software_names, self.software_vers_gen = self.environment_map()
 
 
+    #TODO we double work with Jakub, should choose one
+    # or at least to be sure taht the order is correct    
     def environment_map(self):
         software_name =[]
         software_version = []
@@ -30,8 +34,6 @@ class WorkflowRegtest(object):
         with open("report_tests.txt", "w") as ft:
             ft.write("Test that fail:\n\n")
         for software_vers in self.software_vers_gen:
-            dockerfile = self.calling_neurodocker(software_vers)
-            image = self.building_image(dockerfile)
             self.run_cwl("test/cwl_regtest") #TODO: for testing only
 
             with open("report_tests.txt", "a") as ft:
@@ -41,14 +43,22 @@ class WorkflowRegtest(object):
                 ft.write("\nTests:\n")
             self.run_tests()
 
-    # TODO
-    def building_image(self, dockerfile):
-        pass
 
-        
-    def calling_neurodocker(self, software_vers):
-        #use self.software_names
-        pass
+    # TODO, just copied from Jakub example
+    def docker_images(self):
+        matrix = cg.create_matrix_of_envs(self.parameters['env'])
+        mapping = cg.get_dict_of_neurodocker_dicts(matrix)
+        tmpdir = tempfile.TemporaryDirectory(prefix="tmp-json-files-",                                
+                                             dir=os.getcwd())
+        os.mkdir(os.path.join(tmpdir.name, 'json'))
+        keep_tmpdir = True
+        try:
+            for sha1, neurodocker_dict in mapping.items():
+                print("building images: {}".format(neurodocker_dict))
+                cg.generate_dockerfile(tmpdir.name, neurodocker_dict, sha1)
+        except Exception as e:
+            raise
+
     
     def run_cwl(self, image):
         self.creating_cwl(image)

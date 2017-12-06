@@ -9,6 +9,7 @@ Workflow_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)),  "workf
 
 for workflow in next(os.walk(Workflow_dir))[1]:
     wf = WorkflowRegtest(os.path.join(Workflow_dir, workflow))
+    wf.docker_images()
     wf.testing_workflow()
 
                          
