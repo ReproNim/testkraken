@@ -5,9 +5,9 @@
             "debian:stretch"
         ],
         "python": [
-            "2.7 numpy",
-            "3.5 numpy",
-            "3.6 numpy"
+            "2.7",
+            "3.5",
+            "3.6"
         ]
     },
     "inputs": [],
