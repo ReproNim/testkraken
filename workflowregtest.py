@@ -25,7 +25,8 @@ class WorkflowRegtest(object):
         self.tmpdir = tempfile.TemporaryDirectory(
             prefix="tmp-workflowregtest-", dir=os.getcwd()
         )
-        self.report_txt =  open("report_tests.txt", "w")
+        self.report_txt =  open("report_tests_{}.txt".format(
+                os.path.basename(self.workflow_path)), "w")
 
 
     def testing_workflow(self):
