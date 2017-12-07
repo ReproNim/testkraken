@@ -9,6 +9,8 @@ def sorting(filename):
 
     with open('list_sorted.json', 'w') as outfile:
         json.dump(list2sort, outfile)
+    with open('sum_list.json', 'w') as outfile:
+        json.dump(sum(list2sort), outfile)
         
     print("sorted list: {}".format(list2sort))
 

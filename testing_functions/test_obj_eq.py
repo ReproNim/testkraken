@@ -3,7 +3,7 @@
 import os, json
 import inspect
 
-def test_list_eq(file_out, file_ref, report_txt):
+def test_obj_eq(file_out, file_ref, report_txt):
     with open(file_out) as f:
         list_out = json.load(f)
     with open(file_ref) as f:

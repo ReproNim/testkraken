@@ -20,7 +20,11 @@
     "tests": [
         [
             "list_sorted.json",
-            "test_list_eq"
+            "test_obj_eq"
+        ],
+        [
+            "sum_list.json",
+            "test_obj_eq"
         ]
     ]
 }
