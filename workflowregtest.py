@@ -6,6 +6,7 @@ import os
 import subprocess
 import tempfile
 import pdb
+from collections import OrderedDict
 
 import container_generator as cg
 
@@ -14,7 +15,7 @@ class WorkflowRegtest(object):
     def __init__(self, workflow_path):
         self.workflow_path = workflow_path
         with open(os.path.join(self.workflow_path, "parameters.json")) as param_js:
-            self.parameters = json.load(param_js)
+            self.parameters = json.load(param_js, object_pairs_hook=OrderedDict)
         self.env_parameters = self.parameters["env"]
         self.script = os.path.join(self.workflow_path, "workflow",
                                    self.parameters["script"])
