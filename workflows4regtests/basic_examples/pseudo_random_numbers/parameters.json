@@ -1,0 +1,21 @@
+{
+    "command": "python",
+    "env": {
+        "base": [
+            "debian:stretch"
+        ],
+        "python": [
+            "2.7 numpy",
+            "3.5 numpy",
+            "3.6 numpy"
+        ]
+    },
+    "inputs": [],
+    "script": "mean_random_numbers.py",
+    "tests": [
+        [
+            "mean.json",
+            "test_rand_almosteq"
+        ]
+    ]
+}
