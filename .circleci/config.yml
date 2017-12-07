@@ -17,3 +17,5 @@ jobs:
           no_output_timeout: 60m
           command: |
             python testrunner.py
+      - store_artifacts:
+          path: /home/circleci/regtests
