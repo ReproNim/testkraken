@@ -31,14 +31,10 @@ class WorkflowRegtest(object):
     def testing_workflow(self):
         """Run workflow for all env combination, testing for all tests.
         Writing environmental parameters to report text file."""
-        self.report_txt.write("FAILING TESTS:\n")
 
         sha_list = [key for key in self.mapping]
         for ii, software_vers in enumerate(self.matrix):
-            self.report_txt.write(("\n\n * Environment:\n{}\n"
-                                   "Tests:\n").format(software_vers))
-
-
+            self.report_txt.write("\n * Environment:\n{}\n".format(software_vers))
             image = "repronim/regtests:{}".format(sha_list[ii])
             self.run_cwl(image)
             self.run_tests()
@@ -141,6 +137,8 @@ class WorkflowRegtest(object):
         """Running all chosen tests for the workflow outputs"""
         import testing_functions
         for (output, test) in self.tests:
-            getattr(testing_functions, test)(output, os.path.join(self.workflow_path, 
-                                                                  "data_ref", output))
+            getattr(testing_functions, test)(output, 
+                                             os.path.join(self.workflow_path, 
+                                                          "data_ref", output),
+                                             self.report_txt)
 
