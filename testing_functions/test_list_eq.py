@@ -1,3 +1,5 @@
+"""Checking if lists from two json files are equal"""
+
 import os, json
 
 def test_list_eq(file_out, file_ref):

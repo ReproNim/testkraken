@@ -1,4 +1,4 @@
-"""Object to orchestrate worflow execution."""
+"""Object to orchestrate worflow execution and output tests."""
 
 import itertools
 import json
@@ -21,47 +21,32 @@ class WorkflowRegtest(object):
                                    self.parameters["script"])
         self.command = self.parameters["command"] # TODO: adding arg
         self.tests = self.parameters["tests"] # should be a tuple (output_name, test_name)
-        self.software_names, self.software_vers_gen = self.environment_map()
         self.inputs = self.parameters["inputs"]
         self.tmpdir = tempfile.TemporaryDirectory(
             prefix="tmp-workflowregtest-", dir=os.getcwd()
         )
-
-
-    #TODO we double work with Jakub, should choose one
-    # or at least to be sure taht the order is correct
-    def environment_map(self):
-        software_name =[]
-        software_version = []
-        for key, val in self.env_parameters.items():
-            software_name.append(key)
-            software_version.append(val)
-        return software_name, itertools.product(*software_version)
+        self.report_txt =  open("report_tests.txt", "w")
 
 
     def testing_workflow(self):
-        """run workflow for all env combination, testing for all tests"""
-        with open("report_tests.txt", "w") as ft:
-            ft.write("Test that fail:\n\n")
+        """Run workflow for all env combination, testing for all tests.
+        Writing environmental parameters to report text file."""
+        self.report_txt.write("FAILING TESTS:\n")
 
         sha_list = [key for key in self.mapping]
         for ii, software_vers in enumerate(self.matrix):
+            self.report_txt.write(("\n\n * Environment:\n{}\n"
+                                   "Tests:\n").format(software_vers))
+
+
             image = "repronim/regtests:{}".format(sha_list[ii])
             self.run_cwl(image)
-            #self.run_cwl("test/cwl_regtest") #TODO: for testing only
-
-            with open("report_tests.txt", "a") as ft:
-                ft.write("\n\n * Environment:\n")
-                ft.write(str(software_vers))
-                #for ii, soft in enumerate(self.software_names):
-                #    ft.write("{}: {}\n".format(soft, software_vers[ii]))
-                ft.write("\nTests:\n")
             self.run_tests()
 
 
-    # TODO, just copied from Jakub example
     def generate_dockerfiles(self):
-        self.matrix = cg.create_matrix_of_envs(self.parameters['env'])
+        """Generate all Dockerfiles"""
+        self.matrix = cg.create_matrix_of_envs(self.env_parameters)
         self.mapping = cg.get_dict_of_neurodocker_dicts(self.matrix)
 
         os.mkdir(os.path.join(self.tmpdir.name, 'json'))
@@ -76,6 +61,7 @@ class WorkflowRegtest(object):
 
 
     def build_images(self):
+        """Building all docker images"""
         for sha1 in self.mapping:
             filepath = os.path.join(
                 self.tmpdir.name, 'Dockerfile.{}'.format(sha1)
@@ -85,12 +71,14 @@ class WorkflowRegtest(object):
 
 
     def run_cwl(self, image):
+        """Running workflow with CWL"""
         self.creating_cwl(image)
         self.creating_cwl_input()
         subprocess.call(["cwl-runner", "cwl.cwl", "input.yml"])
 
 
     def creating_cwl(self, image):
+        """Creating cwl file"""
         cmd_cwl = (
             "#!/usr/bin/env cwl-runner\n"
             "cwlVersion: v1.0\n"
@@ -128,7 +116,9 @@ class WorkflowRegtest(object):
         with open("cwl.cwl", "w") as cwl_file:
             cwl_file.write(cmd_cwl)
 
+
     def creating_cwl_input(self):
+        """Creating input yml file for CWL"""
         cmd_in = (
             "script:\n"
             "  class: File\n"
@@ -146,9 +136,11 @@ class WorkflowRegtest(object):
         with open("input.yml", "w") as inp_file:
             inp_file.write(cmd_in)
 
+
     def run_tests(self):
+        """Running all chosen tests for the workflow outputs"""
         import testing_functions
         for (output, test) in self.tests:
-            getattr(testing_functions, test)(output, os.path.join(self.workflow_path, "data_ref", output))
-            # either use pytest.main() https://docs.pytest.org/en/latest/usage.html#calling-pytest-from-python-code
-            # or another cwl runner
+            getattr(testing_functions, test)(output, os.path.join(self.workflow_path, 
+                                                                  "data_ref", output))
+

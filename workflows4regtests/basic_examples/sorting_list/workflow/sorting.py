@@ -1,7 +1,7 @@
 import json
 
 def sorting(filename):
-
+    """ a simple function for sorting list"""
     with open(filename) as json_data:
         list2sort = json.load(json_data)
 
