@@ -15,7 +15,7 @@
     "tests": [
         [
             "mean.json",
-            "test_rand_almosteq"
+            "test_rand_almosteq.py"
         ]
     ]
 }

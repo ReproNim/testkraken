@@ -25,8 +25,8 @@ class WorkflowRegtest(object):
         self.tmpdir = tempfile.TemporaryDirectory(
             prefix="tmp-workflowregtest-", dir=os.getcwd()
         )
-        self.report_txt =  open("report_tests_{}.txt".format(
-                os.path.basename(self.workflow_path)), "w")
+        #self.report_txt =  open("report_tests_{}.txt".format(
+        #        os.path.basename(self.workflow_path)), "w")
 
 
     def testing_workflow(self):
@@ -35,10 +35,10 @@ class WorkflowRegtest(object):
 
         sha_list = [key for key in self.mapping]
         for ii, software_vers in enumerate(self.matrix):
-            self.report_txt.write("\n * Environment:\n{}\n".format(software_vers))
+            #self.report_txt.write("\n * Environment:\n{}\n".format(software_vers))
             image = "repronim/regtests:{}".format(sha_list[ii])
-            self.run_cwl(image)
-            self.run_tests()
+            self.run_cwl(image, software_vers)
+            #self.run_tests()
 
 
     def generate_dockerfiles(self):
@@ -67,14 +67,16 @@ class WorkflowRegtest(object):
             cg.build_image(filepath, build_context=None, tag=tag)
 
 
-    def run_cwl(self, image):
+    def run_cwl(self, image, soft_ver):
         """Running workflow with CWL"""
-        self.creating_cwl(image)
-        self.creating_cwl_input()
+        self.creating_main_cwl()
+        self.creating_main_input(soft_ver)
+        self.creating_workflow_cwl(image)
+        self.creating_test_cwl()
         subprocess.call(["cwl-runner", "cwl.cwl", "input.yml"])
 
 
-    def creating_cwl(self, image):
+    def creating_workflow_cwl(self, image):
         """Creating cwl file"""
         cmd_cwl = (
             "#!/usr/bin/env cwl-runner\n"
@@ -83,12 +85,12 @@ class WorkflowRegtest(object):
             "baseCommand: {}\n"
             "hints:\n"
             "  DockerRequirement:\n"
-            "    dockerPull: {}\n"
+            "    dockerPull: {}\n\n"
             "inputs:\n"
             "  script:\n"
             "    type: File\n"
             "    inputBinding:\n"
-            "      position: 1\n\n"
+            "      position: 1\n"
         ).format(self.command, image)
 
         for (ii, input_tuple) in enumerate(self.inputs):
@@ -102,29 +104,137 @@ class WorkflowRegtest(object):
 
         cmd_cwl += "outputs:\n"
 
-        for (ii, test_tuple) in enumerate(self.tests):
-            cmd_cwl += (
-                "  output_files_{}:\n"
+        #TODO: temporary taking ony one tests/ouptput file
+        cmd_cwl += (
+                "  output_files:\n"
                 "    type: File\n"
                 "    outputBinding:\n"
                 "      glob: {}\n"
-            ).format(ii, test_tuple[0])
+        ).format(self.tests[0][0])
+        #for (ii, test_tuple) in enumerate(self.tests):
+        #    cmd_cwl += (
+        #        "  output_files_{}:\n"
+        #        "    type: File\n"
+        #        "    outputBinding:\n"
+        #        "      glob: {}\n"
+        #    ).format(ii, test_tuple[0])
+
+        with open("cwl_workflow.cwl", "w") as cwl_file:
+            cwl_file.write(cmd_cwl)
+
+    def creating_test_cwl(self):
+        cmd_cwl = (
+            "# !/usr/bin/env cwl-runner\n"
+            "cwlVersion: v1.0\n"
+            "class: CommandLineTool\n"
+            "baseCommand: python\n\n"
+            "inputs:\n"
+            "  script:\n"
+            "    type: File\n"
+            "    inputBinding:\n"
+            "      position: 1\n"
+            "  input_files_out:\n"
+            "    type: File\n"
+            "    inputBinding:\n"
+            "      position: 2\n"
+            "      prefix: -out\n"
+            "  input_files_ref:\n"
+            "    type: File\n"
+            "    inputBinding:\n"
+            "      position: 3\n"
+            "      prefix: -ref\n"
+            "  input_files_report:\n"
+            "    type: string\n"
+            "    inputBinding:\n"
+            "      position: 4\n"
+            "      prefix: -report\n\n"
+            "outputs:\n"
+            "  output_files_report:\n"
+            "    type: File\n"
+            "    outputBinding:\n"
+            "      glob: $(inputs.input_files_report)\n"
+        )
+
+        with open("cwl_test.cwl", "w") as cwl_file:
+            cwl_file.write(cmd_cwl)
+
+
+    def creating_main_cwl(self):
+        """Creating cwl file"""
+        cmd_cwl = (
+            "#!/usr/bin/env cwl-runner\n"
+            "cwlVersion: v1.0\n"
+            "class: Workflow\n"
+            "inputs:\n"
+            "  script_workf: File\n"
+            "  script_test: File\n"
+            "  data_ref: File\n"
+            "  report_txt: string\n"
+        )
+        for (ii, input_tuple) in enumerate(self.inputs):
+            cmd_cwl += (
+                "  input_workf_{}: File\n"
+                ).format(ii)
+
+        cmd_cwl += (
+            "outputs:\n"
+            "  testout:\n"
+            "    type: File\n"
+            "    outputSource: test/output_files_report\n\n"
+            "steps:\n"
+            "  workflow:\n"
+            "    run: cwl_workflow.cwl\n"
+            "    in:\n"
+            "      script: script_workf\n"
+        )
+        for (ii, input_tuple) in enumerate(self.inputs):
+            cmd_cwl += (
+                "      input_files_{}: input_workf_{}\n"
+            ).format(ii, ii)
+
+        cmd_cwl += (
+            "    out: [output_files]\n" #only one output per test
+            "  test:\n"
+            "    run: cwl_test.cwl\n"
+            "    in:\n"
+            "      script: script_test\n"
+            "      input_files_report: report_txt\n"
+            "      input_files_out: workflow/output_files\n"
+            "      input_files_ref: data_ref\n"
+            "      input_files_report: report_txt\n"
+            "    out: [output_files_report]"
+                )
 
         with open("cwl.cwl", "w") as cwl_file:
             cwl_file.write(cmd_cwl)
 
 
-    def creating_cwl_input(self):
+    def creating_main_input(self, soft_ver):
         """Creating input yml file for CWL"""
+        soft = "_" + os.path.basename(self.workflow_path)
+        for sv in soft_ver:
+            soft += "_" + sv[1].split(":")[-1] #TODO, temp name of file
+
         cmd_in = (
-            "script:\n"
+            "script_workf:\n"
             "  class: File\n"
             "  path: {}\n"
-        ).format(self.script)
+            "script_test:\n"
+            "  class: File\n"
+            "  path: {}\n"
+            "data_ref:\n"
+            "  class: File\n"
+            "  path: {}\n"
+            "report_txt: {}\n" #TODO
+        ).format(self.script,
+                 os.path.join(os.path.dirname(os.path.realpath(__file__)), "testing_functions", self.tests[0][1]),
+                 os.path.join(self.workflow_path, "data_ref", self.tests[0][0]),
+                 "report_test"+soft+".txt"
+                   ) # TODO: for now it's only one test possible
 
         for (ii, input_tuple) in enumerate(self.inputs):
             cmd_in += (
-                "input_files_{}:\n"
+                "input_workf_{}:\n"
                 "  class: File\n"
                 "  path: {}\n"
                 ).format(ii, os.path.join(self.workflow_path, "data_input",
@@ -134,12 +244,12 @@ class WorkflowRegtest(object):
             inp_file.write(cmd_in)
 
 
-    def run_tests(self):
-        """Running all chosen tests for the workflow outputs"""
-        import testing_functions
-        for (output, test) in self.tests:
-            getattr(testing_functions, test)(output, 
-                                             os.path.join(self.workflow_path, 
-                                                          "data_ref", output),
-                                             self.report_txt)
+#    def run_tests(self):
+#        """Running all chosen tests for the workflow outputs"""
+#        import testing_functions
+#        for (output, test) in self.tests:
+#            getattr(testing_functions, test)(output,
+#                                             os.path.join(self.workflow_path,
+#                                                          "data_ref", output),
+#                                             self.report_txt)
 
