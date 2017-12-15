@@ -233,12 +233,17 @@ class WorkflowRegtest(object):
                    ) # TODO: for now it's only one test possible
 
         for (ii, input_tuple) in enumerate(self.inputs):
-            cmd_in += (
-                "input_workf_{}:\n"
-                "  class: {}\n"
-                "  path: {}\n"
-                ).format(ii, input_tuple[0],
-                         os.path.join(self.workflow_path, "data_input", input_tuple[2]))
+            if input_tuple[0] == "File":
+                cmd_in += (
+                    "input_workf_{}:\n"
+                    "  class: {}\n"
+                    "  path: {}\n"
+                    ).format(ii, input_tuple[0],
+                             os.path.join(self.workflow_path, "data_input", input_tuple[2]))
+            else:
+                cmd_in += (
+                    "input_workf_{}: {}\n"
+                    ).format(ii, input_tuple[2])
 
         with open("input.yml", "w") as inp_file:
             inp_file.write(cmd_in)
