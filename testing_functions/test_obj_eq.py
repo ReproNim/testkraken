@@ -4,13 +4,21 @@ import os, json
 import inspect
 
 def test_obj_eq(file_out, file_ref, report_filename):
+
     with open(file_out) as f:
-        list_out = json.load(f)
+        try:
+            obj_out = json.load(f)
+        except:
+            obj_out = f.read().strip()
+
     with open(file_ref) as f:
-        list_ref = json.load(f)
+        try:
+            obj_ref = json.load(f)
+        except:
+            obj_ref = f.read().strip()
 
     try:
-        assert list_out == list_ref
+        assert obj_out == obj_ref
         with open(report_filename, "a") as f:
             f.write("Test: {}, OutputFile: {}: PASSED\n".format(inspect.stack()[0][3],
                                                                 os.path.basename(file_out)))
