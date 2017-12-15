@@ -46,25 +46,26 @@ class WorkflowRegtest(object):
         self.matrix = cg.create_matrix_of_envs(self.env_parameters)
         self.mapping = cg.get_dict_of_neurodocker_dicts(self.matrix)
 
-        os.mkdir(os.path.join(self.tmpdir.name, 'json'))
+        os.makedirs(os.path.join(self.workflow_path, 'json'), exist_ok=True) # TODO: self.workflow_path is temporary
         try:
             for sha1, neurodocker_dict in self.mapping.items():
                 print("building images: {}".format(neurodocker_dict))
                 cg.generate_dockerfile(
-                    self.tmpdir.name, neurodocker_dict, sha1
-                )
+                    self.workflow_path, neurodocker_dict, sha1
+                ) # TODO: self.workflow_path is temporary
         except Exception as e:
             raise
 
 
     def build_images(self):
         """Building all docker images"""
+        # TODO: self.workflow_path is temporary (should be none)
         for sha1 in self.mapping:
             filepath = os.path.join(
-                self.tmpdir.name, 'Dockerfile.{}'.format(sha1)
+                self.workflow_path, 'Dockerfile.{}'.format(sha1)
             )
             tag = "repronim/regtests:{}".format(sha1)
-            cg.build_image(filepath, build_context=None, tag=tag)
+            cg.build_image(filepath, build_context=self.workflow_path, tag=tag)
 
 
     def run_cwl(self, image, soft_ver):

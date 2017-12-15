@@ -38,6 +38,7 @@ import itertools
 import json
 import os
 import subprocess
+import pdb
 
 
 def create_matrix_of_envs(env_params):
@@ -74,7 +75,18 @@ def list_to_neurodocker_instruction(iterable):
         spec = {
             'conda_install': conda_install,
             'env_name': "test",
+            'activate': "true"
         }
+    elif program_name in ['conda_env_yml']:
+        program_name = "miniconda"
+        env_yml_path = version
+        spec = {
+            'yaml_file': env_yml_path,
+            'env_name': "test",
+            'activate': "true"
+        }
+
+
     elif program_name in ['base']:
         spec = version
     else:
