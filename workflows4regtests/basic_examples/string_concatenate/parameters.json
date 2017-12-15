@@ -1,0 +1,31 @@
+{
+    "command": "python",
+    "env": {
+        "base": [
+            "debian:stretch"
+        ],
+        "python": [
+            "2.7",
+            "3.5"
+        ]
+    },
+    "inputs": [
+        [
+            "string",
+            "-s",
+            "ala"
+        ],
+        [
+            "int",
+            "-n",
+            "3"
+        ]
+    ],
+    "script": "concatenate.py",
+    "tests": [
+        [
+            "string_conc.txt",
+            "test_obj_eq.py"
+        ]
+    ]
+}
