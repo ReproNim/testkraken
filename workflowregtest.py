@@ -96,11 +96,11 @@ class WorkflowRegtest(object):
         for (ii, input_tuple) in enumerate(self.inputs):
             cmd_cwl += (
                 "  input_files_{}:\n"
-                "    type: File\n"
+                "    type: {}\n"
                 "    inputBinding:\n"
                 "      position: {}\n"
                 "      prefix: {}\n"
-                ).format(ii, ii+2, input_tuple[0])
+                ).format(ii, input_tuple[0], ii+2, input_tuple[1])
 
         cmd_cwl += "outputs:\n"
 
@@ -173,8 +173,8 @@ class WorkflowRegtest(object):
         )
         for (ii, input_tuple) in enumerate(self.inputs):
             cmd_cwl += (
-                "  input_workf_{}: File\n"
-                ).format(ii)
+                "  input_workf_{}: {}\n"
+                ).format(ii, input_tuple[0])
 
         cmd_cwl += (
             "outputs:\n"
@@ -235,21 +235,10 @@ class WorkflowRegtest(object):
         for (ii, input_tuple) in enumerate(self.inputs):
             cmd_in += (
                 "input_workf_{}:\n"
-                "  class: File\n"
+                "  class: {}\n"
                 "  path: {}\n"
-                ).format(ii, os.path.join(self.workflow_path, "data_input",
-                                          input_tuple[1]))
+                ).format(ii, input_tuple[0],
+                         os.path.join(self.workflow_path, "data_input", input_tuple[2]))
 
         with open("input.yml", "w") as inp_file:
             inp_file.write(cmd_in)
-
-
-#    def run_tests(self):
-#        """Running all chosen tests for the workflow outputs"""
-#        import testing_functions
-#        for (output, test) in self.tests:
-#            getattr(testing_functions, test)(output,
-#                                             os.path.join(self.workflow_path,
-#                                                          "data_ref", output),
-#                                             self.report_txt)
-

@@ -12,6 +12,7 @@
     },
     "inputs": [
         [
+            "File",
             "-f",
             "list2sort.json"
         ]
