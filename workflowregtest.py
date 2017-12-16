@@ -74,7 +74,7 @@ class WorkflowRegtest(object):
         self.creating_main_input(soft_ver)
         self.creating_workflow_cwl(image)
         self.creating_test_cwl()
-        subprocess.call(["cwl-runner", "cwl.cwl", "input.yml"])
+        subprocess.call(["cwl-runner", "--no-match-user", "cwl.cwl", "input.yml"])
 
 
     def creating_workflow_cwl(self, image):
