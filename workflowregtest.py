@@ -299,7 +299,7 @@ class WorkflowRegtest(object):
 
 
         fig.tight_layout()
-        plt.show()
+        #plt.show()
         # mpld3.show()
         mpld3.save_html(fig, "fig_{}.html".format(os.path.basename(self.workflow_path)))
 
