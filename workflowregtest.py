@@ -260,8 +260,8 @@ class WorkflowRegtest(object):
         matrix_dict = [OrderedDict(mat) for mat in self.matrix]
 
         cmap = matplotlib.colors.ListedColormap(['green', 'red'])
-        matplotlib.rcParams['xtick.labelsize'] = 20
-        matplotlib.rcParams['ytick.labelsize'] = 20
+        matplotlib.rcParams['xtick.labelsize'] = 14
+        matplotlib.rcParams['ytick.labelsize'] = 14
 
         fig, ax_list = plt.subplots(nr_par, 1)
 
@@ -296,11 +296,12 @@ class WorkflowRegtest(object):
             plt.xticks([i + 0.5 for i in range(len(x_lab))], x_lab)
             plt.sca(ax)
             plt.yticks([i+0.5 for i in range(len(self.env_parameters[key]))], self.env_parameters[key])
-            ax.set_title(key, fontsize=25)
+            ax.set_title(key, fontsize=20)
 
 
         fig.tight_layout()
         #plt.show()
+        plt.savefig("fig_{}.pdf".format(os.path.basename(self.workflow_path))) 
         # mpld3.show()
-        mpld3.save_html(fig, "fig_{}.html".format(os.path.basename(self.workflow_path)))
+        #mpld3.save_html(fig, "fig_{}.html".format(os.path.basename(self.workflow_path)))
 
