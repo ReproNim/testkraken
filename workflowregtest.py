@@ -42,7 +42,6 @@ class WorkflowRegtest(object):
             #self.report_txt.write("\n * Environment:\n{}\n".format(software_vers))
             image = "repronim/regtests:{}".format(sha_list[ii])
             self.run_cwl(image, software_vers)
-            #self.run_tests()
 
 
     def generate_dockerfiles(self):
@@ -300,8 +299,6 @@ class WorkflowRegtest(object):
 
 
         fig.tight_layout()
-        #plt.show()
         plt.savefig("fig_{}.pdf".format(os.path.basename(self.workflow_path))) 
-        # mpld3.show()
         #mpld3.save_html(fig, "fig_{}.html".format(os.path.basename(self.workflow_path)))
 
