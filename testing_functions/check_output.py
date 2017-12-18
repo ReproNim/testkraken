@@ -71,7 +71,7 @@ if __name__ == "__main__":
         df_diff = df_diff.dropna()
     #df_diff.to_csv('output/Difference.csv')
 
-    if np.allclose(df_diff, 0, rtol=1e-05, atol=1e-08):
+    if np.allclose(df_diff, 0, rtol=1e-15, atol=1e-18):
         print('Outputs MATCH')
         with open(args.report_filename, "a") as f:
             f.write(("Test: {}, OutputFile: {}: PASSED (diff =\n {})\n"

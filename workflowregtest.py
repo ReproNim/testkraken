@@ -7,6 +7,9 @@ import subprocess
 import tempfile
 import pdb
 from collections import OrderedDict
+import matplotlib.pyplot as plt, mpld3
+import matplotlib
+import numpy as np
 
 import container_generator as cg
 
@@ -214,7 +217,7 @@ class WorkflowRegtest(object):
         """Creating input yml file for CWL"""
         soft = "_" + os.path.basename(self.workflow_path)
         for sv in soft_ver:
-            soft += "_" + sv[1].split(":")[-1] #TODO, temp name of file
+            soft += "_" + "".join(sv[1].split(":")) #TODO, temp name of file
 
         cmd_in = (
             "script_workf:\n"
@@ -248,3 +251,55 @@ class WorkflowRegtest(object):
 
         with open("input.yml", "w") as inp_file:
             inp_file.write(cmd_in)
+
+
+    def plot_workflow_result(self):
+        """plotting results, this has to be cleaned TODO"""
+        nr_par = len(self.env_parameters)
+        matrix_dict = [OrderedDict(mat) for mat in self.matrix]
+
+        cmap = matplotlib.colors.ListedColormap(['green', 'red'])
+        matplotlib.rcParams['xtick.labelsize'] = 20
+        matplotlib.rcParams['ytick.labelsize'] = 20
+
+        fig, ax_list = plt.subplots(nr_par, 1)
+
+
+        for ii, key in enumerate(self.env_parameters):
+            ax = ax_list[ii]
+            res_all = []
+            for ver in self.env_parameters[key]:
+                x_lab = []
+                res = []
+                for soft_d in matrix_dict:
+                    if soft_d[key] == ver:
+                        soft_txt = ""
+                        file_name = "report_test_" + os.path.basename(self.workflow_path)
+                        for k, val in soft_d.items():
+                            if k != key:
+                                soft_txt += "".join(val.split(":")) + "\n"
+                            file_name += "_" + "".join(val.split(":"))
+                        file_name += ".txt"
+                        x_lab.append(soft_txt)
+                        with open(file_name) as f:
+                            if "PASS" in f.read():
+                                res.append(1)
+                            elif "FAIL" in f.read():
+                                res.append(0)
+                            else:
+                                res.append(2)
+                res_all.append(res)
+
+            c = ax.pcolor(res_all, edgecolors='k', linewidths=4, cmap=cmap)
+            plt.sca(ax)
+            plt.xticks([i + 0.5 for i in range(len(x_lab))], x_lab)
+            plt.sca(ax)
+            plt.yticks([i+0.5 for i in range(len(self.env_parameters[key]))], self.env_parameters[key])
+            ax.set_title(key, fontsize=25)
+
+
+        fig.tight_layout()
+        plt.show()
+        # mpld3.show()
+        mpld3.save_html(fig, "fig_{}.html".format(os.path.basename(self.workflow_path)))
+
