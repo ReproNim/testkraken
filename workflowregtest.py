@@ -7,8 +7,9 @@ import subprocess
 import tempfile
 import pdb
 from collections import OrderedDict
-import matplotlib.pyplot as plt, mpld3
 import matplotlib
+matplotlib.use('agg')
+import matplotlib.pyplot as plt, mpld3
 import numpy as np
 
 import container_generator as cg
