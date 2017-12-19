@@ -282,7 +282,7 @@ class WorkflowRegtest(object):
                     for k, val in soft_d.items():
                         if k != key:
                             if k == "conda_env_yml":
-                                soft_txt += "".join(val.split(":")) + "\n"
+                                soft_txt += val.replace("ironment","").replace(".yml","") + "\n"
                             else:
                                 soft_txt += k + "=" + "".join(val.split(":")) + "\n"
                         file_name += "_" + "".join(val.split(":"))
@@ -322,7 +322,7 @@ class WorkflowRegtest(object):
             else:
                 cmap = matplotlib.colors.ListedColormap(['red', 'green', 'black'])
 
-
+            print("Res_Val", res_all)
             c = ax.pcolor(res_all, edgecolors='k', linewidths=4, cmap=cmap)
             plt.sca(ax)
             plt.xticks([i + 0.5 for i in range(len(x_lab))], x_lab)
