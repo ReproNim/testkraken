@@ -38,6 +38,8 @@ import itertools
 import json
 import os
 import subprocess
+from collections import OrderedDict
+import pdb
 
 
 def create_matrix_of_envs(env_params):
@@ -74,7 +76,18 @@ def list_to_neurodocker_instruction(iterable):
         spec = {
             'conda_install': conda_install,
             'env_name': "test",
+            'activate': "true"
         }
+    elif program_name in ['conda_env_yml']:
+        program_name = "miniconda"
+        env_yml_path = version
+        spec = {
+            'yaml_file': env_yml_path,
+            'env_name': "test",
+            'activate': "true"
+        }
+
+
     elif program_name in ['base']:
         spec = version
     else:
@@ -109,14 +122,15 @@ def get_dict_of_neurodocker_dicts(env_matrix):
     environment parameters. Keys are the SHA-1 hashes of the 'instructions'
     portion of the Neurodocker dictionary.
     """
-    dict_of_neurodocker_dicts = {}
+    dict_of_neurodocker_dicts = []
     for ii, params in enumerate(env_matrix):
         instructions = tuple(list_to_neurodocker_instruction(ii)
                              for ii in params)
         neurodocker_dict = instructions_to_neurodocker_specs(instructions)
         this_hash = get_dictionary_hash(neurodocker_dict['instructions'])
-        dict_of_neurodocker_dicts[this_hash] = neurodocker_dict
-    return dict_of_neurodocker_dicts
+        dict_of_neurodocker_dicts.append((this_hash, neurodocker_dict))
+    print("ENV MAT", env_matrix)
+    return OrderedDict(dict_of_neurodocker_dicts)
 
 
 def _generate_dockerfile(dir_, neurodocker_dict, sha1):

@@ -1,0 +1,29 @@
+{
+    "command": "python",
+    "env": {
+        "base": [
+            "debian:stretch"
+        ],
+        "conda_env_yml": [
+            "environment.yml"
+        ]
+    },
+    "inputs": [
+        [
+            "File",
+            "-f",
+            "list2sort.json"
+        ]
+    ],
+    "script": "sorting.py",
+    "tests": [
+        [
+            "list_sorted.json",
+            "test_obj_eq.py"
+        ],
+        [
+            "sum_list.json",
+            "test_obj_eq"
+        ]
+    ]
+}

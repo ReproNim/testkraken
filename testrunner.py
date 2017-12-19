@@ -15,3 +15,4 @@ if __name__ == "__main__":
         wf.generate_dockerfiles()
         wf.build_images()
         wf.testing_workflow()
+        wf.plot_workflow_result()
