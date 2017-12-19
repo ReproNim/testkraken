@@ -264,7 +264,7 @@ class WorkflowRegtest(object):
         nr_par = len(self.env_parameters)
         matrix_dict = [OrderedDict(mat) for mat in self.matrix]
 
-        matplotlib.rcParams['xtick.labelsize'] = 12
+        matplotlib.rcParams['xtick.labelsize'] = 10
         matplotlib.rcParams['ytick.labelsize'] = 12
 
         fig, ax_list = plt.subplots(nr_par, 1)
@@ -284,7 +284,7 @@ class WorkflowRegtest(object):
                             if k == "conda_env_yml":
                                 soft_txt += val.replace("ironment","").replace(".yml","") + "\n"
                             else:
-                                soft_txt += k + "=" + "".join(val.split(":")) + "\n"
+                                soft_txt += "{}={}\n".format(k, val.split(":")[0])
                         file_name += "_" + "".join(val.split(":"))
                     file_name += ".txt"
                     if self.test_output[ii] == "docker ok":
@@ -323,11 +323,16 @@ class WorkflowRegtest(object):
                 cmap = matplotlib.colors.ListedColormap(['red', 'green', 'black'])
 
             print("Res_Val", res_all)
+            if self.env_parameters[key] == "conda_env_yml":
+                y_lab = [val.replace("ironment", "").replace(".yml", "") + "\n" for val in self.env_parameters[key]]
+            else:
+                y_lab = [val.split(":")[0] for val in self.env_parameters[key]]
+
             c = ax.pcolor(res_all, edgecolors='k', linewidths=4, cmap=cmap)
             plt.sca(ax)
             plt.xticks([i + 0.5 for i in range(len(x_lab))], x_lab)
             plt.sca(ax)
-            plt.yticks([i+0.5 for i in range(len(self.env_parameters[key]))], self.env_parameters[key])
+            plt.yticks([i+0.5 for i in range(len(y_lab))],y_lab)
             ax.set_title(key, fontsize=16)
 
 
