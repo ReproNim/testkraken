@@ -29,6 +29,7 @@ class WorkflowRegtest(object):
         self.tmpdir = tempfile.TemporaryDirectory(
             prefix="tmp-workflowregtest-", dir=os.getcwd()
         )
+        self.test_output = []
         #self.report_txt =  open("report_tests_{}.txt".format(
         #        os.path.basename(self.workflow_path)), "w")
 
@@ -40,8 +41,9 @@ class WorkflowRegtest(object):
         sha_list = [key for key in self.mapping]
         for ii, software_vers in enumerate(self.matrix):
             #self.report_txt.write("\n * Environment:\n{}\n".format(software_vers))
-            image = "repronim/regtests:{}".format(sha_list[ii])
-            self.run_cwl(image, software_vers)
+            if self.test_output[ii] == "docker ok":
+                image = "repronim/regtests:{}".format(sha_list[ii])
+                self.run_cwl(image, software_vers)
 
 
     def generate_dockerfiles(self):
@@ -50,25 +52,29 @@ class WorkflowRegtest(object):
         self.mapping = cg.get_dict_of_neurodocker_dicts(self.matrix)
 
         os.makedirs(os.path.join(self.workflow_path, 'json'), exist_ok=True) # TODO: self.workflow_path is temporary
-        try:
-            for sha1, neurodocker_dict in self.mapping.items():
+        for sha1, neurodocker_dict in self.mapping.items():
+            try:
                 print("building images: {}".format(neurodocker_dict))
                 cg.generate_dockerfile(
                     self.workflow_path, neurodocker_dict, sha1
                 ) # TODO: self.workflow_path is temporary
-        except Exception as e:
-            raise
+                self.test_output.append("docker ok")
+            except Exception as e:
+                self.test_output.append("no docker")
 
 
     def build_images(self):
         """Building all docker images"""
         # TODO: self.workflow_path is temporary (should be none)
-        for sha1 in self.mapping:
-            filepath = os.path.join(
-                self.workflow_path, 'Dockerfile.{}'.format(sha1)
-            )
-            tag = "repronim/regtests:{}".format(sha1)
-            cg.build_image(filepath, build_context=self.workflow_path, tag=tag)
+        for ii, sha1 in enumerate(self.mapping):
+            try:
+                filepath = os.path.join(
+                    self.workflow_path, 'Dockerfile.{}'.format(sha1)
+               )
+                tag = "repronim/regtests:{}".format(sha1)
+                cg.build_image(filepath, build_context=self.workflow_path, tag=tag)
+            except Exception as e:
+                self.test_output[ii] = "no docker"
 
 
     def run_cwl(self, image, soft_ver):
@@ -258,44 +264,71 @@ class WorkflowRegtest(object):
         nr_par = len(self.env_parameters)
         matrix_dict = [OrderedDict(mat) for mat in self.matrix]
 
-        cmap = matplotlib.colors.ListedColormap(['green', 'red'])
-        matplotlib.rcParams['xtick.labelsize'] = 14
-        matplotlib.rcParams['ytick.labelsize'] = 14
+        matplotlib.rcParams['xtick.labelsize'] = 12
+        matplotlib.rcParams['ytick.labelsize'] = 12
 
         fig, ax_list = plt.subplots(nr_par, 1)
 
 
-        for ii, key in enumerate(self.env_parameters):
-            ax = ax_list[ii]
+        for iid, key in enumerate(self.env_parameters):
+            ax = ax_list[iid]
             res_all = []
             for ver in self.env_parameters[key]:
                 x_lab = []
                 res = []
-                for soft_d in matrix_dict:
-                    if soft_d[key] == ver:
-                        soft_txt = ""
-                        file_name = "report_test_" + os.path.basename(self.workflow_path)
-                        for k, val in soft_d.items():
-                            if k != key:
+                for ii, soft_d in enumerate(matrix_dict):
+                    soft_txt = ""
+                    file_name = "report_test_" + os.path.basename(self.workflow_path)
+                    for k, val in soft_d.items():
+                        if k != key:
+                            if k == "conda_env_yml":
                                 soft_txt += "".join(val.split(":")) + "\n"
-                            file_name += "_" + "".join(val.split(":"))
-                        file_name += ".txt"
-                        x_lab.append(soft_txt)
-                        with open(file_name) as f:
-                            if "PASS" in f.read():
-                                res.append(1)
-                            elif "FAIL" in f.read():
-                                res.append(0)
                             else:
-                                res.append(2)
+                                soft_txt += k + "=" + "".join(val.split(":")) + "\n"
+                        file_name += "_" + "".join(val.split(":"))
+                    file_name += ".txt"
+                    if self.test_output[ii] == "docker ok":
+                        if soft_d[key] == ver:
+                            x_lab.append(soft_txt)
+                            with open(file_name) as f:
+                                f_txt = f.read()
+                                if "PASS" in f_txt:
+                                    res.append(1)
+                                elif "FAIL" in f_txt:
+                                    res.append(0)
+                                else:
+                                    res.append(2)
+                    else:
+                        if soft_d[key] == ver:
+                            x_lab.append(soft_txt)
+                            res.append(2)
                 res_all.append(res)
+
+            # TODO
+            uni_val = list(set([item for sublist in res_all for item in sublist]))
+            uni_val.sort()
+            if uni_val == [0,1]:
+                cmap = matplotlib.colors.ListedColormap(['red', 'green'])
+            elif uni_val == [0,2]:
+                cmap = matplotlib.colors.ListedColormap(['red', 'black'])
+            elif uni_val == [1,2]:
+                cmap = matplotlib.colors.ListedColormap(['green', 'black'])
+            elif uni_val == [1]:
+                cmap = matplotlib.colors.ListedColormap(['green'])
+            elif uni_val == [0]:
+                cmap = matplotlib.colors.ListedColormap(['red'])
+            elif uni_val == [2]:
+                cmap = matplotlib.colors.ListedColormap(['black'])
+            else:
+                cmap = matplotlib.colors.ListedColormap(['red', 'green', 'black'])
+
 
             c = ax.pcolor(res_all, edgecolors='k', linewidths=4, cmap=cmap)
             plt.sca(ax)
             plt.xticks([i + 0.5 for i in range(len(x_lab))], x_lab)
             plt.sca(ax)
             plt.yticks([i+0.5 for i in range(len(self.env_parameters[key]))], self.env_parameters[key])
-            ax.set_title(key, fontsize=20)
+            ax.set_title(key, fontsize=16)
 
 
         fig.tight_layout()

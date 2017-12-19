@@ -2,10 +2,12 @@
     "command": "python",
     "env": {
         "base": [
-            "debian:stretch"
+            "debian:stretch",
+            "ubuntu:17.04"
         ],
         "conda_env_yml": [
-            "environment.yml"
+            "environment_py2.yml",
+            "environment_py3.yml"
         ],
         "fsl": [
             "5.0.9",
