@@ -323,12 +323,12 @@ class WorkflowRegtest(object):
                 cmap = matplotlib.colors.ListedColormap(['red', 'green', 'black'])
 
             print("Res_Val", res_all)
-            if self.env_parameters[key] == "conda_env_yml":
+            if "env" in self.env_parameters[key][0]:
                 y_lab = [val.replace("ironment", "").replace(".yml", "") + "\n" for val in self.env_parameters[key]]
             else:
                 y_lab = [val.split(":")[0] for val in self.env_parameters[key]]
 
-            c = ax.pcolor(res_all, edgecolors='k', linewidths=4, cmap=cmap)
+            c = ax.pcolor(res_all, edgecolors='b', linewidths=4, cmap=cmap)
             plt.sca(ax)
             plt.xticks([i + 0.5 for i in range(len(x_lab))], x_lab)
             plt.sca(ax)
