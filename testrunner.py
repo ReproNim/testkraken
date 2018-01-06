@@ -16,3 +16,4 @@ if __name__ == "__main__":
         wf.build_images()
         wf.testing_workflow()
         wf.plot_workflow_result()
+        wf.plot_workflow_result_paralcoord()

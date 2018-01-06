@@ -11,7 +11,7 @@ jobs:
           name: Change to Python 3.5.2 and install python dependencies
           command: |
             pyenv global 3.5.2
-            pip install cwlref-runner pandas matplotlib mpld3 jinja2
+            pip install cwlref-runner pandas matplotlib mpld3 jinja2 plotly
       - run:
           name: Run tests
           no_output_timeout: 60m
