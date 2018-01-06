@@ -7,6 +7,7 @@ import subprocess
 import tempfile
 import pdb
 from collections import OrderedDict
+from copy import deepcopy
 import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt, mpld3
@@ -304,6 +305,7 @@ class WorkflowRegtest(object):
                             res.append(2)
                 res_all.append(res)
 
+
             # TODO
             uni_val = list(set([item for sublist in res_all for item in sublist]))
             uni_val.sort()
@@ -335,8 +337,82 @@ class WorkflowRegtest(object):
             plt.yticks([i+0.5 for i in range(len(y_lab))],y_lab)
             ax.set_title(key, fontsize=16)
 
-
+        #self.matrix_dict =matrix_dict
+        #self.res_all = res_all
         fig.tight_layout()
-        plt.savefig("fig_{}.pdf".format(os.path.basename(self.workflow_path))) 
+        plt.savefig("fig_{}.pdf".format(os.path.basename(self.workflow_path)))
+        plt.clf()
         #mpld3.save_html(fig, "fig_{}.html".format(os.path.basename(self.workflow_path)))
 
+
+    def plot_workflow_result_paralcoord(self):
+        """plotting results, this has to be cleaned TODO"""
+        nr_par = len(self.env_parameters)
+        matrix_dict = [OrderedDict(mat) for mat in self.matrix]
+        self.results_soft = []
+
+        res_d = {}
+        for key in self.env_parameters:
+            res_d[key] = []
+        res_d["result"] = []
+
+        for ii, soft_d in enumerate(matrix_dict):
+            soft_res_d = deepcopy(soft_d)
+            file_name = "report_test_" + os.path.basename(self.workflow_path)
+            for k, val in soft_d.items():
+                res_d[k].append(self.env_parameters[k].index(val))
+                #if k == "conda_env_yml":
+                #    res_d[k].append(val.replace("ironment", "").replace(".yml", ""))
+                #else:
+                #    res_d[k].append(val)
+                file_name += "_" + "".join(val.split(":"))
+            file_name += ".txt"
+            if self.test_output[ii] == "docker ok":
+                with open(file_name) as f:
+                    f_txt = f.read()
+                    if "PASS" in f_txt:
+                        soft_res_d["result"] = "PASS"
+                        res_d["result"].append("1")
+                    elif "FAIL" in f_txt:
+                        soft_res_d["result"] = "FAIL"
+                        res_d["result"].append("0")
+                    else:
+                        soft_res_d["result"] = "N/A"
+                        res_d["result"].append("2")
+            else:
+                soft_res_d["result"] = "N/A"
+                res_d["result"].append("2")
+            self.results_soft.append(soft_res_d)
+
+        import pandas
+        import matplotlib.pyplot as plt
+        from pandas.plotting import parallel_coordinates
+
+        #data = pandas.read_csv('/Users/dorota/anaconda/envs/cwl_py3/lib/python3.6/site-packages/pandas/tests/data/iris.csv', sep=',')
+        #data =
+        df = pandas.DataFrame(res_d)
+        #parallel_coordinates(df, 'result', columns=["python", "base"])
+        #plt.savefig("partest.pdf")
+
+        import plotly.plotly as py
+        import plotly.graph_objs as go
+        from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
+
+        list_pl = []
+        for i, k in self.env_parameters.items():
+            list_pl.append(dict(label=i, values=df[i], tickvals=list(range(len(k))), ticktext=k ))
+        list_pl.append(dict(label="result", values=df["result"],
+                            tickvals=[0, 1, 2], ticktext=["pass", "fail", "N/A"]))
+        colors_d = {'0': "red", '1': "green", '2': "black"}
+        my_colorscale =[]
+        for ii in set(df["result"]):
+            my_colorscale.append([ii, colors_d[ii]])
+        line_pl = dict(color=df["result"], colorscale = my_colorscale)
+        data = [go.Parcoords(line=line_pl, dimensions=list_pl)]
+        layout = go.Layout(
+            plot_bgcolor='#E5E5E5',
+            paper_bgcolor='#E5E5E5'
+        )
+
+        fig = go.Figure(data=data, layout = layout)
+        plot(fig, filename='parcoords_{}'.format(os.path.basename(self.workflow_path)))
