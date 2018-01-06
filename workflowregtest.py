@@ -403,7 +403,11 @@ class WorkflowRegtest(object):
             list_pl.append(dict(label=i, values=df[i], tickvals=list(range(len(k))), ticktext=k ))
         list_pl.append(dict(label="result", values=df["result"],
                             tickvals=[0, 1, 2], ticktext=["pass", "fail", "N/A"]))
-        line_pl = dict(color=df.result, colorscale = [[0, "red"], [1, "green"], [2, "black"]])
+        colors_d = {'0': "red", '1': "green", '2': "black"}
+        my_colorscale =[]
+        for ii in set(df["result"]):
+            my_colorscale.append([ii, colors_d[ii]])
+        line_pl = dict(color=df["result"], colorscale = my_colorscale)
         data = [go.Parcoords(line=line_pl, dimensions=list_pl)]
         layout = go.Layout(
             plot_bgcolor='#E5E5E5',
