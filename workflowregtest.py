@@ -375,7 +375,6 @@ class WorkflowRegtest(object):
                  self._res_d["result"].append("2")
             self.results_soft.append(soft_res_d)
 
-        pdb.set_trace()
         with open(os.path.basename(self.workflow_path)+"_output.txt", 'w') as outfile:
             json.dump(self.results_soft, outfile)
 
