@@ -35,7 +35,7 @@ class WorkflowRegtest(object):
         #        os.path.basename(self.workflow_path)), "w")
 
 
-    def testing_workflow(self):
+    def _testing_workflow(self):
         """Run workflow for all env combination, testing for all tests.
         Writing environmental parameters to report text file."""
 
@@ -44,10 +44,10 @@ class WorkflowRegtest(object):
             #self.report_txt.write("\n * Environment:\n{}\n".format(software_vers))
             if self.test_output[ii] == "docker ok":
                 image = "repronim/regtests:{}".format(sha_list[ii])
-                self.run_cwl(image, software_vers)
+                self._run_cwl(image, software_vers)
 
 
-    def generate_dockerfiles(self):
+    def _generate_dockerfiles(self):
         """Generate all Dockerfiles"""
         self.matrix = cg.create_matrix_of_envs(self.env_parameters)
         self.mapping = cg.get_dict_of_neurodocker_dicts(self.matrix)
@@ -64,7 +64,7 @@ class WorkflowRegtest(object):
                 self.test_output.append("no docker")
 
 
-    def build_images(self):
+    def _build_images(self):
         """Building all docker images"""
         # TODO: self.workflow_path is temporary (should be none)
         for ii, sha1 in enumerate(self.mapping):
@@ -78,16 +78,16 @@ class WorkflowRegtest(object):
                 self.test_output[ii] = "no docker"
 
 
-    def run_cwl(self, image, soft_ver):
+    def _run_cwl(self, image, soft_ver):
         """Running workflow with CWL"""
-        self.creating_main_cwl()
-        self.creating_main_input(soft_ver)
-        self.creating_workflow_cwl(image)
-        self.creating_test_cwl()
+        self._creating_main_cwl()
+        self._creating_main_input(soft_ver)
+        self._creating_workflow_cwl(image)
+        self._creating_test_cwl()
         subprocess.call(["cwl-runner", "--no-match-user", "cwl.cwl", "input.yml"])
 
 
-    def creating_workflow_cwl(self, image):
+    def _creating_workflow_cwl(self, image):
         """Creating cwl file"""
         cmd_cwl = (
             "#!/usr/bin/env cwl-runner\n"
@@ -133,7 +133,7 @@ class WorkflowRegtest(object):
         with open("cwl_workflow.cwl", "w") as cwl_file:
             cwl_file.write(cmd_cwl)
 
-    def creating_test_cwl(self):
+    def _creating_test_cwl(self):
         cmd_cwl = (
             "# !/usr/bin/env cwl-runner\n"
             "cwlVersion: v1.0\n"
@@ -170,7 +170,7 @@ class WorkflowRegtest(object):
             cwl_file.write(cmd_cwl)
 
 
-    def creating_main_cwl(self):
+    def _creating_main_cwl(self):
         """Creating cwl file"""
         cmd_cwl = (
             "#!/usr/bin/env cwl-runner\n"
@@ -220,7 +220,7 @@ class WorkflowRegtest(object):
             cwl_file.write(cmd_cwl)
 
 
-    def creating_main_input(self, soft_ver):
+    def _creating_main_input(self, soft_ver):
         """Creating input yml file for CWL"""
         soft = "_" + os.path.basename(self.workflow_path)
         for sv in soft_ver:
@@ -258,6 +258,15 @@ class WorkflowRegtest(object):
 
         with open("input.yml", "w") as inp_file:
             inp_file.write(cmd_in)
+
+
+    def run(self):
+        """The main method that runs generate all docker files, build images
+            and run a workflow in all environments.
+        """
+        self._generate_dockerfiles()
+        self._build_images()
+        self._testing_workflow()
 
 
     def plot_workflow_result(self):
