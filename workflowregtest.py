@@ -7,6 +7,7 @@ import subprocess
 import tempfile
 import pdb
 from collections import OrderedDict
+from copy import deepcopy
 import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt, mpld3
@@ -304,7 +305,7 @@ class WorkflowRegtest(object):
                             res.append(2)
                 res_all.append(res)
 
-            # TODO
+            #TODO
             uni_val = list(set([item for sublist in res_all for item in sublist]))
             uni_val.sort()
             if uni_val == [0,1]:
@@ -340,3 +341,68 @@ class WorkflowRegtest(object):
         plt.savefig("fig_{}.pdf".format(os.path.basename(self.workflow_path))) 
         #mpld3.save_html(fig, "fig_{}.html".format(os.path.basename(self.workflow_path)))
 
+
+    def merging_output(self):
+        matrix_dict = [OrderedDict(mat) for mat in self.matrix]
+        self.results_soft = []
+        self._res_d = OrderedDict()
+        for key in self.env_parameters:
+            self._res_d[key] = []
+        self._res_d["result"] = []
+
+        for ii, soft_d in enumerate(matrix_dict):
+            soft_res_d = deepcopy(soft_d)
+            file_name = "report_test_" + os.path.basename(self.workflow_path)
+            for k, val in soft_d.items():
+                self._res_d[k].append(self.env_parameters[k].index(val))
+                file_name += "_" + "".join(val.split(":"))
+            file_name += ".txt"
+
+            if self.test_output[ii] == "docker ok":
+                with open(file_name) as f:
+                    f_txt = f.read()
+                    if "PASS" in f_txt:
+                        soft_res_d["result"] = "PASS"
+                        self._res_d["result"].append("1")
+                    elif "FAIL" in f_txt:
+                        soft_res_d["result"] = "FAIL"
+                        self._res_d["result"].append("0")
+                    else:
+                         soft_res_d["result"] = "N/A"
+                         self._res_d["result"].append("2")
+            else:
+                 soft_res_d["result"] = "N/A"
+                 self._res_d["result"].append("2")
+            self.results_soft.append(soft_res_d)
+
+        with open(os.path.basename(self.workflow_path)+"_output.json", 'w') as outfile:
+            json.dump(self.results_soft, outfile)
+
+
+    def plot_workflow_result_paralcoord(self):
+        """plotting results, this has to be cleaned TODO"""
+        import pandas
+        import plotly.plotly as py
+        import plotly.graph_objs as go
+        from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
+
+        df = pandas.DataFrame(self._res_d)
+
+        list_pl = []
+        for i, k in self.env_parameters.items():
+            list_pl.append(dict(label=i, values=df[i], tickvals=list(range(len(k))), ticktext=k ))
+        list_pl.append(dict(label="result", values=df["result"],
+                            tickvals=[0, 1, 2], ticktext=["pass", "fail", "N/A"]))
+        colors_d = {'0': "red", '1': "green", '2': "black"}
+        my_colorscale =[]
+        for ii in set(df["result"]):
+            my_colorscale.append([ii, colors_d[ii]])
+        line_pl = dict(color=df["result"], colorscale = my_colorscale)
+        data = [go.Parcoords(line=line_pl, dimensions=list_pl)]
+        layout = go.Layout(
+            plot_bgcolor='#E5E5E5',
+            paper_bgcolor='#E5E5E5'
+        )
+
+        fig = go.Figure(data=data, layout = layout)
+        plot(fig, filename='parcoords_{}'.format(os.path.basename(self.workflow_path)))
