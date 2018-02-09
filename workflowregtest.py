@@ -413,7 +413,7 @@ class WorkflowRegtest(object):
         from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
 
         df = pandas.DataFrame(self.res_dict)
-        pdb.set_trace()
+
         list_pl = []
         for i, k in self.env_parameters.items():
             list_pl.append(dict(label=i, values=df[i], tickvals=list(range(len(k))), ticktext=k ))
