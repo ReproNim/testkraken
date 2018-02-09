@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+  <meta charset="utf-8">
+  <head>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.3/css/bootstrap.min.css" integrity="sha384-Zug+QiDoJOrZ5t4lssLdxGhVrurbmBWopoEl+M6BdEfwnCJZtKxi1KgxUyJq13dy" crossorigin="anonymous">
+    <style>
+    .parcoords > canvas {
+    font: 14px sans-serif;
+    position: absolute;
+    }
+    .parcoords > canvas {
+      pointer-events: none;
+    }
+    .parcoords text.label {
+      cursor: default;
+    }
+    .parcoords rect.background:hover {
+      fill: rgba(120,120,120,0.2);
+    }
+    .parcoords canvas {
+      opacity: 1;
+      transition: opacity 0.3s;
+      -moz-transition: opacity 0.3s;
+      -webkit-transition: opacity 0.3s;
+      -o-transition: opacity 0.3s;
+    }
+    .parcoords canvas.faded {
+      opacity: 0.25;
+    }
+    .parcoords {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      -khtml-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      background-color: white;
+    }
+
+    /*body {
+      padding-top: 2rem;
+      padding-bottom: 2rem;
+    }*/
+
+    </style>
+  </head>
+  <body>
+    <script src="d3.v3.min.js"></script>
+    <script src="d3.parcoords.js"></script>
+
+    <div class="jumbotron">
+    <div class="container">
+      <div id="parcoordplot" class="parcoords" style="height:350px"></div>
+    </div>
+    </div>
+
+    <script>
+
+    // http://bl.ocks.org/3687826
+d3.divgrid = function(config) {
+  var columns = [];
+
+  var dg = function(selection) {
+    if (columns.length == 0) columns = d3.keys(selection.data()[0][0]);
+
+    // header
+    selection.selectAll(".header")
+        .data([true])
+      .enter().append("div")
+        .attr("class", "header")
+
+    var header = selection.select(".header")
+      .selectAll(".cell")
+      .data(columns);
+
+    header.enter().append("div")
+      .attr("class", function(d,i) { return "col-" + i; })
+      .classed("cell", true)
+
+    selection.selectAll(".header .cell")
+      .text(function(d) { return d; });
+
+    header.exit().remove();
+
+    // rows
+    var rows = selection.selectAll(".row")
+        .data(function(d) { return d; })
+
+    rows.enter().append("div")
+        .attr("class", "row")
+
+    rows.exit().remove();
+
+    var cells = selection.selectAll(".row").selectAll(".cell")
+        .data(function(d) { return columns.map(function(col){return d[col];}) })
+
+    // cells
+    cells.enter().append("div")
+      .attr("class", function(d,i) { return "col-" + i; })
+      .classed("cell", true)
+
+    cells.exit().remove();
+
+    selection.selectAll(".cell")
+      .text(function(d) { return d; });
+
+    return dg;
+  };
+
+  dg.columns = function(_) {
+    if (!arguments.length) return columns;
+    columns = _;
+    return this;
+  };
+
+  return dg;
+};
+
+
+      let colors = {
+        pass: "green",
+        fail: "red",
+        error: "gray",
+      }
+
+      function colorByResult(result) {
+        return colors[result.toLowerCase()]
+      }
+
+      d3.json("example_output.json", function(error, data) {
+
+        var grid = d3.divgrid();
+        d3.select("#grid")
+          .datum(data.slice(0,10))
+          .call(grid)
+          .selectAll(".row")
+          .on({
+            "mouseover": function(d) { parcoords.highlight([d]) },
+            "mouseout": parcoords.unhighlight
+          });
+
+          parcoords.on("brush", function(d) {
+            d3.select("#grid")
+              .datum(d.slice(0,10))
+              .call(grid)
+              .selectAll(".row")
+              .on({
+                "mouseover": function(d) { parcoords.highlight([d]) },
+                "mouseout": parcoords.unhighlight
+              });
+          });
+
+        // plot = d3.parcoords()("#parcoordplot")
+        //   .data(data)
+        //   .color(function(d) {return colorByResult(d.result)})
+        //   .render()
+        //   .createAxes()
+        //   .brushMode("1D-axes")
+        //   .interactive()
+        //   .reorderable()
+      });
+
+
+
+      //
+
+//       var blue_to_brown = d3.scale.linear()
+//   .domain([9, 50])
+//   .range(["steelblue", "brown"])
+//   .interpolate(d3.interpolateLab);
+//
+// var color = function(d) { return blue_to_brown(d['economy (mpg)']); };
+//
+// var parcoords = d3.parcoords()("#example")
+//   .color(color)
+//   .alpha(0.4);
+//
+// // load csv file and create the chart
+// d3.csv('data/cars.csv', function(data) {
+//   parcoords
+//     .data(data)
+//     .hideAxis(["name"])
+//     .render()
+//     .brushMode("1D-axes");  // enable brushing
+//
+//   // create data table, row hover highlighting
+//   var grid = d3.divgrid();
+//   d3.select("#grid")
+//     .datum(data.slice(0,10))
+//     .call(grid)
+//     .selectAll(".row")
+//     .on({
+//       "mouseover": function(d) { parcoords.highlight([d]) },
+//       "mouseout": parcoords.unhighlight
+//     });
+//
+//   // update data table on brush event
+//   parcoords.on("brush", function(d) {
+//     d3.select("#grid")
+//       .datum(d.slice(0,10))
+//       .call(grid)
+//       .selectAll(".row")
+//       .on({
+//         "mouseover": function(d) { parcoords.highlight([d]) },
+//         "mouseout": parcoords.unhighlight
+//       });
+//   });
+// });
+//
+    </script>
+  </body>
+</html>
