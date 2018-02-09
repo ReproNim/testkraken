@@ -30,9 +30,32 @@ class WorkflowRegtest(object):
         self.tmpdir = tempfile.TemporaryDirectory(
             prefix="tmp-workflowregtest-", dir=os.getcwd()
         )
-        self.test_output = []
-        #self.report_txt =  open("report_tests_{}.txt".format(
-        #        os.path.basename(self.workflow_path)), "w")
+        self.docker_status = []
+
+        self._create_matrix_of_envs()
+
+
+    def _create_matrix_of_envs(self):
+        """Create matrix of all combinations of environment variables.
+            Create a list of short descriptions of envs as single strings"""
+        params_as_strings = []
+        for key, val in self.env_parameters.items():
+            if isinstance(val, (list, tuple)):
+                formatted = tuple("{}::{}".format(key, vv) for vv in val)
+            else:
+                formatted = tuple("{}::{}".format(key, val))
+            params_as_strings.append(formatted)
+
+        self.matrix_of_envs = list(itertools.product(*params_as_strings))
+
+        self.soft_str = []
+        for ii, specs in enumerate(self.matrix_of_envs):
+            self.soft_str.append("_".join([string.split('::')[1].replace(':', '') for string in specs]))
+            self.matrix_of_envs[ii] = [string.split('::') for string in specs]
+
+        # creating additional a dictionary version
+        self.matrix_envs_dict = [OrderedDict(mat) for mat in self.matrix_of_envs]
+
 
 
     def _testing_workflow(self):
@@ -40,17 +63,16 @@ class WorkflowRegtest(object):
         Writing environmental parameters to report text file."""
 
         sha_list = [key for key in self.mapping]
-        for ii, software_vers in enumerate(self.matrix):
+        for ii, software_vers_str in enumerate(self.soft_str):
             #self.report_txt.write("\n * Environment:\n{}\n".format(software_vers))
-            if self.test_output[ii] == "docker ok":
+            if self.docker_status[ii] == "docker ok":
                 image = "repronim/regtests:{}".format(sha_list[ii])
-                self._run_cwl(image, software_vers)
+                self._run_cwl(image, software_vers_str)
 
 
     def _generate_dockerfiles(self):
         """Generate all Dockerfiles"""
-        self.matrix = cg.create_matrix_of_envs(self.env_parameters)
-        self.mapping = cg.get_dict_of_neurodocker_dicts(self.matrix)
+        self.mapping = cg.get_dict_of_neurodocker_dicts(self.matrix_of_envs)
 
         os.makedirs(os.path.join(self.workflow_path, 'json'), exist_ok=True) # TODO: self.workflow_path is temporary
         for sha1, neurodocker_dict in self.mapping.items():
@@ -59,9 +81,9 @@ class WorkflowRegtest(object):
                 cg.generate_dockerfile(
                     self.workflow_path, neurodocker_dict, sha1
                 ) # TODO: self.workflow_path is temporary
-                self.test_output.append("docker ok")
+                self.docker_status.append("docker ok")
             except Exception as e:
-                self.test_output.append("no docker")
+                self.docker_status.append("no docker: cant generate a dockerfile")
 
 
     def _build_images(self):
@@ -75,13 +97,13 @@ class WorkflowRegtest(object):
                 tag = "repronim/regtests:{}".format(sha1)
                 cg.build_image(filepath, build_context=self.workflow_path, tag=tag)
             except Exception as e:
-                self.test_output[ii] = "no docker"
+                self.docker_status[ii] = "no docker: cant build an image"
 
 
-    def _run_cwl(self, image, soft_ver):
+    def _run_cwl(self, image, soft_ver_str):
         """Running workflow with CWL"""
         self._creating_main_cwl()
-        self._creating_main_input(soft_ver)
+        self._creating_main_input(soft_ver_str)
         self._creating_workflow_cwl(image)
         self._creating_test_cwl()
         subprocess.call(["cwl-runner", "--no-match-user", "cwl.cwl", "input.yml"])
@@ -220,12 +242,8 @@ class WorkflowRegtest(object):
             cwl_file.write(cmd_cwl)
 
 
-    def _creating_main_input(self, soft_ver):
+    def _creating_main_input(self, soft_ver_str):
         """Creating input yml file for CWL"""
-        soft = "_" + os.path.basename(self.workflow_path)
-        for sv in soft_ver:
-            soft += "_" + "".join(sv[1].split(":")) #TODO, temp name of file
-
         cmd_in = (
             "script_workf:\n"
             "  class: File\n"
@@ -240,7 +258,7 @@ class WorkflowRegtest(object):
         ).format(self.script,
                  os.path.join(os.path.dirname(os.path.realpath(__file__)), "testing_functions", self.tests[0][1]),
                  os.path.join(self.workflow_path, "data_ref", self.tests[0][0]),
-                 "report_test"+soft+".txt"
+                 "report_test_{}_{}.txt".format(os.path.basename(self.workflow_path), soft_ver_str)
                    ) # TODO: for now it's only one test possible
 
         for (ii, input_tuple) in enumerate(self.inputs):
@@ -269,10 +287,46 @@ class WorkflowRegtest(object):
         self._testing_workflow()
 
 
+    def merging_output(self):
+        # creating a list with results, each element has a dict with soft desc. and result
+        self._res_list = []
+        # create dictionary env: list for all env desc. (indexes from self.env_parameters),
+        # and results: list of results for all env
+        self.res_dict = OrderedDict()
+        for key in self.env_parameters:
+            self.res_dict[key] = []
+        self.res_dict["result"] = []
+
+        for ii, soft_d in enumerate(self.matrix_envs_dict):
+            el_dict = deepcopy(soft_d)
+            file_name = "report_test_{}_{}.txt".format(os.path.basename(self.workflow_path), self.soft_str[ii])
+            for k, val in soft_d.items():
+                self.res_dict[k].append(self.env_parameters[k].index(val))
+
+            if self.docker_status[ii] == "docker ok":
+                with open(file_name) as f:
+                    f_txt = f.read()
+                    if "PASS" in f_txt:
+                        el_dict["result"] = "PASS"
+                        self.res_dict["result"].append("1")
+                    elif "FAIL" in f_txt:
+                        el_dict["result"] = "FAIL"
+                        self.res_dict["result"].append("0")
+                    else:
+                         el_dict["result"] = "N/A"
+                         self.res_dict["result"].append("2")
+            else:
+                 el_dict["result"] = "N/A"
+                 self.res_dict["result"].append("2")
+            self._res_list.append(el_dict)
+
+        with open(os.path.basename(self.workflow_path)+"_output.json", 'w') as outfile:
+            json.dump(self._res_list, outfile)
+
+
     def plot_workflow_result(self):
         """plotting results, this has to be cleaned TODO"""
         nr_par = len(self.env_parameters)
-        matrix_dict = [OrderedDict(mat) for mat in self.matrix]
 
         matplotlib.rcParams['xtick.labelsize'] = 10
         matplotlib.rcParams['ytick.labelsize'] = 12
@@ -286,7 +340,7 @@ class WorkflowRegtest(object):
             for ver in self.env_parameters[key]:
                 x_lab = []
                 res = []
-                for ii, soft_d in enumerate(matrix_dict):
+                for ii, soft_d in enumerate(self.matrix_envs_dict):
                     soft_txt = ""
                     file_name = "report_test_" + os.path.basename(self.workflow_path)
                     for k, val in soft_d.items():
@@ -297,7 +351,7 @@ class WorkflowRegtest(object):
                                 soft_txt += "{}={}\n".format(k, val.split(":")[0])
                         file_name += "_" + "".join(val.split(":"))
                     file_name += ".txt"
-                    if self.test_output[ii] == "docker ok":
+                    if self.docker_status[ii] == "docker ok":
                         if soft_d[key] == ver:
                             x_lab.append(soft_txt)
                             with open(file_name) as f:
@@ -351,43 +405,6 @@ class WorkflowRegtest(object):
         #mpld3.save_html(fig, "fig_{}.html".format(os.path.basename(self.workflow_path)))
 
 
-    def merging_output(self):
-        matrix_dict = [OrderedDict(mat) for mat in self.matrix]
-        self.results_soft = []
-        self._res_d = OrderedDict()
-        for key in self.env_parameters:
-            self._res_d[key] = []
-        self._res_d["result"] = []
-
-        for ii, soft_d in enumerate(matrix_dict):
-            soft_res_d = deepcopy(soft_d)
-            file_name = "report_test_" + os.path.basename(self.workflow_path)
-            for k, val in soft_d.items():
-                self._res_d[k].append(self.env_parameters[k].index(val))
-                file_name += "_" + "".join(val.split(":"))
-            file_name += ".txt"
-
-            if self.test_output[ii] == "docker ok":
-                with open(file_name) as f:
-                    f_txt = f.read()
-                    if "PASS" in f_txt:
-                        soft_res_d["result"] = "PASS"
-                        self._res_d["result"].append("1")
-                    elif "FAIL" in f_txt:
-                        soft_res_d["result"] = "FAIL"
-                        self._res_d["result"].append("0")
-                    else:
-                         soft_res_d["result"] = "N/A"
-                         self._res_d["result"].append("2")
-            else:
-                 soft_res_d["result"] = "N/A"
-                 self._res_d["result"].append("2")
-            self.results_soft.append(soft_res_d)
-
-        with open(os.path.basename(self.workflow_path)+"_output.json", 'w') as outfile:
-            json.dump(self.results_soft, outfile)
-
-
     def plot_workflow_result_paralcoord(self):
         """plotting results, this has to be cleaned TODO"""
         import pandas
@@ -395,8 +412,8 @@ class WorkflowRegtest(object):
         import plotly.graph_objs as go
         from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
 
-        df = pandas.DataFrame(self._res_d)
-
+        df = pandas.DataFrame(self.res_dict)
+        pdb.set_trace()
         list_pl = []
         for i, k in self.env_parameters.items():
             list_pl.append(dict(label=i, values=df[i], tickvals=list(range(len(k))), ticktext=k ))
