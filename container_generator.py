@@ -42,24 +42,6 @@ from collections import OrderedDict
 import pdb
 
 
-def create_matrix_of_envs(env_params):
-    """Create matrix of all combinations of environment variables."""
-    params_as_strings = []
-    for key, val in env_params.items():
-        if isinstance(val, (list, tuple)):
-            formatted = tuple("{}::{}".format(key, vv) for vv in val)
-        else:
-            formatted = tuple("{}::{}".format(key, val))
-        params_as_strings.append(formatted)
-
-    matrix_of_envs = list(itertools.product(*params_as_strings))
-
-    for ii, specs in enumerate(matrix_of_envs):
-        matrix_of_envs[ii] = [string.split('::') for string in specs]
-
-    return matrix_of_envs
-
-
 def list_to_neurodocker_instruction(iterable):
     """Return a program entry compatible with Neurodocker.
 
