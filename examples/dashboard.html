@@ -13,14 +13,19 @@ TODO:
   <head>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.3/css/bootstrap.min.css" integrity="sha384-Zug+QiDoJOrZ5t4lssLdxGhVrurbmBWopoEl+M6BdEfwnCJZtKxi1KgxUyJq13dy" crossorigin="anonymous">
     <style>
+      body, .bg-onedark { background: hsl(220, 13%, 18%); }
 
+      h1, h2, h3, li, p, text {
+        color: rgb(197,202,211);
+      }
+      .padding-0 { padding-left: 0; padding-right: 0; }
       .parcoords > canvas {
         position: absolute;
         pointer-events: none;
       }
       .parcoords text {
         font: 16px sans-serif;
-        fill: rgb(197,202,211)
+        fill: rgb(197,202,211);
       }
       .parcoords text.label {
         font: 18px sans-serif;
@@ -36,6 +41,8 @@ TODO:
         opacity: 0.25;
       }
       .parcoords {
+        height: 350px;
+        width: 100%;
         -webkit-touch-callout: none;
         -webkit-user-select: none;
         -khtml-user-select: none;
@@ -44,47 +51,38 @@ TODO:
         user-select: none;
       }
       .top-buffer {
-        margin-top: 50px;
+        padding-top: 50px;
       }
 
     </style>
   </head>
 
   <body>
-    <script src="https://d3js.org/d3.v3.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/parcoords/0.7.0/d3.parcoords.js"></script>
-
-    <nav class="navbar">
+    <nav class="navbar navbar-default navbar-fixed-top">
       <h1 class="navbar-brand">ReproNim Robustness Test Results</h1>
     </nav>
 
-    <div class="jumbotron jumbotron-fluid bg-dark">
-      <div id="parcoordplot" class="parcoords bg-dark" style="height:350px"></div>
+    <div id="parcoordplot" class="parcoords bg-onedark"></div>
 
-      <div class="container bg-light top-buffer">
-
-        <div class="row">
-          <div class="col">
-            <h2>Summary</h2>
-            <p>Include general descriptive statistics about the tests run.
-            <ul>
-              <li>Number of tests run (#passed, #failed, #error)</li>
-              <li>Information on runtime? (amount of time taken, etc)</li>
-            </ul>
-          </div>
-        </div>
-
-        <div class="row">
-          <div class="col">
-            <h2>Plots</h2>
-              <ul>
-                <li>Where relevant, include plots of results. For example, brain volume per environment.</li>
-              </ul>
-          </div>
-        </div>
-      </div>
+    <div id="Summary" class="top-buffer">
+      <h2>Summary</h2>
+      <p>Include general descriptive statistics about the tests run.</p>
+      <ul>
+        <li>Number of tests run (#passed, #failed, #error)</li>
+        <li>Information on runtime? (amount of time taken, etc)</li>
+      </ul>
     </div>
 
+    <div id="Plots">
+      <h2>Plots</h2>
+      <ul>
+        <li>Where relevant, include plots of results. For example, brain volume per environment.</li>
+      </ul>
+    </div>
+
+
+    <script src="https://d3js.org/d3.v3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/parcoords/0.7.0/d3.parcoords.js"></script>
     <script>
 
       let colors = {
