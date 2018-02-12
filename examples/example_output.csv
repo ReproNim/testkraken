@@ -1,9 +1,0 @@
-result,base,python,fsl
-pass,ubuntu:17.04,3.6,5.0.10
-pass,ubuntu:17.04,3.6,5.0.9
-fail,ubuntu:17.04,2.7,5.0.10
-fail,ubuntu:17.04,2.7,5.0.9
-pass,centos:7,3.6,5.0.10
-pass,centos:7,3.6,5.0.9
-fail,centos:7,2.7,5.0.10
-fail,centos:7,2.7,5.0.9
