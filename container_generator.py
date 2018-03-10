@@ -178,3 +178,11 @@ def build_image(filepath, build_context=None, tag=None, build_opts=None):
         cmd += " - < {}".format(filepath)
 
     subprocess.run(cmd, shell=True, check=True)
+
+
+def docker_main(workflow_path, neurodocker_dict, sha1):
+    generate_dockerfile(workflow_path, neurodocker_dict, sha1)
+
+    filepath = os.path.join(workflow_path, 'Dockerfile.{}'.format(sha1))
+    tag = "repronim/regtests:{}".format(sha1)
+    build_image(filepath, build_context=workflow_path, tag=tag)

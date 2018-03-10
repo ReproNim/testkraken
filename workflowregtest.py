@@ -70,7 +70,7 @@ class WorkflowRegtest(object):
                 self._run_cwl(image, software_vers_str)
 
 
-    def _generate_dockerfiles(self):
+    def _generate_docker_image(self):
         """Generate all Dockerfiles"""
         self.mapping = cg.get_dict_of_neurodocker_dicts(self.matrix_of_envs)
 
@@ -78,26 +78,10 @@ class WorkflowRegtest(object):
         for sha1, neurodocker_dict in self.mapping.items():
             try:
                 print("building images: {}".format(neurodocker_dict))
-                cg.generate_dockerfile(
-                    self.workflow_path, neurodocker_dict, sha1
-                ) # TODO: self.workflow_path is temporary
+                cg.docker_main(self.workflow_path, neurodocker_dict, sha1)
                 self.docker_status.append("docker ok")
             except Exception as e:
-                self.docker_status.append("no docker: cant generate a dockerfile")
-
-
-    def _build_images(self):
-        """Building all docker images"""
-        # TODO: self.workflow_path is temporary (should be none)
-        for ii, sha1 in enumerate(self.mapping):
-            try:
-                filepath = os.path.join(
-                    self.workflow_path, 'Dockerfile.{}'.format(sha1)
-               )
-                tag = "repronim/regtests:{}".format(sha1)
-                cg.build_image(filepath, build_context=self.workflow_path, tag=tag)
-            except Exception as e:
-                self.docker_status[ii] = "no docker: cant build an image"
+                self.docker_status.append("no docker")
 
 
     def _run_cwl(self, image, soft_ver_str):
@@ -282,8 +266,7 @@ class WorkflowRegtest(object):
         """The main method that runs generate all docker files, build images
             and run a workflow in all environments.
         """
-        self._generate_dockerfiles()
-        self._build_images()
+        self._generate_docker_image()
         self._testing_workflow()
 
 
