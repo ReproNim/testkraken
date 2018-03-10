@@ -1,7 +1,7 @@
 """Object to orchestrate worflow execution and output tests."""
 
 import itertools
-import json
+import json, csv
 import os
 import subprocess
 import tempfile
@@ -320,8 +320,12 @@ class WorkflowRegtest(object):
                  self.res_dict["result"].append("2")
             self._res_list.append(el_dict)
 
-        with open(os.path.basename(self.workflow_path)+"_output.json", 'w') as outfile:
-            json.dump(self._res_list, outfile)
+        # saving merged results in one csv file
+        keys_csv = self._res_list[0].keys()
+        with open(os.path.basename(self.workflow_path)+"_output.csv", 'w') as outfile:
+            csv_writer = csv.DictWriter(outfile, keys_csv)
+            csv_writer.writeheader()
+            csv_writer.writerows(self._res_list)
 
 
     def plot_workflow_result(self):
@@ -332,7 +336,6 @@ class WorkflowRegtest(object):
         matplotlib.rcParams['ytick.labelsize'] = 12
 
         fig, ax_list = plt.subplots(nr_par, 1)
-
 
         for iid, key in enumerate(self.env_parameters):
             ax = ax_list[iid]
