@@ -68,8 +68,33 @@ def list_to_neurodocker_instruction(iterable):
             'env_name': "test",
             'activate': "true"
         }
-
-
+    elif program_name.lower() == "freesurfer" and "min" in version:
+        spec = {"version": "6.0.0", "min": True}
+    elif program_name.lower() == 'mindboggle':
+        program_name = "run"
+        spec = (
+            "cd /opt \n"
+            " && apt-get update -qq \n"
+            " && apt-get install -yq --no-install-recommends build-essential cmake git libsm6 make xorg \n"
+            " && git clone https://github.com/nipy/mindboggle.git \n"
+            " && conda install -yq -ntest  vtk==7.0.0 lxml matplotlib numpy scipy pandas traits xvfbwrapper \n"
+            " && mkdir /usr/lib64 \n"
+            " && ln -s /usr/lib/x86_64-linux-gnu/libGLU.so.1 /usr/lib64/libGLU.so \n"
+            " && ln -s /usr/lib/x86_64-linux-gnu/libSM.so.6 /usr/lib64/libSM.so \n"
+            " && ln -s /usr/lib/x86_64-linux-gnu/libICE.so.6 /usr/lib64/libICE.so \n"
+            " && ln -s /usr/lib/x86_64-linux-gnu/libX11.so.6 /usr/lib64/libX11.so \n"
+            " && ln -s /usr/lib/x86_64-linux-gnu/libXext.so.6 /usr/lib64/libXext.so \n"
+            " && ln -s /usr/lib/x86_64-linux-gnu/libXt.so.6 /usr/lib64/libXt.so \n"
+            " && ln -s /usr/lib/x86_64-linux-gnu/mesa/libGL.so.1 /usr/lib64/libGL.so \n"
+            " && bash -c 'source activate test && pip install --no-cache-dir nipype nibabel \n"
+            " && cd mindboggle && python setup.py install \n"
+            " && mkdir vtk_cpp_tools/bin && cd vtk_cpp_tools/bin \n"
+            " && cmake .. && make && make install' \n"
+            " && cd /opt/data \n"
+            " && curl -sSL https://osf.io/rh9km/?action=download&version=2 -o templates.zip \n"
+            " && unzip templates.zip \n"
+            " && rm -rf /opt/data/templates.zip"
+        )
     elif program_name in ['base']:
         spec = version
     else:
@@ -120,6 +145,7 @@ def _generate_dockerfile(dir_, neurodocker_dict, sha1):
     image.
     """
     filepath = os.path.join(dir_, "json", "{}.json".format(sha1))
+    dir_ = os.path.abspath(dir_)
 
     with open(filepath, "w") as fp:
         json.dump(neurodocker_dict, fp, indent=4)
@@ -185,4 +211,4 @@ def docker_main(workflow_path, neurodocker_dict, sha1):
 
     filepath = os.path.join(workflow_path, 'Dockerfile.{}'.format(sha1))
     tag = "repronim/regtests:{}".format(sha1)
-    build_image(filepath, build_context=workflow_path, tag=tag)
+    build_image(filepath, tag=tag)
