@@ -14,5 +14,9 @@ def mean_random_numbers(k):
     with open('mean.json', 'w') as outfile:
         json.dump(mean, outfile)
 
+    with open('mean_2.json', 'w') as outfile:
+        json.dump(mean*2, outfile)
+
+
 if __name__ == '__main__':
     mean_random_numbers(2)

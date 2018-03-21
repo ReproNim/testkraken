@@ -18,6 +18,10 @@
         [
             "mean.json",
             "test_rand_almosteq.py"
+        ],
+        [
+            "mean_2.json",
+            "test_rand_almosteq.py"
         ]
     ]
 }

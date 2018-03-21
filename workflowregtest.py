@@ -119,22 +119,15 @@ class WorkflowRegtest(object):
                 "      prefix: {}\n"
                 ).format(ii, input_tuple[0], ii+2, input_tuple[1])
 
-        cmd_cwl += "outputs:\n"
-
-        #TODO: temporary taking ony one tests/ouptput file
         cmd_cwl += (
+                "outputs:\n"
                 "  output_files:\n"
-                "    type: File\n"
+                "    type:\n"
+                "      type: array\n"
+                "      items: File\n"
                 "    outputBinding:\n"
-                "      glob: {}\n"
-        ).format(self.tests[0][0])
-        #for (ii, test_tuple) in enumerate(self.tests):
-        #    cmd_cwl += (
-        #        "  output_files_{}:\n"
-        #        "    type: File\n"
-        #        "    outputBinding:\n"
-        #        "      glob: {}\n"
-        #    ).format(ii, test_tuple[0])
+                '      glob: "*.json"\n'
+        )
 
         with open("cwl_workflow.cwl", "w") as cwl_file:
             cwl_file.write(cmd_cwl)
@@ -146,25 +139,35 @@ class WorkflowRegtest(object):
             "class: CommandLineTool\n"
             "baseCommand: python\n\n"
             "inputs:\n"
-            "  script:\n"
+            "  script_main:\n"
             "    type: File\n"
             "    inputBinding:\n"
             "      position: 1\n"
+            "  script_dir:\n"
+            "    type: Directory\n"
+            "    inputBinding:\n"
+            "      position: 2\n"
+            "      prefix: -dir\n"
             "  input_files_out:\n"
             "    type: File\n"
             "    inputBinding:\n"
-            "      position: 2\n"
-            "      prefix: -out\n"
-            "  input_files_ref:\n"
-            "    type: File\n"
-            "    inputBinding:\n"
             "      position: 3\n"
+            "      prefix: -out\n"
+            "  input_dir_ref:\n"
+            "    type: Directory\n"
+            "    inputBinding:\n"
+            "      position: 4\n"
             "      prefix: -ref\n"
             "  input_files_report:\n"
             "    type: string\n"
             "    inputBinding:\n"
-            "      position: 4\n"
-            "      prefix: -report\n\n"
+            "      position: 5\n"
+            "      prefix: -report\n"
+            "  test_name:\n"
+            "    type: string\n"
+            "    inputBinding:\n"
+            "      position: 6\n"
+            "      prefix: -test\n\n"
             "outputs:\n"
             "  output_files_report:\n"
             "    type: File\n"
@@ -182,21 +185,32 @@ class WorkflowRegtest(object):
             "#!/usr/bin/env cwl-runner\n"
             "cwlVersion: v1.0\n"
             "class: Workflow\n"
+            "requirements:\n"
+            "   - class: ScatterFeatureRequirement\n"
             "inputs:\n"
             "  script_workf: File\n"
-            "  script_test: File\n"
-            "  data_ref: File\n"
-            "  report_txt: string\n"
+            "  script_test_main: File\n"
+            "  script_test_dir: Directory\n"
+            "  test_name:\n"
+            "    type:\n"
+            "      type: array\n"
+            "      items: string\n"
+            "  data_ref_dir: Directory\n"
+            "  report_txt:\n"
+            "    type:\n"
+            "      type: array\n"
+            "      items: string\n"
         )
         for (ii, input_tuple) in enumerate(self.inputs):
             cmd_cwl += (
-                "  input_workf_{}: {}\n"
+            "  input_workf_{}: {}\n"
                 ).format(ii, input_tuple[0])
-
         cmd_cwl += (
             "outputs:\n"
             "  testout:\n"
-            "    type: File\n"
+            "    type:\n"    
+            "      type: array\n"
+            "      items: File\n"
             "    outputSource: test/output_files_report\n\n"
             "steps:\n"
             "  workflow:\n"
@@ -213,11 +227,14 @@ class WorkflowRegtest(object):
             "    out: [output_files]\n" #only one output per test
             "  test:\n"
             "    run: cwl_test.cwl\n"
+            "    scatter: [input_files_out, test_name, input_files_report]\n"
+            "    scatterMethod: dotproduct\n"
             "    in:\n"
-            "      script: script_test\n"
-            "      input_files_report: report_txt\n"
+            "      script_main: script_test_main\n"
+            "      script_dir: script_test_dir\n"
+            "      test_name: test_name\n"
             "      input_files_out: workflow/output_files\n"
-            "      input_files_ref: data_ref\n"
+            "      input_dir_ref: data_ref_dir\n"
             "      input_files_report: report_txt\n"
             "    out: [output_files_report]"
                 )
@@ -228,23 +245,34 @@ class WorkflowRegtest(object):
 
     def _creating_main_input(self, soft_ver_str):
         """Creating input yml file for CWL"""
+        test_name_l = [i[1] for i in self.tests]
+        test_name_str = ('[' + len(test_name_l) * '"{}",' + ']').format(*test_name_l)
+
+        report_str = ('[' + len(test_name_l) * '"report_{}_{}_{}.txt",'.format(
+            {}, os.path.basename(self.workflow_path), soft_ver_str) + ']').format(
+                    *range(len(self.tests)))
+
         cmd_in = (
             "script_workf:\n"
             "  class: File\n"
             "  path: {}\n"
-            "script_test:\n"
+            "script_test_main:\n"
             "  class: File\n"
             "  path: {}\n"
-            "data_ref:\n"
-            "  class: File\n"
+            "script_test_dir:\n"
+            "  class: Directory\n"
             "  path: {}\n"
-            "report_txt: {}\n" #TODO
+            "data_ref_dir:\n"
+            "  class: Directory\n"
+            "  path: {}\n"
+            "test_name: {}\n"
+             "report_txt: {}\n" #TODO
         ).format(self.script,
-                 os.path.join(os.path.dirname(os.path.realpath(__file__)), "testing_functions", self.tests[0][1]),
-                 os.path.join(self.workflow_path, "data_ref", self.tests[0][0]),
-                 "report_test_{}_{}.txt".format(os.path.basename(self.workflow_path), soft_ver_str)
-                   ) # TODO: for now it's only one test possible
-
+                 os.path.join(os.path.dirname(os.path.realpath(__file__)), "test_main.py"),
+                 os.path.join(os.path.dirname(os.path.realpath(__file__)), "testing_functions"),
+                 os.path.join(self.workflow_path, "data_ref"),
+                 test_name_str,
+                 report_str)
         for (ii, input_tuple) in enumerate(self.inputs):
             if input_tuple[0] == "File":
                 cmd_in += (
@@ -271,41 +299,48 @@ class WorkflowRegtest(object):
 
 
     def merging_output(self):
+        self.res_dict = []
+        for ii, test in enumerate(self.tests):
+            self.res_dict.append(OrderedDict())
+            self._merging_output_test(ii)
+
+
+    def _merging_output_test(self, test_id):
         # creating a list with results, each element has a dict with soft desc. and result
         self._res_list = []
         # create dictionary env: list for all env desc. (indexes from self.env_parameters),
         # and results: list of results for all env
-        self.res_dict = OrderedDict()
         for key in self.env_parameters:
-            self.res_dict[key] = []
-        self.res_dict["result"] = []
+            self.res_dict[test_id][key] = []
+        self.res_dict[test_id]["result"] = []
 
         for ii, soft_d in enumerate(self.matrix_envs_dict):
             el_dict = deepcopy(soft_d)
-            file_name = "report_test_{}_{}.txt".format(os.path.basename(self.workflow_path), self.soft_str[ii])
+            file_name = "report_{}_{}_{}.txt".format(test_id, os.path.basename(self.workflow_path),
+                                                     self.soft_str[ii])
             for k, val in soft_d.items():
-                self.res_dict[k].append(self.env_parameters[k].index(val))
+                self.res_dict[test_id][k].append(self.env_parameters[k].index(val))
 
             if self.docker_status[ii] == "docker ok":
                 with open(file_name) as f:
                     f_txt = f.read()
                     if "PASS" in f_txt:
                         el_dict["result"] = "PASS"
-                        self.res_dict["result"].append("1")
+                        self.res_dict[test_id]["result"].append("1")
                     elif "FAIL" in f_txt:
                         el_dict["result"] = "FAIL"
-                        self.res_dict["result"].append("0")
+                        self.res_dict[test_id]["result"].append("0")
                     else:
                          el_dict["result"] = "N/A"
-                         self.res_dict["result"].append("2")
+                         self.res_dict[test_id]["result"].append("2")
             else:
                  el_dict["result"] = "N/A"
-                 self.res_dict["result"].append("2")
+                 self.res_dict[test_id]["result"].append("2")
             self._res_list.append(el_dict)
 
         # saving merged results in one csv file
         keys_csv = self._res_list[0].keys()
-        with open(os.path.basename(self.workflow_path)+"_output.csv", 'w') as outfile:
+        with open("{}_output_{}.csv".format(os.path.basename(self.workflow_path), test_id), 'w') as outfile:
             csv_writer = csv.DictWriter(outfile, keys_csv)
             csv_writer.writeheader()
             csv_writer.writerows(self._res_list)
@@ -392,13 +427,17 @@ class WorkflowRegtest(object):
 
 
     def plot_workflow_result_paralcoord(self):
+        for ii, test in enumerate(self.tests): #will probably use also name later
+            self._plot_workflow_result_paralcoord_test(ii)
+
+    def _plot_workflow_result_paralcoord_test(self, test_id):
         """plotting results, this has to be cleaned TODO"""
         import pandas
         import plotly.plotly as py
         import plotly.graph_objs as go
         from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
 
-        df = pandas.DataFrame(self.res_dict)
+        df = pandas.DataFrame(self.res_dict[test_id])
 
         list_pl = []
         for i, k in self.env_parameters.items():
@@ -417,4 +456,4 @@ class WorkflowRegtest(object):
         )
 
         fig = go.Figure(data=data, layout = layout)
-        plot(fig, filename='parcoords_{}'.format(os.path.basename(self.workflow_path)))
+        plot(fig, filename='parcoords_{}_{}'.format(os.path.basename(self.workflow_path), test_id))
