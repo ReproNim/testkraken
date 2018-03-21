@@ -11,8 +11,7 @@ Workflows_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)),
 
 if __name__ == "__main__":
     for workflow in next(os.walk(Workflows_dir))[1]:
-        if "ps" in workflow:
-            wf = WorkflowRegtest(os.path.join(Workflows_dir, workflow))
-            wf.run()
-            wf.merging_output()
-            wf.plot_workflow_result_paralcoord()
+        wf = WorkflowRegtest(os.path.join(Workflows_dir, workflow))
+        wf.run()
+        wf.merging_output()
+        wf.plot_workflow_result_paralcoord()
