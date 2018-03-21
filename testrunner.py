@@ -15,4 +15,3 @@ if __name__ == "__main__":
         wf.run()
         wf.merging_output()
         wf.plot_workflow_result_paralcoord()
-        wf.plot_workflow_result()
