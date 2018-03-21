@@ -171,6 +171,11 @@ class WorkflowRegtest(object):
             "    inputBinding:\n"
             "      position: 6\n"
             "      prefix: -test\n\n"
+            "  ref_name:\n"
+            "    type: string\n"
+            "    inputBinding:\n"
+            "      position: 7\n"
+            "      prefix: -ref_nm\n\n"
             "outputs:\n"
             "  output_files_report:\n"
             "    type: File\n"
@@ -195,6 +200,10 @@ class WorkflowRegtest(object):
             "  script_test_main: File\n"
             "  script_test_dir: Directory\n"
             "  test_name:\n"
+            "    type:\n"
+            "      type: array\n"
+            "      items: string\n"
+            "  ref_name:\n"
             "    type:\n"
             "      type: array\n"
             "      items: string\n"
@@ -230,12 +239,13 @@ class WorkflowRegtest(object):
             "    out: [output_files]\n" #only one output per test
             "  test:\n"
             "    run: cwl_test.cwl\n"
-            "    scatter: [input_files_out, test_name, input_files_report]\n"
+            "    scatter: [input_files_out, test_name, ref_name, input_files_report]\n"
             "    scatterMethod: dotproduct\n"
             "    in:\n"
             "      script_main: script_test_main\n"
             "      script_dir: script_test_dir\n"
             "      test_name: test_name\n"
+            "      ref_name: ref_name\n"
             "      input_files_out: workflow/output_files\n"
             "      input_dir_ref: data_ref_dir\n"
             "      input_files_report: report_txt\n"
@@ -250,6 +260,10 @@ class WorkflowRegtest(object):
         """Creating input yml file for CWL"""
         test_name_l = [i[1] for i in self.tests]
         test_name_str = ('[' + len(test_name_l) * '"{}",' + ']').format(*test_name_l)
+
+        test_file_l = [i[0] for i in self.tests]
+        test_file_str = ('[' + len(test_file_l) * '"{}",' + ']').format(*test_file_l)
+
 
         report_str = ('[' + len(test_name_l) * '"report_{}_{}_{}.txt",'.format(
             {}, os.path.basename(self.workflow_path), soft_ver_str) + ']').format(
@@ -268,12 +282,14 @@ class WorkflowRegtest(object):
             "data_ref_dir:\n"
             "  class: Directory\n"
             "  path: {}\n"
+            "ref_name: {}\n"
             "test_name: {}\n"
-             "report_txt: {}\n" #TODO
+            "report_txt: {}\n" #TODO
         ).format(self.script,
                  os.path.join(os.path.dirname(os.path.realpath(__file__)), "test_main.py"),
                  os.path.join(os.path.dirname(os.path.realpath(__file__)), "testing_functions"),
                  os.path.join(self.workflow_path, "data_ref"),
+                 test_file_str,
                  test_name_str,
                  report_str)
         for (ii, input_tuple) in enumerate(self.inputs):
