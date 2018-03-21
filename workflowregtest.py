@@ -95,6 +95,9 @@ class WorkflowRegtest(object):
 
     def _creating_workflow_cwl(self, image):
         """Creating cwl file"""
+        test_file_l = [i[0] for i in self.tests]
+        test_file_str = ('[' + len(test_file_l) * '"{}",' + ']').format(*test_file_l)
+
         cmd_cwl = (
             "#!/usr/bin/env cwl-runner\n"
             "cwlVersion: v1.0\n"
@@ -126,8 +129,8 @@ class WorkflowRegtest(object):
                 "      type: array\n"
                 "      items: File\n"
                 "    outputBinding:\n"
-                '      glob: "*.json"\n'
-        )
+                '      glob: {}\n'
+        ).format(test_file_str)
 
         with open("cwl_workflow.cwl", "w") as cwl_file:
             cwl_file.write(cmd_cwl)
