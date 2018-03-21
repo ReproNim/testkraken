@@ -25,7 +25,7 @@
         ],
         [
             "sum_list.json",
-            "test_obj_eq"
+            "test_obj_eq.py"
         ]
     ]
 }
