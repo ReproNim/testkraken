@@ -77,22 +77,17 @@ class CwlGenerator(object):
             "class: CommandLineTool\n"
             "baseCommand: python\n\n"
             "inputs:\n"
-            "  script_main:\n"
+            "  script:\n"
             "    type: File\n"
             "    inputBinding:\n"
             "      position: 1\n"
-            "  script_dir:\n"
-            "    type: Directory\n"
-            "    inputBinding:\n"
-            "      position: 2\n"
-            "      prefix: -dir\n"
             "  input_files_out:\n"
             "    type: File\n"
             "    inputBinding:\n"
             "      position: 3\n"
             "      prefix: -out\n"
-            "  input_dir_ref:\n"
-            "    type: Directory\n"
+            "  input_ref:\n"
+            "    type: File\n"
             "    inputBinding:\n"
             "      position: 4\n"
             "      prefix: -ref\n"
@@ -101,16 +96,6 @@ class CwlGenerator(object):
             "    inputBinding:\n"
             "      position: 5\n"
             "      prefix: -report\n"
-            "  test_name:\n"
-            "    type: string\n"
-            "    inputBinding:\n"
-            "      position: 6\n"
-            "      prefix: -test\n\n"
-            "  ref_name:\n"
-            "    type: string\n"
-            "    inputBinding:\n"
-            "      position: 7\n"
-            "      prefix: -ref_nm\n\n"
             "outputs:\n"
             "  output_files_report:\n"
             "    type: File\n"
@@ -132,17 +117,14 @@ class CwlGenerator(object):
             "   - class: ScatterFeatureRequirement\n"
             "inputs:\n"
             "  script_workf: File\n"
-            "  script_test_main: File\n"
-            "  script_test_dir: Directory\n"
-            "  test_name:\n"
+            "  script_test:\n"
             "    type:\n"
             "      type: array\n"
-            "      items: string\n"
-            "  ref_name:\n"
+            "      items: File\n"
+            "  data_ref:\n"
             "    type:\n"
             "      type: array\n"
-            "      items: string\n"
-            "  data_ref_dir: Directory\n"
+            "      items: File\n"
             "  report_txt:\n"
             "    type:\n"
             "      type: array\n"
@@ -174,15 +156,12 @@ class CwlGenerator(object):
             "    out: [output_files]\n" #only one output per test
             "  test:\n"
             "    run: cwl_test.cwl\n"
-            "    scatter: [input_files_out, test_name, ref_name, input_files_report]\n"
+            "    scatter: [input_files_out, script, input_ref, input_files_report]\n"
             "    scatterMethod: dotproduct\n"
             "    in:\n"
-            "      script_main: script_test_main\n"
-            "      script_dir: script_test_dir\n"
-            "      test_name: test_name\n"
-            "      ref_name: ref_name\n"
+            "      script: script_test\n"
             "      input_files_out: workflow/output_files\n"
-            "      input_dir_ref: data_ref_dir\n"
+            "      input_ref: data_ref\n"
             "      input_files_report: report_txt\n"
             "    out: [output_files_report]"
                 )
@@ -199,25 +178,18 @@ class CwlGenerator(object):
             "script_workf:\n"
             "  class: File\n"
             "  path: {}\n"
-            "script_test_main:\n"
-            "  class: File\n"
-            "  path: {}\n"
-            "script_test_dir:\n"
-            "  class: Directory\n"
-            "  path: {}\n"
-            "data_ref_dir:\n"
-            "  class: Directory\n"
-            "  path: {}\n"
-            "ref_name: {}\n"
-            "test_name: {}\n"
-            "report_txt: {}\n" #TODO
-        ).format(self.script,
-                 os.path.join(os.path.dirname(os.path.realpath(__file__)), "test_main.py"),
-                 os.path.join(os.path.dirname(os.path.realpath(__file__)), "testing_functions"),
-                 os.path.join(self.workflow_path, "data_ref"),
-                 self.test_file_str,
-                 self.test_name_str,
-                 self.report_str)
+            "script_test:\n"
+        ).format(self.script)
+        for test in self.tests:
+            cmd_in += ("- {class: File, path: " + \
+            os.path.join(os.path.dirname(os.path.realpath(__file__)), "testing_functions", test[1]) + "}\n"
+                       )
+        cmd_in += "data_ref:\n"
+        for test in self.tests:
+            cmd_in += ("- {class: File, path: " + \
+            os.path.join(self.workflow_path, "data_ref", test[0]) + "}\n"
+                       )
+        cmd_in += ("report_txt: {}\n").format(self.report_str)
         for (ii, input_tuple) in enumerate(self.inputs):
             if input_tuple[0] == "File":
                 cmd_in += (
