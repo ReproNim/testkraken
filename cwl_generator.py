@@ -9,16 +9,16 @@ class CwlGenerator(object):
         self.script = os.path.join(self.workflow_path, "workflow",
                                    parameters["script"])
         self.command = parameters["command"]
-        self.tests = parameters["tests"]
+        self.tests_regr = parameters["tests_regr"]
         self.inputs = parameters["inputs"]
 
-        test_name_l = [i[1] for i in self.tests]
-        self.test_name_str = ('[' + len(test_name_l) * '"{}",' + ']').format(*test_name_l)
-        test_file_l = [i[0] for i in self.tests]
-        self.test_file_str = ('[' + len(test_file_l) * '"{}",' + ']').format(*test_file_l)
-        self.report_str = ('[' + len(test_name_l) * '"report_{}_{}_{}.txt",'.format(
+        regr_name_l = [i[1] for i in self.tests_regr]
+        self.regr_name_str = ('[' + len(regr_name_l) * '"{}",' + ']').format(*regr_name_l)
+        regr_file_l = [i[0] for i in self.tests_regr]
+        self.regr_file_str = ('[' + len(regr_file_l) * '"{}",' + ']').format(*regr_file_l)
+        self.report_str = ('[' + len(regr_name_l) * '"report_{}_{}_{}.txt",'.format(
             {}, os.path.basename(self.workflow_path), self.soft_ver_str) + ']').format(
-                    *range(len(self.tests)))
+                    *range(len(self.tests_regr)))
 
 
 
@@ -26,7 +26,7 @@ class CwlGenerator(object):
         self._creating_main_cwl()
         self._creating_main_input() # should be in __init__?
         self._creating_workflow_cwl()
-        self._creating_test_cwl()
+        self._creating_regr_cwl()
 
 
     def _creating_workflow_cwl(self):
@@ -63,14 +63,14 @@ class CwlGenerator(object):
                 "      items: File\n"
                 "    outputBinding:\n"
                 '      glob: {}\n'
-        ).format(self.test_file_str)
+        ).format(self.regr_file_str)
 
         with open("cwl_workflow.cwl", "w") as cwl_file:
             cwl_file.write(cmd_cwl)
 
 
 
-    def _creating_test_cwl(self):
+    def _creating_regr_cwl(self):
         cmd_cwl = (
             "# !/usr/bin/env cwl-runner\n"
             "cwlVersion: v1.0\n"
@@ -103,7 +103,7 @@ class CwlGenerator(object):
             "      glob: $(inputs.input_files_report)\n"
         )
 
-        with open("cwl_test.cwl", "w") as cwl_file:
+        with open("cwl_regr.cwl", "w") as cwl_file:
             cwl_file.write(cmd_cwl)
 
 
@@ -140,7 +140,7 @@ class CwlGenerator(object):
             "    type:\n"    
             "      type: array\n"
             "      items: File\n"
-            "    outputSource: test/output_files_report\n\n"
+            "    outputSource: test_regr/output_files_report\n\n"
             "steps:\n"
             "  workflow:\n"
             "    run: cwl_workflow.cwl\n"
@@ -154,8 +154,8 @@ class CwlGenerator(object):
 
         cmd_cwl += (
             "    out: [output_files]\n" #only one output per test
-            "  test:\n"
-            "    run: cwl_test.cwl\n"
+            "  test_regr:\n"
+            "    run: cwl_regr.cwl\n"
             "    scatter: [input_files_out, script, input_ref, input_files_report]\n"
             "    scatterMethod: dotproduct\n"
             "    in:\n"
@@ -180,12 +180,12 @@ class CwlGenerator(object):
             "  path: {}\n"
             "script_test:\n"
         ).format(self.script)
-        for test in self.tests:
+        for test in self.tests_regr:
             cmd_in += ("- {class: File, path: " + \
             os.path.join(os.path.dirname(os.path.realpath(__file__)), "testing_functions", test[1]) + "}\n"
                        )
         cmd_in += "data_ref:\n"
-        for test in self.tests:
+        for test in self.tests_regr:
             cmd_in += ("- {class: File, path: " + \
             os.path.join(self.workflow_path, "data_ref", test[0]) + "}\n"
                        )

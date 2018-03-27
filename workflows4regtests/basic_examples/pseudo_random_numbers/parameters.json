@@ -14,7 +14,7 @@
     },
     "inputs": [],
     "script": "mean_random_numbers.py",
-    "tests": [
+    "tests_regr": [
         [
             "mean.json",
             "test_rand_almosteq.py"

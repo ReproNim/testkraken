@@ -22,7 +22,7 @@
         ]
     ],
     "script": "concatenate.py",
-    "tests": [
+    "tests_regr": [
         [
             "string_conc.txt",
             "test_obj_eq.py"

@@ -26,7 +26,7 @@ class WorkflowRegtest(object):
         self.script = os.path.join(self.workflow_path, "workflow",
                                    self.parameters["script"])
         self.command = self.parameters["command"] # TODO: adding arg
-        self.tests = self.parameters["tests"] # should be a tuple (output_name, test_name)
+        self.tests_regr = self.parameters["tests_regr"] # should be a tuple (output_name, test_name)
         self.inputs = self.parameters["inputs"]
         self.tmpdir = tempfile.TemporaryDirectory(
             prefix="tmp-workflowregtest-", dir=os.getcwd()
@@ -102,7 +102,7 @@ class WorkflowRegtest(object):
 
     def merging_output(self):
         self.res_dict = []
-        for ii, test in enumerate(self.tests):
+        for ii, test in enumerate(self.tests_regr):
             self.res_dict.append(OrderedDict())
             self._merging_output_test(ii)
 
@@ -149,7 +149,7 @@ class WorkflowRegtest(object):
 
 
     def plot_workflow_result_paralcoord(self):
-        for ii, test in enumerate(self.tests): #will probably use also name later
+        for ii, test in enumerate(self.tests_regr): #will probably use also name later
             self._plot_workflow_result_paralcoord_test(ii)
 
     def _plot_workflow_result_paralcoord_test(self, test_id):
