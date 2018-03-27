@@ -118,7 +118,7 @@ class WorkflowRegtest(object):
 
         for ii, soft_d in enumerate(self.matrix_envs_dict):
             el_dict = deepcopy(soft_d)
-            file_name = "report_{}_{}_{}.txt".format(test_id, os.path.basename(self.workflow_path),
+            file_name = "report_regr_{}_{}_{}.txt".format(test_id, os.path.basename(self.workflow_path),
                                                      self.soft_str[ii])
             for k, val in soft_d.items():
                 self.res_dict[test_id][k].append(self.env_parameters[k].index(val))
