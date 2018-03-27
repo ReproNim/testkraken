@@ -198,11 +198,16 @@ class CwlGenerator(object):
                 ).format(ii, input_tuple[0])
         cmd_cwl += (
             "outputs:\n"
-            "  testout:\n"
+            "  regr_rep:\n"
             "    type:\n"    
             "      type: array\n"
             "      items: File\n"
-            "    outputSource: test_regr/output_files_report\n\n"
+            "    outputSource: test_regr/output_files_report\n"
+            "  stat_rep:\n"
+            "    type:\n"
+            "      type: array\n"
+            "      items: File\n"
+            "    outputSource: test_stat/output_files_report\n\n"
             "steps:\n"
             "  workflow:\n"
             "    run: cwl_workflow.cwl\n"
