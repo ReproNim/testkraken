@@ -3,7 +3,7 @@
     "env": {
         "base": [
             "debian:stretch",
-            "ubuntu:16.04",
+            "ubuntu:16.04"
         ],
         "conda_env_yml": [
             "environment_py2.yml",
