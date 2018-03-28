@@ -28,7 +28,7 @@ class WorkflowRegtest(object):
         self.command = self.parameters["command"] # TODO: adding arg
         self.tests_regr = self.parameters["tests_regr"] # should be a tuple (output_name, test_name)
         try:
-            self.tests_stat = parameters["tests_stat"]
+            self.tests_stat = self.parameters["tests_stat"]
         except KeyError:
             self.tests_stat = []
         self.inputs = self.parameters["inputs"]
