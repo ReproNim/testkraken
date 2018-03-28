@@ -3,8 +3,7 @@
     "env": {
         "base": [
             "debian:stretch",
-            "ubuntu:17.04",
-            "ubuntu:17.10"
+            "ubuntu:16.04"
         ],
         "conda_env_yml": [
             "environment_py2.yml",
@@ -28,7 +27,7 @@
         ]
     ],
     "script": "run_demo_workflow.py",
-    "tests": [
+    "tests_regr": [
         [
              "output/metaflow/AnnArbor_sub16960/save_json/segstats.json",
 	     "check_output.py"

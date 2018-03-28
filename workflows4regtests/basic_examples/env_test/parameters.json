@@ -16,7 +16,7 @@
         ]
     ],
     "script": "sorting.py",
-    "tests": [
+    "tests_regr": [
         [
             "list_sorted.json",
             "test_obj_eq.py"

@@ -3,7 +3,7 @@
     "env": {
         "base": [
             "debian:stretch",
-            "ubuntu:17.04"
+            "ubuntu:16.04"
         ],
         "python": [
             "2.7",
@@ -18,7 +18,7 @@
         ]
     ],
     "script": "sorting.py",
-    "tests": [
+    "tests_regr": [
         [
             "list_sorted.json",
             "test_obj_eq.py"
@@ -27,5 +27,12 @@
             "sum_list.json",
             "test_obj_eq.py"
         ]
+    ],
+    "tests_stat": [
+        [
+            "list_sorted.json",
+            "stat_list.py"
+        ]
     ]
+
 }
