@@ -206,12 +206,15 @@ class WorkflowRegtest(object):
         for key in self.res_keys:
             if "reg" in key:
                 reg_values = df[key]
-                reg_values = reg_values.replace(["PASSED", "FAILED", "N/A"], [0, 1, 2])
+                reg_values = reg_values.replace(["PASSED", "FAILED", "N/A"], [1, 0, 2])
                 list_pl.append(dict(label=key, values=reg_values,
-                                    tickvals=[0, 1, 2], ticktext=["passed", "failed", "N/A"]))
+                                    tickvals=[0, 1, 2], ticktext=["failed", "passed", "N/A"]))
             else:
                 stat_values = df[key]
-                stat_values = stat_values.replace(["N/A"], [-999])
+                try:
+                    stat_values = stat_values.replace(["N/A"], [-999])
+                except TypeError:
+                    pass
                 list_pl.append(dict(label=key, values=stat_values))
 
         data = [go.Parcoords(line=dict(color = 'blue'), dimensions=list_pl)]
@@ -241,7 +244,7 @@ class WorkflowRegtest(object):
         for i, k in self.env_parameters.items():
             list_pl.append(dict(label=i, values=df[i], tickvals=list(range(len(k))), ticktext=k ))
         list_pl.append(dict(label="result", values=df["result"],
-                            tickvals=[0, 1, 2], ticktext=["pass", "fail", "N/A"]))
+                            tickvals=[0, 1, 2], ticktext=["fail", "pass", "N/A"]))
         colors_d = {'0': "red", '1': "green", '2': "black"}
         my_colorscale =[]
         for ii in set(df["result"]):
