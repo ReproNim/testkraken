@@ -286,10 +286,13 @@ class CwlGenerator(object):
         cmd_in += (
             "script_stat:\n"
         ).format(self.script)
-        for test in self.tests_stat:
-            cmd_in += ("- {class: File, path: " + \
-            os.path.join(os.path.dirname(os.path.realpath(__file__)), "testing_functions", test[1]) + "}\n"
-                       )
+        if self.tests_stat:
+            for test in self.tests_stat:
+                cmd_in += ("- {class: File, path: " + \
+                os.path.join(os.path.dirname(os.path.realpath(__file__)), "testing_functions", test[1]) + "}\n"
+                           )
+        else:
+            cmd_in += (" []\n") #TODO should be also for tests_regr
         cmd_in += ("report_stat_txt: {}\n").format(self.report_stat_str)
 
         with open("input.yml", "w") as inp_file:
