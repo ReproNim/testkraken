@@ -27,5 +27,12 @@
             "sum_list.json",
             "test_obj_eq.py"
         ]
+    ],
+    "tests_stat": [
+        [
+            "list_sorted.json",
+            "stat_list.py"
+        ]
     ]
+
 }
