@@ -18,8 +18,14 @@ import cwl_generator as cwlg
 
 
 class WorkflowRegtest(object):
-    def __init__(self, workflow_path):
+    def __init__(self, workflow_path, base_dir=None):
+        if base_dir:
+            self.base_dir = bas_dir
+        else:
+            self.base_dir = os.getcwd()
         self.workflow_path = workflow_path
+        self.working_dir = os.path.join(self.base_dir, os.path.basename(self.workflow_path) + "_cwl")
+        os.makedirs(self.working_dir, exist_ok=True)
         with open(os.path.join(self.workflow_path, "parameters.json")) as param_js:
             self.parameters = json.load(param_js, object_pairs_hook=OrderedDict)
         self.env_parameters = self.parameters["env"]
@@ -91,9 +97,14 @@ class WorkflowRegtest(object):
 
     def _run_cwl(self, image, soft_ver_str):
         """Running workflow with CWL"""
+        cwd = os.getcwd()
+        working_dir_env = os.path.join(self.working_dir, soft_ver_str)
+        os.makedirs(working_dir_env, exist_ok=True)
+        os.chdir(working_dir_env)
         cwl_gen = cwlg.CwlGenerator(image, soft_ver_str, self.workflow_path, self.parameters)
         cwl_gen.create_cwl()
         subprocess.call(["cwl-runner", "--no-match-user", "cwl.cwl", "input.yml"])
+        os.chdir(cwd)
 
 
     def run(self):
@@ -114,16 +125,16 @@ class WorkflowRegtest(object):
             if self.docker_status[ii] == "docker ok":
                 ii_ok = ii
                 for (iir, regr) in enumerate(self.tests_regr):
-                    file_name = "report_regr_{}_{}_{}.txt".format(iir, os.path.basename(self.workflow_path),
-                                                                  self.soft_str[ii])
+                    file_name = os.path.join(self.working_dir, self.soft_str[ii],
+                                             "report_{}_{}.json".format(regr[1].split(".")[0], regr[0].split(".")[0]))
                     with open(file_name) as f:
-                        f_txt = f.read()
-                        res = f_txt.split()[-1] # TODO: this will be changed
+                        f_dict = json.load(f)
+                        res = f_dict["regr"] # TODO: this will be changed
                         el_dict["regr_{}".format(iir)] = res
 
                 for (iis, stat) in enumerate(self.tests_stat):
-                    file_name = "report_stat_{}_{}_{}.txt".format(iis, os.path.basename(self.workflow_path),
-                                                                  self.soft_str[ii])
+                    file_name = os.path.join(self.working_dir, self.soft_str[ii],
+                                             "report_{}_{}.json".format(stat[1].split(".")[0], stat[0].split(".")[0]))
                     with open(file_name) as f:
                         f_dict = json.load(f)
                         for key, res in f_dict.items():
@@ -139,7 +150,7 @@ class WorkflowRegtest(object):
                     self.res_all[ii][key] = "N/A"
 
         keys_csv = self.res_all[0].keys()
-        with open("{}_output_all.csv".format(os.path.basename(self.workflow_path)), 'w') as outfile:
+        with open(os.path.join(self.working_dir, "{}_output_all.csv".format(os.path.basename(self.workflow_path))), 'w') as outfile:
             csv_writer = csv.DictWriter(outfile, keys_csv)
             csv_writer.writeheader()
             csv_writer.writerows(self.res_all)
@@ -228,7 +239,7 @@ class WorkflowRegtest(object):
         )
 
         fig = go.Figure(data=data, layout = layout)
-        plot(fig, filename='parcoords_{}_All'.format(os.path.basename(self.workflow_path)))
+        plot(fig, filename=os.path.join(self.working_dir,'parcoords_{}_All'.format(os.path.basename(self.workflow_path))))
 
 
     def plot_workflow_result_paralcoord(self):

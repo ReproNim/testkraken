@@ -1,4 +1,4 @@
-import os
+import os, pdb
 
 
 class CwlGenerator(object):
@@ -16,23 +16,18 @@ class CwlGenerator(object):
             self.tests_stat = []
         self.inputs = parameters["inputs"]
 
-        regr_name_l = [i[1] for i in self.tests_regr]
-        self.regr_name_str = ('[' + len(regr_name_l) * '"{}",' + ']').format(*regr_name_l)
+        #TODO uzywac regr_l i posprzatac
+        regr_l = ["{}_{}".format(i[1].split(".")[0], i[0].split(".")[0]) for i in self.tests_regr]
         regr_file_l = [i[0] for i in self.tests_regr]
         self.regr_file_str = ('[' + len(regr_file_l) * '"{}",' + ']').format(*regr_file_l)
-        self.report_regr_str = ('[' + len(regr_name_l) * '"report_regr_{}_{}_{}.txt",'.format(
-            {}, os.path.basename(self.workflow_path), self.soft_ver_str) + ']').format(
-                    *range(len(self.tests_regr)))
+        self.report_regr_str = ('[' + len(regr_l) * '"report_{}.json",'+ ']').format(
+                    *regr_l)
 
-        stat_name_l = [i[1] for i in self.tests_stat]
-        self.stat_name_str = ('[' + len(stat_name_l) * '"{}",' + ']').format(*stat_name_l)
+        stat_l = ["{}_{}".format(i[1].split(".")[0], i[0].split(".")[0]) for i in self.tests_stat]
         stat_file_l = [i[0] for i in self.tests_stat]
         self.stat_file_str = ('[' + len(stat_file_l) * '"{}",' + ']').format(*stat_file_l)
-        self.report_stat_str = ('[' + len(stat_name_l) * '"report_stat_{}_{}_{}.txt",'.format(
-            {}, os.path.basename(self.workflow_path), self.soft_ver_str) + ']').format(
-                    *range(len(self.tests_stat)))
-
-
+        self.report_stat_str = ('[' + len(stat_l) * '"report_{}.json",' + ']').format(
+            *stat_l)
 
     def create_cwl(self):
         self._creating_main_cwl()
@@ -112,17 +107,12 @@ class CwlGenerator(object):
             "    inputBinding:\n"
             "      position: 4\n"
             "      prefix: -ref\n"
-            "  input_files_report:\n"
-            "    type: string\n"
-            "    inputBinding:\n"
-            "      position: 5\n"
-            "      prefix: -report\n"
             "outputs:\n"
             "  output_files_report:\n"
             "    type: File\n"
             "    outputBinding:\n"
-            "      glob: $(inputs.input_files_report)\n"
-        )
+            "      glob: {}\n"
+        ).format(self.report_regr_str)
 
         with open("cwl_regr.cwl", "w") as cwl_file:
             cwl_file.write(cmd_cwl)
@@ -143,17 +133,12 @@ class CwlGenerator(object):
             "    inputBinding:\n"
             "      position: 3\n"
             "      prefix: -out\n"
-            "  input_files_report:\n"
-            "    type: string\n"
-            "    inputBinding:\n"
-            "      position: 5\n"
-            "      prefix: -report\n"
             "outputs:\n"
             "  output_files_report:\n"
             "    type: File\n"
             "    outputBinding:\n"
-            "      glob: $(inputs.input_files_report)\n"
-        )
+            "      glob: {}\n"
+        ).format(self.report_stat_str)
 
         with open("cwl_stat.cwl", "w") as cwl_file:
             cwl_file.write(cmd_cwl)
@@ -178,19 +163,10 @@ class CwlGenerator(object):
             "    type:\n"
             "      type: array\n"
             "      items: File\n"
-            "  report_regr_txt:\n"
-            "    type:\n"
-            "      type: array\n"
-            "      items: string\n"
             "  script_stat:\n"
             "    type:\n"
             "      type: array\n"
             "      items: File\n"
-            "  report_stat_txt:\n"
-            "    type:\n"
-            "      type: array\n"
-            "      items: string\n"
-
         )
         for (ii, input_tuple) in enumerate(self.inputs):
             cmd_cwl += (
@@ -223,28 +199,24 @@ class CwlGenerator(object):
             "    out: [output_files_regr, output_files_stat]\n"
             "  test_regr:\n"
             "    run: cwl_regr.cwl\n"
-            "    scatter: [input_files_out, script, input_ref, input_files_report]\n"
+            "    scatter: [input_files_out, script, input_ref]\n"
             "    scatterMethod: dotproduct\n"
             "    in:\n"
             "      script: script_regr\n"
             "      input_files_out: workflow/output_files_regr\n"
             "      input_ref: data_ref\n"
-            "      input_files_report: report_regr_txt\n"
             "    out: [output_files_report]\n\n"
 
             "  test_stat:\n"
             "    run: cwl_stat.cwl\n"
-            "    scatter: [input_files_out, script, input_files_report]\n"
+            "    scatter: [input_files_out, script]\n"
             "    scatterMethod: dotproduct\n"
             "    in:\n"
             "      script: script_stat\n"
             "      input_files_out: workflow/output_files_stat\n"
-            "      input_files_report: report_stat_txt\n"
             "    out: [output_files_report]"
 
         )
-
-
 
         with open("cwl.cwl", "w") as cwl_file:
             cwl_file.write(cmd_cwl)
@@ -269,7 +241,6 @@ class CwlGenerator(object):
             cmd_in += ("- {class: File, path: " + \
             os.path.join(self.workflow_path, "data_ref", test[0]) + "}\n"
                        )
-        cmd_in += ("report_regr_txt: {}\n").format(self.report_regr_str)
         for (ii, input_tuple) in enumerate(self.inputs):
             if input_tuple[0] == "File":
                 cmd_in += (
@@ -293,7 +264,6 @@ class CwlGenerator(object):
                            )
         else:
             cmd_in += (" []\n") #TODO should be also for tests_regr
-        cmd_in += ("report_stat_txt: {}\n").format(self.report_stat_str)
 
         with open("input.yml", "w") as inp_file:
             inp_file.write(cmd_in)

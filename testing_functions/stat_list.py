@@ -6,27 +6,25 @@ import random
 #import numpy as np
 
 
-def list_stat(file_out, report_filename):
+def stat_list(file_out):
     with open(file_out) as f:
         res_out = json.load(f)
     
     out = {}
     out["sum"] = sum(res_out)
     
-
+    report_filename = "report_{}_{}".format(inspect.stack()[0][3], os.path.basename(file_out))
     with open(report_filename, "a") as f:
         json.dump(out, f)
 
-#w test_main powinnam sprawdzac, czy jest ref, albo miec argument do test main w zaleznosci czy one sa stat, czy nie, moze ejdnak osobny step?
+
 if __name__ == '__main__':
     from argparse import ArgumentParser, RawTextHelpFormatter
     parser = ArgumentParser(description=__doc__,
                             formatter_class=RawTextHelpFormatter)
     parser.add_argument("-out", dest="file_out",
                         help="file with the output for testing")
-    parser.add_argument("-report", dest="report_filename",
-                        help="file to save tests output")
     args = parser.parse_args()
 
-    list_stat(**vars(args))
+    stat_list(**vars(args))
 
