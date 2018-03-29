@@ -13,7 +13,7 @@ def stat_list(file_out):
     out = {}
     out["sum"] = sum(res_out)
     
-    report_filename = "report_{}_{}".format(inspect.stack()[0][3], os.path.basename(file_out))
+    report_filename = "report_{}_{}.json".format(inspect.stack()[0][3], os.path.basename(file_out).split(".")[0])
     with open(report_filename, "a") as f:
         json.dump(out, f)
 

@@ -12,7 +12,7 @@ def test_rand_almosteq(file_out, file_ref):
     with open(file_ref) as f:
         res_ref = json.load(f)
 
-    report_filename = "report_{}_{}".format(inspect.stack()[0][3], os.path.basename(file_out))
+    report_filename = "report_{}_{}.json".format(inspect.stack()[0][3], os.path.basename(file_out).split(".")[0])
     out = {}
     try:
         assert abs(res_out - res_ref) < 0.1
