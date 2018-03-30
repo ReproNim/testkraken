@@ -19,7 +19,6 @@ def test_obj_eq(file_out, file_ref):
 
     report_filename = "report_{}_{}.json".format(inspect.stack()[0][3], os.path.basename(file_out).split(".")[0])
     out = {}
-    print("TEST", report_filename)
     try:
         assert obj_out == obj_ref
         out["regr"] = "PASSED"

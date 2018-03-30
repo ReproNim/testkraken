@@ -157,6 +157,7 @@ class WorkflowRegtest(object):
 
 
     def merging_output(self):
+        # TODO: not used, changes not finished, since will be removed
         self.res_dict = []
         for ii, test in enumerate(self.tests_regr):
             self.res_dict.append(OrderedDict())
@@ -243,6 +244,7 @@ class WorkflowRegtest(object):
 
 
     def plot_workflow_result_paralcoord(self):
+        # TODO: not used, changes not finished, since will be removed
         for ii, test in enumerate(self.tests_regr): #will probably use also name later
             self._plot_workflow_result_paralcoord_test(ii)
 
