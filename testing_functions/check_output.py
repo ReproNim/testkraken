@@ -27,7 +27,7 @@ def creating_dataframe(files_list):
     return df.T
 
 
-def check_output(file_out, file_ref):
+def check_output(file_out, file_ref=None, name=None, **kwargs):
     expected_files = [file_ref]
     output_files = [file_out]
 
@@ -40,7 +40,7 @@ def check_output(file_out, file_ref):
     df_diff = df_exp - df_out
     df_diff = df_diff.dropna()
 
-    report_filename = "report_{}_{}.json".format(inspect.stack()[0][3], os.path.basename(file_out).split(".")[0])
+    report_filename = "report_{}.json".format(name)
     out = {}
     try:
         assert np.allclose(df_diff, 0, rtol=1e-15, atol=1e-18)
@@ -61,6 +61,7 @@ if __name__ == "__main__":
                         help="file with the output for testing")
     parser.add_argument("-ref", dest="file_ref",
                         help="file with the reference output")
-
+    parser.add_argument("-name", dest="name",
+                        help="name of the test provided by a user")
     args = parser.parse_args()
     check_output(**vars(args))

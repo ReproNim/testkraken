@@ -32,11 +32,7 @@ class WorkflowRegtest(object):
         self.script = os.path.join(self.workflow_path, "workflow",
                                    self.parameters["script"])
         self.command = self.parameters["command"] # TODO: adding arg
-        self.tests_regr = self.parameters["tests_regr"] # should be a tuple (output_name, test_name)
-        try:
-            self.tests_stat = self.parameters["tests_stat"]
-        except KeyError:
-            self.tests_stat = []
+        self.tests = self.parameters["tests"] # should be a tuple (output_name, test_name)
         self.inputs = self.parameters["inputs"]
         self.tmpdir = tempfile.TemporaryDirectory(
             prefix="tmp-workflowregtest-", dir=os.getcwd()
@@ -124,21 +120,13 @@ class WorkflowRegtest(object):
             el_dict = deepcopy(soft_d)
             if self.docker_status[ii] == "docker ok":
                 ii_ok = ii
-                for (iir, regr) in enumerate(self.tests_regr):
+                for (iir, test) in enumerate(self.tests):
                     file_name = os.path.join(self.working_dir, self.soft_str[ii],
-                                             "report_{}_{}.json".format(regr[1].split(".")[0], regr[0].split(".")[0]))
-                    with open(file_name) as f:
-                        f_dict = json.load(f)
-                        res = f_dict["regr"] # TODO: this will be changed
-                        el_dict["regr_{}".format(iir)] = res
-
-                for (iis, stat) in enumerate(self.tests_stat):
-                    file_name = os.path.join(self.working_dir, self.soft_str[ii],
-                                             "report_{}_{}.json".format(stat[1].split(".")[0], stat[0].split(".")[0]))
+                                             "report_{}.json".format(test["name"]))
                     with open(file_name) as f:
                         f_dict = json.load(f)
                         for key, res in f_dict.items():
-                                el_dict["stat_{}:{}".format(iis, key)] = res
+                                el_dict["test_{}:{}".format(test["name"], key)] = res
             else:
                 no_docker.append(ii)
             self.res_all.append(el_dict)
@@ -159,7 +147,7 @@ class WorkflowRegtest(object):
     def merging_output(self):
         # TODO: not used, changes not finished, since will be removed
         self.res_dict = []
-        for ii, test in enumerate(self.tests_regr):
+        for ii, test in enumerate(self.tests):
             self.res_dict.append(OrderedDict())
             self._merging_output_test(ii)
 

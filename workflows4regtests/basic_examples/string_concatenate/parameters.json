@@ -22,10 +22,7 @@
         ]
     ],
     "script": "concatenate.py",
-    "tests_regr": [
-        [
-            "string_conc.txt",
-            "test_obj_eq.py"
-        ]
-    ]
+    "tests": [
+        {"file": "string_conc.txt", "script": "test_obj_eq.py", "name": "test"}
+     ]
 }

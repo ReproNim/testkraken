@@ -16,14 +16,8 @@
         ]
     ],
     "script": "sorting.py",
-    "tests_regr": [
-        [
-            "list_sorted.json",
-            "test_obj_eq.py"
-        ],
-        [
-            "sum_list.json",
-            "test_obj_eq.py"
-        ]
+    "tests": [
+        {"name" : "test1", "file": "list_sorted.json", "script": "test_obj_eq.py"},
+        {"name" : "test2", "file": "sum_list.json", "script": "test_obj_eq.py"}
     ]
 }
