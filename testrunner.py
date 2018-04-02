@@ -15,7 +15,5 @@ if __name__ == "__main__":
         wf = WorkflowRegtest(os.path.join(Workflows_dir, workflow))
         wf.run()
         wf.merging_all_output()
-        # TODO: these method will be removed
+        # # TODO: this method will be removed
         wf.plot_all_results_paralcoord()
-        wf.merging_output()
-        wf.plot_workflow_result_paralcoord()

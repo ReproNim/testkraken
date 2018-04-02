@@ -18,19 +18,21 @@ import cwl_generator as cwlg
 
 
 class WorkflowRegtest(object):
-    def __init__(self, workflow_path):
+    def __init__(self, workflow_path, base_dir=None):
+        if base_dir:
+            self.base_dir = bas_dir
+        else:
+            self.base_dir = os.getcwd()
         self.workflow_path = workflow_path
+        self.working_dir = os.path.join(self.base_dir, os.path.basename(self.workflow_path) + "_cwl")
+        os.makedirs(self.working_dir, exist_ok=True)
         with open(os.path.join(self.workflow_path, "parameters.json")) as param_js:
             self.parameters = json.load(param_js, object_pairs_hook=OrderedDict)
         self.env_parameters = self.parameters["env"]
         self.script = os.path.join(self.workflow_path, "workflow",
                                    self.parameters["script"])
         self.command = self.parameters["command"] # TODO: adding arg
-        self.tests_regr = self.parameters["tests_regr"] # should be a tuple (output_name, test_name)
-        try:
-            self.tests_stat = self.parameters["tests_stat"]
-        except KeyError:
-            self.tests_stat = []
+        self.tests = self.parameters["tests"] # should be a tuple (output_name, test_name)
         self.inputs = self.parameters["inputs"]
         self.tmpdir = tempfile.TemporaryDirectory(
             prefix="tmp-workflowregtest-", dir=os.getcwd()
@@ -91,9 +93,14 @@ class WorkflowRegtest(object):
 
     def _run_cwl(self, image, soft_ver_str):
         """Running workflow with CWL"""
+        cwd = os.getcwd()
+        working_dir_env = os.path.join(self.working_dir, soft_ver_str)
+        os.makedirs(working_dir_env, exist_ok=True)
+        os.chdir(working_dir_env)
         cwl_gen = cwlg.CwlGenerator(image, soft_ver_str, self.workflow_path, self.parameters)
         cwl_gen.create_cwl()
         subprocess.call(["cwl-runner", "--no-match-user", "cwl.cwl", "input.yml"])
+        os.chdir(cwd)
 
 
     def run(self):
@@ -113,21 +120,13 @@ class WorkflowRegtest(object):
             el_dict = deepcopy(soft_d)
             if self.docker_status[ii] == "docker ok":
                 ii_ok = ii
-                for (iir, regr) in enumerate(self.tests_regr):
-                    file_name = "report_regr_{}_{}_{}.txt".format(iir, os.path.basename(self.workflow_path),
-                                                                  self.soft_str[ii])
-                    with open(file_name) as f:
-                        f_txt = f.read()
-                        res = f_txt.split()[-1] # TODO: this will be changed
-                        el_dict["regr_{}".format(iir)] = res
-
-                for (iis, stat) in enumerate(self.tests_stat):
-                    file_name = "report_stat_{}_{}_{}.txt".format(iis, os.path.basename(self.workflow_path),
-                                                                  self.soft_str[ii])
+                for (iir, test) in enumerate(self.tests):
+                    file_name = os.path.join(self.working_dir, self.soft_str[ii],
+                                             "report_{}.json".format(test["name"]))
                     with open(file_name) as f:
                         f_dict = json.load(f)
                         for key, res in f_dict.items():
-                                el_dict["stat_{}:{}".format(iis, key)] = res
+                                el_dict["test_{}:{}".format(test["name"], key)] = res
             else:
                 no_docker.append(ii)
             self.res_all.append(el_dict)
@@ -139,58 +138,10 @@ class WorkflowRegtest(object):
                     self.res_all[ii][key] = "N/A"
 
         keys_csv = self.res_all[0].keys()
-        with open("{}_output_all.csv".format(os.path.basename(self.workflow_path)), 'w') as outfile:
+        with open(os.path.join(self.working_dir, "{}_output_all.csv".format(os.path.basename(self.workflow_path))), 'w') as outfile:
             csv_writer = csv.DictWriter(outfile, keys_csv)
             csv_writer.writeheader()
             csv_writer.writerows(self.res_all)
-
-
-    def merging_output(self):
-        self.res_dict = []
-        for ii, test in enumerate(self.tests_regr):
-            self.res_dict.append(OrderedDict())
-            self._merging_output_test(ii)
-
-
-    def _merging_output_test(self, test_id):
-        # creating a list with results, each element has a dict with soft desc. and result
-        self._res_list = []
-        # create dictionary env: list for all env desc. (indexes from self.env_parameters),
-        # and results: list of results for all env
-        for key in self.env_parameters:
-            self.res_dict[test_id][key] = []
-        self.res_dict[test_id]["result"] = []
-
-        for ii, soft_d in enumerate(self.matrix_envs_dict):
-            el_dict = deepcopy(soft_d)
-            file_name = "report_regr_{}_{}_{}.txt".format(test_id, os.path.basename(self.workflow_path),
-                                                     self.soft_str[ii])
-            for k, val in soft_d.items():
-                self.res_dict[test_id][k].append(self.env_parameters[k].index(val))
-
-            if self.docker_status[ii] == "docker ok":
-                with open(file_name) as f:
-                    f_txt = f.read()
-                    if "PASS" in f_txt:
-                        el_dict["result"] = "PASS"
-                        self.res_dict[test_id]["result"].append("1")
-                    elif "FAIL" in f_txt:
-                        el_dict["result"] = "FAIL"
-                        self.res_dict[test_id]["result"].append("0")
-                    else:
-                         el_dict["result"] = "N/A"
-                         self.res_dict[test_id]["result"].append("2")
-            else:
-                 el_dict["result"] = "N/A"
-                 self.res_dict[test_id]["result"].append("2")
-            self._res_list.append(el_dict)
-
-        # saving merged results in one csv file
-        keys_csv = self._res_list[0].keys()
-        with open("{}_output_{}.csv".format(os.path.basename(self.workflow_path), test_id), 'w') as outfile:
-            csv_writer = csv.DictWriter(outfile, keys_csv)
-            csv_writer.writeheader()
-            csv_writer.writerows(self._res_list)
 
 
     def plot_all_results_paralcoord(self):
@@ -228,36 +179,4 @@ class WorkflowRegtest(object):
         )
 
         fig = go.Figure(data=data, layout = layout)
-        plot(fig, filename='parcoords_{}_All'.format(os.path.basename(self.workflow_path)))
-
-
-    def plot_workflow_result_paralcoord(self):
-        for ii, test in enumerate(self.tests_regr): #will probably use also name later
-            self._plot_workflow_result_paralcoord_test(ii)
-
-    def _plot_workflow_result_paralcoord_test(self, test_id):
-        """plotting results, this has to be cleaned TODO"""
-        import pandas
-        import plotly.graph_objs as go
-        from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
-
-        df = pandas.DataFrame(self.res_dict[test_id])
-
-        list_pl = []
-        for i, k in self.env_parameters.items():
-            list_pl.append(dict(label=i, values=df[i], tickvals=list(range(len(k))), ticktext=k ))
-        list_pl.append(dict(label="result", values=df["result"],
-                            tickvals=[0, 1, 2], ticktext=["fail", "pass", "N/A"]))
-        colors_d = {'0': "red", '1': "green", '2': "black"}
-        my_colorscale =[]
-        for ii in set(df["result"]):
-            my_colorscale.append([ii, colors_d[ii]])
-        line_pl = dict(color=df["result"], colorscale = my_colorscale)
-        data = [go.Parcoords(line=line_pl, dimensions=list_pl)]
-        layout = go.Layout(
-            plot_bgcolor='#E5E5E5',
-            paper_bgcolor='#E5E5E5'
-        )
-
-        fig = go.Figure(data=data, layout = layout)
-        plot(fig, filename='parcoords_{}_{}'.format(os.path.basename(self.workflow_path), test_id))
+        plot(fig, filename=os.path.join(self.working_dir,'parcoords_{}_All'.format(os.path.basename(self.workflow_path))))

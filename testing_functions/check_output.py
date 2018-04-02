@@ -1,7 +1,7 @@
 #/usr/bin/env python
 
 import json
-import os
+import os, inspect
 from glob import glob
 import pandas as pd
 import numpy as np
@@ -27,37 +27,9 @@ def creating_dataframe(files_list):
     return df.T
 
 
-if __name__ == "__main__":
-    from argparse import ArgumentParser, RawTextHelpFormatter
-    defstr = ' (default %(default)s)'
-    parser = ArgumentParser(description=__doc__,
-                            formatter_class=RawTextHelpFormatter)
-    parser.add_argument("--ignoremissing", dest="nanignore", action="store_true",
-                        default=True,
-                        help="Ignore missing subjects when comparing")
-    parser.add_argument("-out", dest="file_out",
-                        help="file with the output for testing")
-    parser.add_argument("-ref", dest="file_ref",
-                        help="file with the reference output")
-    parser.add_argument("-report", dest="report_filename",
-                        help="file to save tests output")
-
-    args = parser.parse_args()
-
-    #expected_files = sorted(glob('expected_output/*/segstats.json'))
-
-    #if len(expected_files) < 24:
-    #    raise ValueError('Expected 24 files, but only %d files exist' % len(expected_files))
-
-    #output_files = sorted(glob('output/*/segstats.json'))
-    #if len(output_files) == 0:
-    #    raise ValueError('Output has no files')
-
-    #if len(output_files) != len(expected_files):
-    #    print('Mismatch in number of expected (%d) and actual (%d) output files' % (len(expected_files),
-    #                                                                                len(output_files)))
-    expected_files = [args.file_ref]
-    output_files = [args.file_out]
+def check_output(file_out, file_ref=None, name=None, **kwargs):
+    expected_files = [file_ref]
+    output_files = [file_out]
 
     df_exp = creating_dataframe(expected_files)
     df_out = creating_dataframe(output_files)
@@ -66,53 +38,30 @@ if __name__ == "__main__":
     #df_out.to_csv('output/ActualOutput.csv')
 
     df_diff = df_exp - df_out
+    df_diff = df_diff.dropna()
 
-    if args.nanignore:
-        df_diff = df_diff.dropna()
-    #df_diff.to_csv('output/Difference.csv')
+    report_filename = "report_{}.json".format(name)
+    out = {}
+    try:
+        assert np.allclose(df_diff, 0, rtol=1e-15, atol=1e-18)
+        out["regr"] = "PASSED"
+    except(AssertionError):
+        out["regr"] = "FAILED"
 
-    if np.allclose(df_diff, 0, rtol=1e-15, atol=1e-18):
-        print('Outputs MATCH')
-        with open(args.report_filename, "a") as f:
-            f.write(("Test: {}, OutputFile: {}: PASSED (diff =\n {})\n"
-                     ).format(os.path.basename(__file__),
-                              os.path.basename(args.file_out),
-                              df_diff))
-    else:
-        print('Outputs are not close enough. Printing difference')
-        print(df_diff)
-        with open(args.report_filename, "a") as f:
-            f.write(("Test: {}, OutputFile: {}: FAILED (diff =\n {})\n"
-                     ).format(os.path.basename(__file__),
-                              os.path.basename(args.file_out),
-                              df_diff))
+    with open(report_filename, "w") as f:
+        json.dump(out, f)
 
 
-#    import rdflib as rl
-#    query = """
-#    PREFIX nipype: <http://nipy.org/nipype/terms/>  
-#    PREFIX prov: <http://www.w3.org/ns/prov#>
-#    
-#    SELECT DISTINCT ?platform ?fslversion
-#    { ?a a prov:Activity;
-#         nipype:platform ?platform;
-#         nipype:version ?fslversion .
-#         FILTER (?fslversion != 'Unknown')
-#    }  
-#    """
-#    prov_files = sorted(glob('expected_output/workflow_prov*.trig'))
-#
-#    g = rl.ConjunctiveGraph()
-#    g.parse(prov_files[0], format='trig')
-#    res = g.query(query)
-#    print("Original platform: {}".format(str(res.bindings[0]['platform'])))
-#    print("Original FSL version: {}".format(str(res.bindings[0]['fslversion'])))
-
-#    prov_files = sorted(glob('output/workflow_prov*.trig'))
-
-#    g = rl.ConjunctiveGraph()
-#    g.parse(prov_files[-1], format='trig')
-#    res = g.query(query)
-#    for val in res.bindings:
-#        print("Current platform: {}".format(str(val['platform'])))
-#        print("Current FSL version: {}".format(str(val['fslversion'])))
+if __name__ == "__main__":
+    from argparse import ArgumentParser, RawTextHelpFormatter
+    defstr = ' (default %(default)s)'
+    parser = ArgumentParser(description=__doc__,
+                            formatter_class=RawTextHelpFormatter)
+    parser.add_argument("-out", dest="file_out",
+                        help="file with the output for testing")
+    parser.add_argument("-ref", dest="file_ref",
+                        help="file with the reference output")
+    parser.add_argument("-name", dest="name",
+                        help="name of the test provided by a user")
+    args = parser.parse_args()
+    check_output(**vars(args))

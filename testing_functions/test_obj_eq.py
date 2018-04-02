@@ -1,9 +1,9 @@
 """Checking if lists from two json files are equal"""
 
-import os, json
+import os, json, pdb
 import inspect
 
-def test_obj_eq(file_out, file_ref, report_filename):
+def test_obj_eq(file_out, file_ref=None, name=None, **kwargs):
 
     with open(file_out) as f:
         try:
@@ -17,16 +17,17 @@ def test_obj_eq(file_out, file_ref, report_filename):
         except:
             obj_ref = f.read().strip()
 
+    report_filename = "report_{}.json".format(name)
+    print("TEST", report_filename)
+    out = {}
     try:
         assert obj_out == obj_ref
-        with open(report_filename, "a") as f:
-            f.write("Test: {}, OutputFile: {}: PASSED\n".format(inspect.stack()[0][3],
-                                                                os.path.basename(file_out)))
-
+        out["regr"] = "PASSED"
     except(AssertionError):
-        with open(report_filename, "a") as f:
-            f.write("Test: {}, OutputFile: {}: FAILED\n".format(inspect.stack()[0][3],
-                                                                os.path.basename(file_out)))
+        out["regr"] = "FAILED"
+
+    with open(report_filename, "w") as f:
+        json.dump(out, f)
 
 
 if __name__ == '__main__':
@@ -37,8 +38,8 @@ if __name__ == '__main__':
                         help="file with the output for testing")
     parser.add_argument("-ref", dest="file_ref",
                         help="file with the reference output")
-    parser.add_argument("-report", dest="report_filename",
-                        help="file to save tests output")
+    parser.add_argument("-name", dest="name",
+                        help="name of the test provided by a user")
     args = parser.parse_args()
 
     test_obj_eq(**vars(args))

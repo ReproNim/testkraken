@@ -14,14 +14,8 @@
     },
     "inputs": [],
     "script": "mean_random_numbers.py",
-    "tests_regr": [
-        [
-            "mean.json",
-            "test_rand_almosteq.py"
-        ],
-        [
-            "mean_2.json",
-            "test_rand_almosteq.py"
+    "tests": [
+        {"file": "mean.json", "script": "test_rand_almosteq.py", "name": "tests1"},
+        {"file": "mean_2.json", "script": "test_rand_almosteq.py", "name": "tests2"}
         ]
-    ]
 }
