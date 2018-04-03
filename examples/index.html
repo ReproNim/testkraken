@@ -1,0 +1,92 @@
+<!--
+TODO:
+  - Decide what should be included in the dashboard.
+  - Remove bootstrap as a dependency. This page should be simple, and
+      responsiveness on mobile is not really a concern.
+  - Save test result data within this file. This file should not have any
+      dependencies that cannot be fulfilled via a CDN.
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+  <meta charset="utf-8">
+  <head>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.3/css/bootstrap.min.css" integrity="sha384-Zug+QiDoJOrZ5t4lssLdxGhVrurbmBWopoEl+M6BdEfwnCJZtKxi1KgxUyJq13dy" crossorigin="anonymous">
+    <link rel="stylesheet" href="style.css">
+
+    <!-- SlickGrid -->
+    <link rel="stylesheet" href="lib/slickgrid/css/smoothness/jquery-ui-1.11.3.custom.css" type="text/css"/>
+
+    <link rel="stylesheet" href="lib/slickgrid/slick.grid.css" type="text/css"/>
+    <link rel="stylesheet" href="lib/slickgrid/controls/slick.pager.css" type="text/css"/>
+
+    <script src="lib/slickgrid/lib/jquery-3.1.0.js"></script>
+    <script src="lib/slickgrid/lib/jquery-ui-1.11.3.js"></script>
+    <script src="lib/slickgrid/lib/jquery.event.drag-2.3.0.js"></script>
+    <script src="lib/underscore.js"></script>
+    <script src="lib/underscore.math.js"></script>
+
+    <script src="lib/slickgrid/slick.core.js"></script>
+    <script src="lib/slickgrid/slick.grid.js"></script>
+    <script src="lib/slickgrid/controls/slick.pager.js"></script>
+    <script src="lib/slickgrid/slick.dataview.js"></script>
+    <!-- End SlickGrid -->
+
+    <script src="lib/d3.min.js"></script>
+    <script src="lib/d3.svg.multibrush.js"></script>
+
+    <script src="lib/clipboard-js/dist/clipboard.min.js"></script>
+
+    <link rel="stylesheet" type="text/css" href="fa/css/font-awesome.min.css" />
+
+    <link rel="stylesheet" type="text/css" href="lib/parcoords/d3.parcoords.css" />
+    <link rel="stylesheet" type="text/css" href="style.css" />
+    <script src="lib/parcoords/d3.parcoords.js"></script>
+    <link rel="stylesheet" type="text/css" href="lib/introjs/minified/introjs.min.css" />
+    <script src="lib/introjs/minified/intro.min.js"></script>
+
+  </head>
+
+  <body>
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <h1 class="navbar-brand">ReproNim Robustness Test Results</h1>
+    </nav>
+
+    <!-- parallel coordinate plot -->
+    <div id="parcoord-plot" class="parcoords bg-onedark"></div>
+
+    <!-- grid of test info / results -->
+    <div id="grid-container">
+        <div id="pager"></div>
+        <div id="grid"></div>
+    </div>
+
+    <!-- summaries / plots based on input csv -->
+    <div id="summary" class="top-buffer">
+      <h2>Summary</h2>
+      <p>Include general descriptive statistics about the tests run.</p>
+      <ul>
+        <li>Number of tests run (#passed, #failed, #error)</li>
+        <li>Information on runtime? (amount of time taken, etc)</li>
+      </ul>
+    </div>
+
+    <div id="Plots">
+      <h2>Plots</h2>
+      <ul>
+        <li>Where relevant, include plots of results. For example, brain volume per environment.</li>
+      </ul>
+
+      <div id='chart-bar-brainvolume'></div>
+    </div>
+
+    <script src="https://d3js.org/d3.v3.min.js"></script> -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/parcoords/0.7.0/d3.parcoords.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/c3/0.4.21/c3.min.js"></script>
+
+    <script src="dashboard.js"></script>
+
+
+
+  </body>
+</html>
