@@ -17,3 +17,4 @@ if __name__ == "__main__":
         wf.merging_all_output()
         # # TODO: this method will be removed
         wf.plot_all_results_paralcoord()
+        wf.dashboard_workflow()
