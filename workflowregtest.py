@@ -126,7 +126,7 @@ class WorkflowRegtest(object):
                     with open(file_name) as f:
                         f_dict = json.load(f)
                         for key, res in f_dict.items():
-                                el_dict["test_{}:{}".format(test["name"], key)] = res
+                                el_dict["{}:{}".format(test["name"], key)] = res
             else:
                 no_docker.append(ii)
             self.res_all.append(el_dict)
