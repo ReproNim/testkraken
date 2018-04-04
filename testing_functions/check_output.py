@@ -40,8 +40,6 @@ def check_output(file_out, file_ref=None, name=None, **kwargs):
     # DJ TOD: this doesn't work, check with the original repo
     #df_diff = df_exp - df_out
     #df_diff = df_diff.dropna()
-    import pdb
-    pdb.set_trace()
 
     report_filename = "report_{}.json".format(name)
     out = {}
