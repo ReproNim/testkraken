@@ -58,7 +58,7 @@ d3.csv("results.csv", function(data) {
 
     dataView = new Slick.Data.DataView();
     var grid = new Slick.Grid("#grid", dataView, columns, options);
-    var pager = new Slick.Controls.Pager(dataView, grid, $("#pager"));
+    // var pager = new Slick.Controls.Pager(dataView, grid, $("#pager"));
 
     function gridUpdate(data) {
         dataView.beginUpdate();
