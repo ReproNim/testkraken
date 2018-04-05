@@ -19,8 +19,20 @@
     ],
     "script": "sorting.py",
     "tests": [
-        {"file": "list_sorted.json", "script": "test_obj_eq.py", "name": "regr1"},
-        {"file": "sum_list.json", "script": "test_obj_eq.py", "name": "regr2"},
-        {"file": "list_sorted.json", "script": "stat_list.py", "name": "stat"}
+        {
+	"file": "list_sorted.json", 
+	"script": "test_obj_eq.py", 
+	"name": "regr1"
+	},
+        {
+	"file": "sum_list.json", 
+	"script": "test_obj_eq.py", 
+	"name": "regr2"
+	},
+        {
+	"file": "list_sorted.json", 
+	"script": "stat_list.py", 
+	"name": "stat"
+	}
     ]
 }

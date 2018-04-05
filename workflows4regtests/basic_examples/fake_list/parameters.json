@@ -20,6 +20,10 @@
     ],
     "script": "div_list.py",
     "tests": [
-        {"file": "list_final.json", "script": "test_el_list_eq.py", "name": "regr"}
+        {
+	"file": "list_final.json", 
+	"script": "test_el_list_eq.py", 
+	"name": "regr"
+	}
     ]
 }
