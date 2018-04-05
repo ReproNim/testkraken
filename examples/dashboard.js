@@ -14,9 +14,9 @@ d3.csv("results.csv", function(data) {
     dataset = data;
 
     var colors = {
-      "pass": "green",
-      "fail": "red",
-      "error": "gray"
+        "pass": "green",
+        "fail": "red",
+        "error": "gray"
     };
 
     function colorByResult(result) {
@@ -24,17 +24,17 @@ d3.csv("results.csv", function(data) {
     }
 
     parcoords = d3.parcoords()("#parcoord-plot")
-    .data(data)
-    .alpha(0.5)
-    .mode("queue")
-    .rate(30)
-    .margin({ top: 30, left: 0, bottom: 20, right: 0 })
-    .hideAxis(["id"])
-    .color(function(d) {return colorByResult(d.result);})
-    .render()
-    .reorderable()
-    .brushMode("1D-axes")
-    .autoscale();
+        .data(data)
+        .alpha(0.5)
+        .mode("queue")
+        .rate(30)
+        .margin({ top: 30, left: 0, bottom: 20, right: 0 })
+        .hideAxis(["id"])
+        .color(function (d) {return colorByResult(d.result); })
+        .render()
+        .reorderable()
+        .brushMode("1D-axes")
+        .autoscale();
 
     // slickgrid
     var column_keys = d3.keys(data[0]);
@@ -46,7 +46,7 @@ d3.csv("results.csv", function(data) {
         forceFitColumns: true
     };
 
-    var columns = column_keys.map(function (key, i) {
+    var columns = column_keys.map(function (key) {
         return {
             id: key,
             name: key,
