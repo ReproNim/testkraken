@@ -44,13 +44,15 @@ def check_output(file_out, file_ref=None, name=None, **kwargs):
     report_filename = "report_{}.json".format(name)
     out = {}
 
-    for key in df_exp.columns and "voxels" in key: 
-        if df_exp[key].values[0] != 0.:
-            out["diff:{}".format(key.replace("_voxels", ""))] = round(1. * abs(df_exp[key].values[0] - df_out[key].values[0]) / df_exp[key].values[0], 3)
-        elif df_out[key].values[0] != 0.:
-            out["diff:{}".format(key.replace("_voxels", ""))] = 1.
-        else:
-            out["diff:{}".format(key.replace("_voxels", ""))] = 0.
+    for key in df_exp.columns:
+        if "voxels" in key: 
+            if df_exp[key].values[0] != 0.:
+                out["diff:{}".format(key.replace("_voxels", ""))] = round(
+                    1. * abs(df_exp[key].values[0] - df_out[key].values[0]) / df_exp[key].values[0], 3)
+            elif df_out[key].values[0] != 0.:
+                out["diff:{}".format(key.replace("_voxels", ""))] = 1.
+            else:
+                out["diff:{}".format(key.replace("_voxels", ""))] = 0.
 
     diff = [val for k, val in out.items()]
 
