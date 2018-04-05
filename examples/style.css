@@ -54,7 +54,7 @@ h1, h2, h3, li, p, text {
 #grid-container {
    position: relative;
    width: 95vw;
-   height: 50vh;
+   height: 40vh;
    overflow: hidden;
    overflow-y: scroll;
 }
