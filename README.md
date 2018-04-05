@@ -39,7 +39,11 @@
     ],
     "script": "run_demo_workflow.py",
     "tests": [
-        {"file": "output/metaflow/AnnArbor_sub16960/save_json/segstats.json", "script": "check_output.py", "name": "test"}
+        {
+        "file": "output/metaflow/AnnArbor_sub16960/save_json/segstats.json", 
+        "script": "check_output.py", 
+        "name": "test"
+        }
     ]
 }
 ```
