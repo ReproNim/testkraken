@@ -1,0 +1,60 @@
+body, .bg-onedark { background: hsl(220, 13%, 18%); }
+
+h1, h2, h3, li, p, text {
+  color: rgb(197,202,211);
+}
+.padding-0 { padding-left: 0; padding-right: 0; }
+.parcoords > canvas {
+  position: absolute;
+  pointer-events: none;
+}
+.parcoords text {
+  font: 16px sans-serif;
+  fill: rgb(197,202,211);
+}
+.parcoords text.label {
+  font: 18px sans-serif;
+}
+.parcoords canvas {
+  opacity: 1;
+  transition: opacity 0.3s;
+  -moz-transition: opacity 0.3s;
+  -webkit-transition: opacity 0.3s;
+  -o-transition: opacity 0.3s;
+}
+.parcoords canvas.faded {
+  opacity: 0.25;
+}
+.parcoords {
+  height: 350px;
+  width: 100%;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+.top-buffer {
+  padding-top: 50px;
+}
+
+#pager {
+    height: 5vh;
+}
+
+#grid {
+   position: relative;
+   height: 30vh;
+   width: 100%;
+   color: white;
+   bottom: 0;
+}
+
+#grid-container {
+   position: relative;
+   width: 95vw;
+   height: 40vh;
+   overflow: hidden;
+   overflow-y: scroll;
+}
