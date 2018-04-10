@@ -74,7 +74,7 @@ dependencies:
 - traits=4.6.0=py35_1
 - urllib3=1.22=py35_0
 - webencodings=0.5=py35_0
-- wheel=0.30.0=py_1
+- wheel=0.30.0=py35_2
 - xvfbwrapper=0.2.9=py35_0
 - xz=5.2.3=0
 - zlib=1.2.11=0
