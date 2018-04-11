@@ -182,7 +182,10 @@ if  __name__ == '__main__':
     else:
         work_dir = sink_dir
 
-    from StringIO import StringIO  # got moved to io in python3.
+    try:
+        from StringIO import StringIO  # got moved to io in python3.
+    except ImportError:
+        from io import StringIO
 
     import requests
     import pandas as pd
