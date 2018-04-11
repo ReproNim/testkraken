@@ -10,7 +10,6 @@ config.enable_provenance()
 from nipype import Workflow, Node, MapNode, Function
 from nipype.interfaces.fsl import BET, FAST, FIRST, Reorient2Std, ImageMaths, ImageStats
 from nipype.interfaces.io import DataSink
-
 def download_file(url):
     """Download file for a given participant"""
     import requests
@@ -185,7 +184,7 @@ if  __name__ == '__main__':
     try:
         from StringIO import StringIO  # got moved to io in python3.
     except ImportError:
-        from io import StringIO
+        from io import BytesIO as StringIO
 
     import requests
     import pandas as pd
