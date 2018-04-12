@@ -1,4 +1,4 @@
-name: bh_demo_3_test2
+name: bh_demo
 channels:
 - conda-forge
 - defaults
