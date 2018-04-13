@@ -10,6 +10,7 @@ config.enable_provenance()
 from nipype import Workflow, Node, MapNode, Function
 from nipype.interfaces.fsl import BET, FAST, FIRST, Reorient2Std, ImageMaths, ImageStats
 from nipype.interfaces.io import DataSink
+
 def download_file(url):
     """Download file for a given participant"""
     import requests
@@ -70,13 +71,12 @@ def toJSON(stats, seg_file, structure_map):
     reverse_map = {k:v for v, k in structure_map}
     out_dict = dict(zip([reverse_map[val] for val in idx], np.bincount(data.flatten())[idx]))
     for key in out_dict.keys():
-        out_dict[key] = [out_dict[key], voxel2vol * out_dict[key]]
+        out_dict[key] = [int(out_dict[key]), voxel2vol * out_dict[key]]
     mapper = dict([(0, 'csf'), (1, 'gray'), (2, 'white')])
     out_dict.update(**{mapper[idx]: val for idx, val in enumerate(stats)})
     out_file = 'segstats.json'
     with open(out_file, 'wt') as fp:
         json.dump(out_dict, fp, sort_keys=True, indent=4, separators=(',', ': '))
-    print("PATH", str(os.path.abspath(out_file)))
     return os.path.abspath(out_file)
 
 
@@ -181,19 +181,20 @@ if  __name__ == '__main__':
     else:
         work_dir = sink_dir
 
-    try:
-        from StringIO import StringIO  # got moved to io in python3.
-    except ImportError:
-        from io import BytesIO as StringIO
-
+    import sys
     import requests
     import pandas as pd
 
     #key = '11an55u9t2TAf0EV2pHN0vOd8Ww2Gie-tHp9xGULh_dA'
     r = requests.get('https://docs.google.com/spreadsheets/d/{key}/export?format=csv&id={key}'.format(key=args.key))
-    data = r.content
+    if sys.version_info < (3,):
+        from StringIO import StringIO  # got moved to io in python3.
+        data = StringIO(r.content)
+    else:
+        from io import StringIO
+        data = StringIO(r.content.decode())
 
-    df = pd.read_csv(StringIO(data))
+    df = pd.read_csv(data)
     max_subjects = df.shape[0]
     if args.num_subjects:
         max_subjects = args.num_subjects
