@@ -1,0 +1,24 @@
+{
+    "pkg_manager": "apt",
+    "check_urls": false,
+    "instructions": [
+        [
+            "base",
+            "ubuntu:16.04"
+        ],
+        [
+            "miniconda",
+            {
+                "conda_install": "python=2.7",
+                "env_name": "test",
+                "activate": "true"
+            }
+        ],
+        [
+            "pip_install",
+            {
+                "version": "numpy"
+            }
+        ]
+    ]
+}
