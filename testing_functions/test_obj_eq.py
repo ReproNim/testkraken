@@ -1,5 +1,5 @@
 """Checking if lists from two json files are equal"""
-
+from __future__ import division
 import os, json, pdb
 import inspect
 

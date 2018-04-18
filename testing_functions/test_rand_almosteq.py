@@ -1,5 +1,5 @@
 """testing the results for a specific seed"""
-
+from __future__ import division
 import os, json
 import inspect
 import random
@@ -15,11 +15,14 @@ def test_rand_almosteq(file_out, file_ref=None, name=None, **kwargs):
     report_filename = "report_{}.json".format(name)
     print("TEST", report_filename)
     out = {}
+    diff = abs(res_out - res_ref) / res_ref
+    out["diff"] = diff
     try:
-        assert abs(res_out - res_ref) < 0.1
+        assert diff < 0.05
         out["regr"] = "PASSED"
     except(AssertionError):
         out["regr"] = "FAILED"
+
 
     with open(report_filename, "w") as f:
         json.dump(out, f)

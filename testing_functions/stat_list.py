@@ -1,5 +1,5 @@
 """testing the results for a specific seed"""
-
+from __future__ import division
 import os, json
 import inspect
 import random
