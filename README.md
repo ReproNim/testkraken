@@ -1,6 +1,6 @@
 # Regression tests
 
-## Preparing workflow for testing 
+## Preparing workflow for testing
 
 * each workflow should have a separate dictionary under `workflows4regtests`
 * the workflow with command line interface should be in the `workflow` subdirectory
@@ -8,7 +8,7 @@
 * all reference results should be saved in the `data_ref` subdirectory
 * each workflow should have `parameters.json` to describe environment, input data, script and command to run the workflow, and chosen tests for the workflow outputs, e.g.
 
-```
+```json
 {
     "command": "python",
     "env": {

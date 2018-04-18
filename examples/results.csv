@@ -1,0 +1,5 @@
+id,base,freesurfer,ants,mindboggle,result,brain:volume,hippocampus:volume
+0,debian:stretch,6.0.0-min,2.2.0,1.2.3,pass,360000,100
+1,centos:7,6.0.0-min,2.2.0,1.2.3,pass,370000,50
+2,debian:stretch,6.0.0-min,2.1.0,1.2.3,pass,350000,75
+3,centos:7,6.0.0-min,2.1.0,1.2.3,fail,350000,60
