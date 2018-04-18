@@ -2,7 +2,7 @@
 
 import itertools
 import json, csv
-import os
+import os, shutil
 import subprocess
 import tempfile
 import pdb
@@ -138,7 +138,7 @@ class WorkflowRegtest(object):
                     self.res_all[ii][key] = "N/A"
 
         keys_csv = self.res_all[0].keys()
-        with open(os.path.join(self.working_dir, "{}_output_all.csv".format(os.path.basename(self.workflow_path))), 'w') as outfile:
+        with open(os.path.join(self.working_dir, "output_all.csv"), 'w') as outfile:
             csv_writer = csv.DictWriter(outfile, keys_csv)
             csv_writer.writeheader()
             csv_writer.writerows(self.res_all)
@@ -180,3 +180,9 @@ class WorkflowRegtest(object):
 
         fig = go.Figure(data=data, layout = layout)
         plot(fig, filename=os.path.join(self.working_dir,'parcoords_{}_All'.format(os.path.basename(self.workflow_path))))
+
+
+    def dashboard_workflow(self):
+        js_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "examples")
+        for js_template in ["dashboard.js", "index.html", "style.css"]:
+            shutil.copy2(os.path.join(js_dir, js_template), self.working_dir)

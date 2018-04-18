@@ -3,7 +3,7 @@ var dataset;
 var dataView;
 
 
-d3.csv("results.csv", function(data) {
+d3.csv("output_all.csv", function(data) {
 
     "use strict";
 
@@ -30,7 +30,7 @@ d3.csv("results.csv", function(data) {
         .rate(30)
         .margin({ top: 30, left: 0, bottom: 20, right: 0 })
         .hideAxis(["id"])
-        .color(function (d) {return colorByResult(d.result); })
+        //.color(function (d) {return colorByResult(d.result); })
         .render()
         .reorderable()
         .brushMode("1D-axes")
