@@ -142,7 +142,7 @@ def _generate_dockerfile(dir_, neurodocker_dict, sha1):
         json.dump(neurodocker_dict, fp, indent=4)
 
     base_cmd = (
-        "docker run --rm -v {dir}/json:/json:ro kaczmarj/neurodocker:master"
+        "docker run --rm -v {dir}/json:/json:ro kaczmarj/neurodocker:v0.3.2"
         " generate --file /json/{filepath}"
     )
 
