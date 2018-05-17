@@ -20,7 +20,7 @@ import cwl_generator as cwlg
 class WorkflowRegtest(object):
     def __init__(self, workflow_path, base_dir=None):
         if base_dir:
-            self.base_dir = bas_dir
+            self.base_dir = base_dir
         else:
             self.base_dir = os.getcwd()
         self.workflow_path = workflow_path

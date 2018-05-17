@@ -34,12 +34,10 @@ finally:
 
 """
 
-import itertools
 import json
 import os
 import subprocess
 from collections import OrderedDict
-import pdb
 
 
 def list_to_neurodocker_instruction(iterable):
@@ -52,11 +50,12 @@ def list_to_neurodocker_instruction(iterable):
     """
     program_name, version = iterable
 
+    # In the case of python, `version` is a dictionary of `conda_install` and
+    # `pip_install`.
     if program_name in ['python']:
         program_name = "miniconda"
-        conda_install = 'python={}'.format(version)
         spec = {
-            'conda_install': conda_install,
+            **version,
             'env_name': "test",
             'activate': "true"
         }
@@ -68,7 +67,6 @@ def list_to_neurodocker_instruction(iterable):
             'env_name': "test",
             'activate': "true"
         }
-
 
     elif program_name in ['base']:
         spec = version
@@ -99,6 +97,24 @@ def get_dictionary_hash(d):
     return sha1.hexdigest()
 
 
+def prep_python_dict(env):
+    """Modify in-place list of environments with `python`, `conda_install`, and
+    `pip_install` items combined.
+    """
+    env = OrderedDict(env)
+    if 'python' in env:
+        pyversion = "python={} ".format(env['python'])
+        env['python'] = {
+            'conda_install': pyversion + env.get('conda_install', " "),
+            'pip_install': env.get('pip_install', None),
+        }
+        env['python']['conda_install'] = env['python']['conda_install'].strip()
+        env.pop('conda_install', None)
+        env.pop('pip_install', None)
+    env = list(env.items())
+    return env
+
+
 def get_dict_of_neurodocker_dicts(env_matrix):
     """Return dictionary of Neurodocker dictionaries given a matrix of
     environment parameters. Keys are the SHA-1 hashes of the 'instructions'
@@ -106,8 +122,11 @@ def get_dict_of_neurodocker_dicts(env_matrix):
     """
     dict_of_neurodocker_dicts = []
     for ii, params in enumerate(env_matrix):
-        instructions = tuple(list_to_neurodocker_instruction(ii)
-                             for ii in params)
+        # Move around miniconda-related keys into one dictionary value per
+        # environment.
+        params = prep_python_dict(params)
+        instructions = tuple(
+            list_to_neurodocker_instruction(ii) for ii in params)
         neurodocker_dict = instructions_to_neurodocker_specs(instructions)
         this_hash = get_dictionary_hash(neurodocker_dict['instructions'])
         dict_of_neurodocker_dicts.append((this_hash, neurodocker_dict))
@@ -125,7 +144,7 @@ def _generate_dockerfile(dir_, neurodocker_dict, sha1):
         json.dump(neurodocker_dict, fp, indent=4)
 
     base_cmd = (
-        "docker run --rm -v {dir}/json:/json:ro kaczmarj/neurodocker:master"
+        "docker run --rm -v {dir}/json:/json:ro kaczmarj/neurodocker:v0.3.2"
         " generate --file /json/{filepath}"
     )
 
