@@ -101,6 +101,7 @@ def prep_python_dict(env):
     """Modify in-place list of environments with `python`, `conda_install`, and
     `pip_install` items combined.
     """
+    env = OrderedDict(env)
     if 'python' in env:
         pyversion = "python={} ".format(env['python'])
         env['python'] = {
@@ -110,6 +111,7 @@ def prep_python_dict(env):
         env['python']['conda_install'] = env['python']['conda_install'].strip()
         env.pop('conda_install', None)
         env.pop('pip_install', None)
+    env = list(env.items())
     return env
 
 
