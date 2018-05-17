@@ -124,7 +124,7 @@ def get_dict_of_neurodocker_dicts(env_matrix):
         # environment.
         params = prep_python_dict(params)
         instructions = tuple(
-            list_to_neurodocker_instruction(ii) for ii in params.items())
+            list_to_neurodocker_instruction(ii) for ii in params)
         neurodocker_dict = instructions_to_neurodocker_specs(instructions)
         this_hash = get_dictionary_hash(neurodocker_dict['instructions'])
         dict_of_neurodocker_dicts.append((this_hash, neurodocker_dict))
