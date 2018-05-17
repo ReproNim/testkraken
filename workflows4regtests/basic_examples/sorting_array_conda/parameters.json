@@ -6,8 +6,11 @@
             "ubuntu:16.04"
         ],
         "python": [
-            "2.7 numpy",
-            "3.5 numpy"
+            "2.7",
+            "3.5"
+        ],
+        "conda_install": [
+            "numpy"
         ]
     },
     "inputs": [
