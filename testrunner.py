@@ -1,8 +1,6 @@
 """Running workflows and regression tests for all projects in chosen dictionary"""
 
-import os, subprocess, json
-import itertools
-import pdb
+import os
 
 from workflowregtest import WorkflowRegtest
 
