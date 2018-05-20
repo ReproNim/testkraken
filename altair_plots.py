@@ -42,7 +42,7 @@ class AltairPlots(object):
     def _index_read(self):
         with open(self.index) as inf:
             txt = inf.read()
-            soup = bs4.BeautifulSoup(txt, "html5lib")
+            soup = bs4.BeautifulSoup(txt, 'html.parser')
         return soup
 
     def _index_write(self):
