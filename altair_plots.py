@@ -1,6 +1,6 @@
 import altair as alt
 import bs4
-import os
+import os, pdb
 import pandas as pd
 
 
@@ -20,6 +20,7 @@ class AltairPlots(object):
             self._js_create(plot_dict, ii)
         self._index_write()
 
+
     def scatter_all(self, var_l):
         res_plot = self.results[eval(var_l)+["env"]]
         res_transf = res_plot.reset_index().melt(['env', 'index'])
@@ -30,6 +31,24 @@ class AltairPlots(object):
                 color='env:N').properties(
                 width=400).interactive().to_dict()
         return plot_dict
+
+
+    def barplot_all(self, var_l):
+        res_plot = self.results[eval(var_l)+["env"]]
+        res_transf = res_plot.reset_index().melt(['env', 'index'])
+        base = alt.Chart(res_transf).mark_bar(
+                ).encode(
+                x='variable:N',
+                y='value:Q',
+                color='env:N').properties(
+                width=400)
+
+        chart = alt.hconcat()
+        for env in [ee for ee in self.results.env if ee != "N/A"]:
+            chart |= base.transform_filter(alt.expr.datum.env == env)
+        plot_dict = chart.to_dict()
+        return plot_dict
+
 
 
     def _js_create(self, plot_dict, id):
