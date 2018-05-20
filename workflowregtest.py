@@ -12,9 +12,11 @@ import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt, mpld3
 import numpy as np
+import pandas as pd
 
 import container_generator as cg
 import cwl_generator as cwlg
+from altair_plots import AltairPlots
 
 
 class WorkflowRegtest(object):
@@ -29,6 +31,7 @@ class WorkflowRegtest(object):
         with open(os.path.join(self.workflow_path, "parameters.json")) as param_js:
             self.parameters = json.load(param_js, object_pairs_hook=OrderedDict)
         self.env_parameters = self.parameters["env"]
+        self.plot_parameters = self.parameters["plots"]
         self.script = os.path.join(self.workflow_path, "workflow",
                                    self.parameters["script"])
         self.command = self.parameters["command"] # TODO: adding arg
@@ -118,6 +121,10 @@ class WorkflowRegtest(object):
         for ii, soft_d in enumerate(self.matrix_envs_dict):
             #self.res_all.append(deepcopy(soft_d))
             el_dict = deepcopy(soft_d)
+            el_dict["env"] = "base-" + el_dict["base"]
+            for key in self.env_parameters.keys():
+                if key != "base":  # this is already included and it's always the first part
+                    el_dict["env"] += "_{}-{}".format(key, el_dict[key])
             if self.docker_status[ii] == "docker ok":
                 ii_ok = ii
                 for (iir, test) in enumerate(self.tests):
@@ -142,6 +149,8 @@ class WorkflowRegtest(object):
             csv_writer = csv.DictWriter(outfile, keys_csv)
             csv_writer.writeheader()
             csv_writer.writerows(self.res_all)
+
+        self.res_all_df = pd.DataFrame(self.res_all)
 
 
     def plot_all_results_paralcoord(self):
@@ -186,3 +195,10 @@ class WorkflowRegtest(object):
         js_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "examples")
         for js_template in ["dashboard.js", "index.html", "style.css"]:
             shutil.copy2(os.path.join(js_dir, js_template), self.working_dir)
+
+        plot_spec_tmp = [("scatter_all", ['test_regr:0', 'test_regr:1', 'test_regr:2',
+                                         'test_regr:3', 'test_regr:4', 'test_regr:5',
+                                         'test_regr:6','test_regr:7', 'test_regr:8',
+                                         'test_regr:9', 'test_regr:regr'])]
+        ap = AltairPlots(self.working_dir, self.res_all_df, self.plot_parameters)
+        ap.create_plots()
