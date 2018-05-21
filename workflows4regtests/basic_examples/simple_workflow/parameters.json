@@ -2,8 +2,7 @@
     "command": "python",
     "env": {
         "base": [
-        "debian:stretch",
-        "ubuntu:16.04"
+        "debian:stretch"
         ],
 	"python": [
             "2.7",
