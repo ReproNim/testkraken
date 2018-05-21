@@ -110,7 +110,7 @@ def prep_python_dict(env):
                 "python can be specified in 'python' key or in 'conda_install'"
                 " key but not in both.")
         if pyversion:
-            pyversion = "python={}".format(pyversion)
+            pyversion = "python={} ".format(pyversion)
         else:
             pyversion = ""
 
