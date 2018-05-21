@@ -29,7 +29,7 @@ class AltairPlots(object):
                 x='variable:N',
                 y='value:Q',
                 color='env:N').properties(
-                width=400, background="white").interactive().to_dict()
+                width=400, background="#a9a3b7").interactive().to_dict()
         return plot_dict
 
 
@@ -46,7 +46,7 @@ class AltairPlots(object):
                 x='variable:N',
                 color='env:N').properties(
                 width=400)
-        chart = alt.hconcat().properties(background="white")
+        chart = alt.hconcat().properties(background="#a9a3b7")
         for env in [ee for ee in self.results.env if ee != "N/A"]:
             chart |= base.transform_filter(alt.expr.datum.env == env)
 
