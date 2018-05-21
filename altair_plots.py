@@ -45,11 +45,11 @@ class AltairPlots(object):
                 y=y_bar,
                 x='variable:N',
                 color='env:N').properties(
-                width=400, background="white")
-
-        chart = alt.hconcat()
+                width=400)
+        chart = alt.hconcat().properties(background="white")
         for env in [ee for ee in self.results.env if ee != "N/A"]:
             chart |= base.transform_filter(alt.expr.datum.env == env)
+
         plot_dict = chart.to_dict()
         return plot_dict
 
