@@ -4,6 +4,10 @@
         "base": [
             "ubuntu:16.04"
         ],
+	"python": [
+            "2.7",
+            "3.5"
+        ],
         "conda_install": [
             "nipype",
             "pandas",
