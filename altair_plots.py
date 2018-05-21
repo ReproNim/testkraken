@@ -29,19 +29,23 @@ class AltairPlots(object):
                 x='variable:N',
                 y='value:Q',
                 color='env:N').properties(
-                width=400).interactive().to_dict()
+                width=400, background="white").interactive().to_dict()
         return plot_dict
 
 
-    def barplot_all(self, var_l):
+    def barplot_all(self, var_l, y_scale=None):
         res_plot = self.results[eval(var_l)+["env"]]
         res_transf = res_plot.reset_index().melt(['env', 'index'])
+        if y_scale: #should be a tuple, TODO
+            y_bar = alt.Y('value:Q', scale=alt.Scale(domain=y_scale))
+        else:
+            y_bar = 'value:Q'
         base = alt.Chart(res_transf).mark_bar(
                 ).encode(
+                y=y_bar,
                 x='variable:N',
-                y='value:Q',
                 color='env:N').properties(
-                width=400)
+                width=400, background="white")
 
         chart = alt.hconcat()
         for env in [ee for ee in self.results.env if ee != "N/A"]:
@@ -49,6 +53,9 @@ class AltairPlots(object):
         plot_dict = chart.to_dict()
         return plot_dict
 
+
+    def barplot_all_rel_error(self, var_l):
+        return self.barplot_all(var_l, y_scale=(0,1))
 
 
     def _js_create(self, plot_dict, id):
