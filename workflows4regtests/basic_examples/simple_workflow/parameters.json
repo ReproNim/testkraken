@@ -4,9 +4,12 @@
         "base": [
             "ubuntu:16.04"
         ],
+	"python": [
+            "2.7",
+            "3.5"
+        ],
         "conda_install": [
-            "python=2.7 nipype pandas requests",
-            "python=3.5 nipype pandas requests"
+            "nipype pandas requests"
         ],
         "fsl": [
             "5.0.10"
