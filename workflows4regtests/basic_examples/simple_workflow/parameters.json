@@ -4,9 +4,10 @@
         "base": [
             "ubuntu:16.04"
         ],
-        "conda_env_yml": [
-            "environment_simple2.yml",
-            "environment_simple3.yml"
+        "conda_install": [
+            "nipype",
+            "pandas",
+            "requests"
         ],
         "fsl": [
             "5.0.10"
