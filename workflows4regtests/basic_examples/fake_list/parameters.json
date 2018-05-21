@@ -1,0 +1,29 @@
+{
+    "command": "python",
+    "env": {
+        "base": [
+            "debian:stretch",
+            "ubuntu:16.04",
+            "fake"
+        ],
+        "python": [
+            "2.7",
+            "3.5"
+        ]
+    },
+    "inputs": [
+        [
+            "File",
+            "-f",
+            "list_orig.json"
+        ]
+    ],
+    "script": "div_list.py",
+    "tests": [
+        {
+	"file": "list_final.json", 
+	"script": "test_el_list_eq.py", 
+	"name": "regr"
+	}
+    ]
+}

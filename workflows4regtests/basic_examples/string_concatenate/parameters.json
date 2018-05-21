@@ -23,9 +23,6 @@
     ],
     "script": "concatenate.py",
     "tests": [
-        [
-            "string_conc.txt",
-            "test_obj_eq.py"
-        ]
-    ]
+        {"file": "string_conc.txt", "script": "test_obj_eq.py", "name": "test"}
+     ]
 }

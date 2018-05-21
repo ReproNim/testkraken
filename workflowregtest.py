@@ -2,7 +2,7 @@
 
 import itertools
 import json, csv
-import os
+import os, shutil
 import subprocess
 import tempfile
 import pdb
@@ -14,11 +14,18 @@ import matplotlib.pyplot as plt, mpld3
 import numpy as np
 
 import container_generator as cg
+import cwl_generator as cwlg
 
 
 class WorkflowRegtest(object):
-    def __init__(self, workflow_path):
+    def __init__(self, workflow_path, base_dir=None):
+        if base_dir:
+            self.base_dir = base_dir
+        else:
+            self.base_dir = os.getcwd()
         self.workflow_path = workflow_path
+        self.working_dir = os.path.join(self.base_dir, os.path.basename(self.workflow_path) + "_cwl")
+        os.makedirs(self.working_dir, exist_ok=True)
         with open(os.path.join(self.workflow_path, "parameters.json")) as param_js:
             self.parameters = json.load(param_js, object_pairs_hook=OrderedDict)
         self.env_parameters = self.parameters["env"]
@@ -86,180 +93,14 @@ class WorkflowRegtest(object):
 
     def _run_cwl(self, image, soft_ver_str):
         """Running workflow with CWL"""
-        self._creating_main_cwl()
-        self._creating_main_input(soft_ver_str)
-        self._creating_workflow_cwl(image)
-        self._creating_test_cwl()
+        cwd = os.getcwd()
+        working_dir_env = os.path.join(self.working_dir, soft_ver_str)
+        os.makedirs(working_dir_env, exist_ok=True)
+        os.chdir(working_dir_env)
+        cwl_gen = cwlg.CwlGenerator(image, soft_ver_str, self.workflow_path, self.parameters)
+        cwl_gen.create_cwl()
         subprocess.call(["cwl-runner", "--no-match-user", "cwl.cwl", "input.yml"])
-
-
-    def _creating_workflow_cwl(self, image):
-        """Creating cwl file"""
-        cmd_cwl = (
-            "#!/usr/bin/env cwl-runner\n"
-            "cwlVersion: v1.0\n"
-            "class: CommandLineTool\n"
-            "baseCommand: {}\n"
-            "hints:\n"
-            "  DockerRequirement:\n"
-            "    dockerPull: {}\n\n"
-            "inputs:\n"
-            "  script:\n"
-            "    type: File\n"
-            "    inputBinding:\n"
-            "      position: 1\n"
-        ).format(self.command, image)
-
-        for (ii, input_tuple) in enumerate(self.inputs):
-            cmd_cwl += (
-                "  input_files_{}:\n"
-                "    type: {}\n"
-                "    inputBinding:\n"
-                "      position: {}\n"
-                "      prefix: {}\n"
-                ).format(ii, input_tuple[0], ii+2, input_tuple[1])
-
-        cmd_cwl += "outputs:\n"
-
-        #TODO: temporary taking ony one tests/ouptput file
-        cmd_cwl += (
-                "  output_files:\n"
-                "    type: File\n"
-                "    outputBinding:\n"
-                "      glob: {}\n"
-        ).format(self.tests[0][0])
-        #for (ii, test_tuple) in enumerate(self.tests):
-        #    cmd_cwl += (
-        #        "  output_files_{}:\n"
-        #        "    type: File\n"
-        #        "    outputBinding:\n"
-        #        "      glob: {}\n"
-        #    ).format(ii, test_tuple[0])
-
-        with open("cwl_workflow.cwl", "w") as cwl_file:
-            cwl_file.write(cmd_cwl)
-
-    def _creating_test_cwl(self):
-        cmd_cwl = (
-            "# !/usr/bin/env cwl-runner\n"
-            "cwlVersion: v1.0\n"
-            "class: CommandLineTool\n"
-            "baseCommand: python\n\n"
-            "inputs:\n"
-            "  script:\n"
-            "    type: File\n"
-            "    inputBinding:\n"
-            "      position: 1\n"
-            "  input_files_out:\n"
-            "    type: File\n"
-            "    inputBinding:\n"
-            "      position: 2\n"
-            "      prefix: -out\n"
-            "  input_files_ref:\n"
-            "    type: File\n"
-            "    inputBinding:\n"
-            "      position: 3\n"
-            "      prefix: -ref\n"
-            "  input_files_report:\n"
-            "    type: string\n"
-            "    inputBinding:\n"
-            "      position: 4\n"
-            "      prefix: -report\n\n"
-            "outputs:\n"
-            "  output_files_report:\n"
-            "    type: File\n"
-            "    outputBinding:\n"
-            "      glob: $(inputs.input_files_report)\n"
-        )
-
-        with open("cwl_test.cwl", "w") as cwl_file:
-            cwl_file.write(cmd_cwl)
-
-
-    def _creating_main_cwl(self):
-        """Creating cwl file"""
-        cmd_cwl = (
-            "#!/usr/bin/env cwl-runner\n"
-            "cwlVersion: v1.0\n"
-            "class: Workflow\n"
-            "inputs:\n"
-            "  script_workf: File\n"
-            "  script_test: File\n"
-            "  data_ref: File\n"
-            "  report_txt: string\n"
-        )
-        for (ii, input_tuple) in enumerate(self.inputs):
-            cmd_cwl += (
-                "  input_workf_{}: {}\n"
-                ).format(ii, input_tuple[0])
-
-        cmd_cwl += (
-            "outputs:\n"
-            "  testout:\n"
-            "    type: File\n"
-            "    outputSource: test/output_files_report\n\n"
-            "steps:\n"
-            "  workflow:\n"
-            "    run: cwl_workflow.cwl\n"
-            "    in:\n"
-            "      script: script_workf\n"
-        )
-        for (ii, input_tuple) in enumerate(self.inputs):
-            cmd_cwl += (
-                "      input_files_{}: input_workf_{}\n"
-            ).format(ii, ii)
-
-        cmd_cwl += (
-            "    out: [output_files]\n" #only one output per test
-            "  test:\n"
-            "    run: cwl_test.cwl\n"
-            "    in:\n"
-            "      script: script_test\n"
-            "      input_files_report: report_txt\n"
-            "      input_files_out: workflow/output_files\n"
-            "      input_files_ref: data_ref\n"
-            "      input_files_report: report_txt\n"
-            "    out: [output_files_report]"
-                )
-
-        with open("cwl.cwl", "w") as cwl_file:
-            cwl_file.write(cmd_cwl)
-
-
-    def _creating_main_input(self, soft_ver_str):
-        """Creating input yml file for CWL"""
-        cmd_in = (
-            "script_workf:\n"
-            "  class: File\n"
-            "  path: {}\n"
-            "script_test:\n"
-            "  class: File\n"
-            "  path: {}\n"
-            "data_ref:\n"
-            "  class: File\n"
-            "  path: {}\n"
-            "report_txt: {}\n" #TODO
-        ).format(self.script,
-                 os.path.join(os.path.dirname(os.path.realpath(__file__)), "testing_functions", self.tests[0][1]),
-                 os.path.join(self.workflow_path, "data_ref", self.tests[0][0]),
-                 "report_test_{}_{}.txt".format(os.path.basename(self.workflow_path), soft_ver_str)
-                   ) # TODO: for now it's only one test possible
-
-        for (ii, input_tuple) in enumerate(self.inputs):
-            if input_tuple[0] == "File":
-                cmd_in += (
-                    "input_workf_{}:\n"
-                    "  class: {}\n"
-                    "  path: {}\n"
-                    ).format(ii, input_tuple[0],
-                             os.path.join(self.workflow_path, "data_input", input_tuple[2]))
-            else:
-                cmd_in += (
-                    "input_workf_{}: {}\n"
-                    ).format(ii, input_tuple[2])
-
-        with open("input.yml", "w") as inp_file:
-            inp_file.write(cmd_in)
+        os.chdir(cwd)
 
 
     def run(self):
@@ -270,151 +111,78 @@ class WorkflowRegtest(object):
         self._testing_workflow()
 
 
-    def merging_output(self):
-        # creating a list with results, each element has a dict with soft desc. and result
-        self._res_list = []
-        # create dictionary env: list for all env desc. (indexes from self.env_parameters),
-        # and results: list of results for all env
-        self.res_dict = OrderedDict()
-        for key in self.env_parameters:
-            self.res_dict[key] = []
-        self.res_dict["result"] = []
-
+    def merging_all_output(self):
+        self.res_all = []
+        no_docker = []
+        ii_ok = None # just to have at least one env that docker was ok
         for ii, soft_d in enumerate(self.matrix_envs_dict):
+            #self.res_all.append(deepcopy(soft_d))
             el_dict = deepcopy(soft_d)
-            file_name = "report_test_{}_{}.txt".format(os.path.basename(self.workflow_path), self.soft_str[ii])
-            for k, val in soft_d.items():
-                self.res_dict[k].append(self.env_parameters[k].index(val))
-
             if self.docker_status[ii] == "docker ok":
-                with open(file_name) as f:
-                    f_txt = f.read()
-                    if "PASS" in f_txt:
-                        el_dict["result"] = "PASS"
-                        self.res_dict["result"].append("1")
-                    elif "FAIL" in f_txt:
-                        el_dict["result"] = "FAIL"
-                        self.res_dict["result"].append("0")
-                    else:
-                         el_dict["result"] = "N/A"
-                         self.res_dict["result"].append("2")
+                ii_ok = ii
+                for (iir, test) in enumerate(self.tests):
+                    file_name = os.path.join(self.working_dir, self.soft_str[ii],
+                                             "report_{}.json".format(test["name"]))
+                    with open(file_name) as f:
+                        f_dict = json.load(f)
+                        for key, res in f_dict.items():
+                                el_dict["test_{}:{}".format(test["name"], key)] = res
             else:
-                 el_dict["result"] = "N/A"
-                 self.res_dict["result"].append("2")
-            self._res_list.append(el_dict)
+                no_docker.append(ii)
+            self.res_all.append(el_dict)
 
-        # saving merged results in one csv file
-        keys_csv = self._res_list[0].keys()
-        with open(os.path.basename(self.workflow_path)+"_output.csv", 'w') as outfile:
+        self.res_keys = self.res_all[ii_ok].keys() - soft_d.keys()
+        if ii_ok and no_docker:
+            for ii in no_docker:
+                for key in self.res_keys:
+                    self.res_all[ii][key] = "N/A"
+
+        keys_csv = self.res_all[0].keys()
+        with open(os.path.join(self.working_dir, "output_all.csv"), 'w') as outfile:
             csv_writer = csv.DictWriter(outfile, keys_csv)
             csv_writer.writeheader()
-            csv_writer.writerows(self._res_list)
+            csv_writer.writerows(self.res_all)
 
 
-    def plot_workflow_result(self):
-        """plotting results, this has to be cleaned TODO"""
-        nr_par = len(self.env_parameters)
-
-        matplotlib.rcParams['xtick.labelsize'] = 10
-        matplotlib.rcParams['ytick.labelsize'] = 12
-
-        fig, ax_list = plt.subplots(nr_par, 1)
-
-        for iid, key in enumerate(self.env_parameters):
-            ax = ax_list[iid]
-            res_all = []
-            for ver in self.env_parameters[key]:
-                x_lab = []
-                res = []
-                for ii, soft_d in enumerate(self.matrix_envs_dict):
-                    soft_txt = ""
-                    file_name = "report_test_" + os.path.basename(self.workflow_path)
-                    for k, val in soft_d.items():
-                        if k != key:
-                            if k == "conda_env_yml":
-                                soft_txt += val.replace("ironment","").replace(".yml","") + "\n"
-                            else:
-                                soft_txt += "{}={}\n".format(k, val.split(":")[0])
-                        file_name += "_" + "".join(val.split(":"))
-                    file_name += ".txt"
-                    if self.docker_status[ii] == "docker ok":
-                        if soft_d[key] == ver:
-                            x_lab.append(soft_txt)
-                            with open(file_name) as f:
-                                f_txt = f.read()
-                                if "PASS" in f_txt:
-                                    res.append(1)
-                                elif "FAIL" in f_txt:
-                                    res.append(0)
-                                else:
-                                    res.append(2)
-                    else:
-                        if soft_d[key] == ver:
-                            x_lab.append(soft_txt)
-                            res.append(2)
-                res_all.append(res)
-
-            #TODO
-            uni_val = list(set([item for sublist in res_all for item in sublist]))
-            uni_val.sort()
-            if uni_val == [0,1]:
-                cmap = matplotlib.colors.ListedColormap(['red', 'green'])
-            elif uni_val == [0,2]:
-                cmap = matplotlib.colors.ListedColormap(['red', 'black'])
-            elif uni_val == [1,2]:
-                cmap = matplotlib.colors.ListedColormap(['green', 'black'])
-            elif uni_val == [1]:
-                cmap = matplotlib.colors.ListedColormap(['green'])
-            elif uni_val == [0]:
-                cmap = matplotlib.colors.ListedColormap(['red'])
-            elif uni_val == [2]:
-                cmap = matplotlib.colors.ListedColormap(['black'])
-            else:
-                cmap = matplotlib.colors.ListedColormap(['red', 'green', 'black'])
-
-            print("Res_Val", res_all)
-            if "env" in self.env_parameters[key][0]:
-                y_lab = [val.replace("ironment", "").replace(".yml", "") + "\n" for val in self.env_parameters[key]]
-            else:
-                y_lab = [val.split(":")[0] for val in self.env_parameters[key]]
-
-            c = ax.pcolor(res_all, edgecolors='b', linewidths=4, cmap=cmap)
-            plt.sca(ax)
-            plt.xticks([i + 0.5 for i in range(len(x_lab))], x_lab)
-            plt.sca(ax)
-            plt.yticks([i+0.5 for i in range(len(y_lab))],y_lab)
-            ax.set_title(key, fontsize=16)
-
-
-        fig.tight_layout()
-        plt.savefig("fig_{}.pdf".format(os.path.basename(self.workflow_path))) 
-        #mpld3.save_html(fig, "fig_{}.html".format(os.path.basename(self.workflow_path)))
-
-
-    def plot_workflow_result_paralcoord(self):
-        """plotting results, this has to be cleaned TODO"""
+    def plot_all_results_paralcoord(self):
         import pandas
-        import plotly.plotly as py
         import plotly.graph_objs as go
         from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
 
-        df = pandas.DataFrame(self.res_dict)
+        df = pandas.DataFrame(self.res_all)
 
         list_pl = []
         for i, k in self.env_parameters.items():
-            list_pl.append(dict(label=i, values=df[i], tickvals=list(range(len(k))), ticktext=k ))
-        list_pl.append(dict(label="result", values=df["result"],
-                            tickvals=[0, 1, 2], ticktext=["pass", "fail", "N/A"]))
-        colors_d = {'0': "red", '1': "green", '2': "black"}
-        my_colorscale =[]
-        for ii in set(df["result"]):
-            my_colorscale.append([ii, colors_d[ii]])
-        line_pl = dict(color=df["result"], colorscale = my_colorscale)
-        data = [go.Parcoords(line=line_pl, dimensions=list_pl)]
+            soft_values = df[i]
+            soft_values = soft_values.replace(k, list(range(len(k))))
+            list_pl.append(dict(label=i, values=soft_values, tickvals=list(range(len(k))), ticktext=k ))
+
+        for key in self.res_keys:
+            if "reg" in key:
+                reg_values = df[key]
+                reg_values = reg_values.replace(["PASSED", "FAILED", "N/A"], [1, 0, 2])
+                list_pl.append(dict(label=key, values=reg_values,
+                                    tickvals=[0, 1, 2], ticktext=["failed", "passed", "N/A"]))
+            else:
+                stat_values = df[key]
+                try:
+                    stat_values = stat_values.replace(["N/A"], [-999])
+                except TypeError:
+                    pass
+                list_pl.append(dict(label=key, values=stat_values))
+
+        data = [go.Parcoords(line=dict(color = 'blue'), dimensions=list_pl)]
+
         layout = go.Layout(
             plot_bgcolor='#E5E5E5',
             paper_bgcolor='#E5E5E5'
         )
 
         fig = go.Figure(data=data, layout = layout)
-        plot(fig, filename='parcoords_{}'.format(os.path.basename(self.workflow_path)))
+        plot(fig, filename=os.path.join(self.working_dir,'parcoords_{}_All'.format(os.path.basename(self.workflow_path))))
+
+
+    def dashboard_workflow(self):
+        js_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "examples")
+        for js_template in ["dashboard.js", "index.html", "style.css"]:
+            shutil.copy2(os.path.join(js_dir, js_template), self.working_dir)

@@ -34,12 +34,10 @@ finally:
 
 """
 
-import itertools
 import json
 import os
 import subprocess
 from collections import OrderedDict
-import pdb
 
 
 def list_to_neurodocker_instruction(iterable):
@@ -52,11 +50,12 @@ def list_to_neurodocker_instruction(iterable):
     """
     program_name, version = iterable
 
+    # In the case of python, `version` is a dictionary of `conda_install` and
+    # `pip_install`.
     if program_name in ['python']:
         program_name = "miniconda"
-        conda_install = 'python={}'.format(version)
         spec = {
-            'conda_install': conda_install,
+            **version,
             'env_name': "test",
             'activate': "true"
         }
@@ -68,33 +67,7 @@ def list_to_neurodocker_instruction(iterable):
             'env_name': "test",
             'activate': "true"
         }
-    elif program_name.lower() == "freesurfer" and "min" in version:
-        spec = {"version": "6.0.0", "min": True}
-    elif program_name.lower() == 'mindboggle':
-        program_name = "run"
-        spec = (
-            "cd /opt \n"
-            " && apt-get update -qq \n"
-            " && apt-get install -yq --no-install-recommends build-essential cmake git libsm6 make xorg \n"
-            " && git clone https://github.com/nipy/mindboggle.git \n"
-            " && conda install -yq -ntest  vtk==7.0.0 lxml matplotlib numpy scipy pandas traits xvfbwrapper \n"
-            " && mkdir /usr/lib64 \n"
-            " && ln -s /usr/lib/x86_64-linux-gnu/libGLU.so.1 /usr/lib64/libGLU.so \n"
-            " && ln -s /usr/lib/x86_64-linux-gnu/libSM.so.6 /usr/lib64/libSM.so \n"
-            " && ln -s /usr/lib/x86_64-linux-gnu/libICE.so.6 /usr/lib64/libICE.so \n"
-            " && ln -s /usr/lib/x86_64-linux-gnu/libX11.so.6 /usr/lib64/libX11.so \n"
-            " && ln -s /usr/lib/x86_64-linux-gnu/libXext.so.6 /usr/lib64/libXext.so \n"
-            " && ln -s /usr/lib/x86_64-linux-gnu/libXt.so.6 /usr/lib64/libXt.so \n"
-            " && ln -s /usr/lib/x86_64-linux-gnu/mesa/libGL.so.1 /usr/lib64/libGL.so \n"
-            " && bash -c 'source activate test && pip install --no-cache-dir nipype nibabel \n"
-            " && cd mindboggle && python setup.py install \n"
-            " && mkdir vtk_cpp_tools/bin && cd vtk_cpp_tools/bin \n"
-            " && cmake .. && make && make install' \n"
-            " && cd /opt/data \n"
-            " && curl -sSL https://osf.io/rh9km/?action=download&version=2 -o templates.zip \n"
-            " && unzip templates.zip \n"
-            " && rm -rf /opt/data/templates.zip"
-        )
+
     elif program_name in ['base']:
         spec = version
     else:
@@ -124,6 +97,24 @@ def get_dictionary_hash(d):
     return sha1.hexdigest()
 
 
+def prep_python_dict(env):
+    """Modify in-place list of environments with `python`, `conda_install`, and
+    `pip_install` items combined.
+    """
+    env = OrderedDict(env)
+    if 'python' in env:
+        pyversion = "python={} ".format(env['python'])
+        env['python'] = {
+            'conda_install': pyversion + env.get('conda_install', " "),
+            'pip_install': env.get('pip_install', None),
+        }
+        env['python']['conda_install'] = env['python']['conda_install'].strip()
+        env.pop('conda_install', None)
+        env.pop('pip_install', None)
+    env = list(env.items())
+    return env
+
+
 def get_dict_of_neurodocker_dicts(env_matrix):
     """Return dictionary of Neurodocker dictionaries given a matrix of
     environment parameters. Keys are the SHA-1 hashes of the 'instructions'
@@ -131,8 +122,11 @@ def get_dict_of_neurodocker_dicts(env_matrix):
     """
     dict_of_neurodocker_dicts = []
     for ii, params in enumerate(env_matrix):
-        instructions = tuple(list_to_neurodocker_instruction(ii)
-                             for ii in params)
+        # Move around miniconda-related keys into one dictionary value per
+        # environment.
+        params = prep_python_dict(params)
+        instructions = tuple(
+            list_to_neurodocker_instruction(ii) for ii in params)
         neurodocker_dict = instructions_to_neurodocker_specs(instructions)
         this_hash = get_dictionary_hash(neurodocker_dict['instructions'])
         dict_of_neurodocker_dicts.append((this_hash, neurodocker_dict))
@@ -151,7 +145,7 @@ def _generate_dockerfile(dir_, neurodocker_dict, sha1):
         json.dump(neurodocker_dict, fp, indent=4)
 
     base_cmd = (
-        "docker run --rm -v {dir}/json:/json:ro kaczmarj/neurodocker:master"
+        "docker run --rm -v {dir}/json:/json:ro kaczmarj/neurodocker:v0.3.2"
         " generate --file /json/{filepath}"
     )
 

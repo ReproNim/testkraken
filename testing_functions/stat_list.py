@@ -6,27 +6,17 @@ import random
 #import numpy as np
 
 
-def test_rand_almosteq(file_out, file_ref=None, name=None, **kwargs):
+def stat_list(file_out, file_ref=None, name=None, **kwargs):
     with open(file_out) as f:
         res_out = json.load(f)
-    with open(file_ref) as f:
-        res_ref = json.load(f)
 
     report_filename = "report_{}.json".format(name)
-    print("TEST", report_filename)
+    print("STAT", report_filename)
     out = {}
-    diff = abs(res_out - res_ref) / res_ref
-    out["diff"] = diff
-    try:
-        assert diff < 0.05
-        out["regr"] = "PASSED"
-    except(AssertionError):
-        out["regr"] = "FAILED"
-
-
-    with open(report_filename, "w") as f:
+    out["sum"] = sum(res_out)
+    
+    with open(report_filename, "a") as f:
         json.dump(out, f)
-
 
 
 if __name__ == '__main__':
@@ -41,5 +31,5 @@ if __name__ == '__main__':
                         help="name of the test provided by a user")
     args = parser.parse_args()
 
-    test_rand_almosteq(**vars(args))
+    stat_list(**vars(args))
 

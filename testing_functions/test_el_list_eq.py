@@ -1,32 +1,40 @@
-"""testing the results for a specific seed"""
+"""Checking if lists from two json files are equal"""
 from __future__ import division
-import os, json
+import os, json, pdb
 import inspect
-import random
-#import numpy as np
 
+def test_el_list_eq(file_out, file_ref=None, name=None, **kwargs):
 
-def test_rand_almosteq(file_out, file_ref=None, name=None, **kwargs):
     with open(file_out) as f:
-        res_out = json.load(f)
-    with open(file_ref) as f:
-        res_ref = json.load(f)
+        try:
+            obj_out = json.load(f)
+        except:
+            obj_out = f.read().strip()
 
+    with open(file_ref) as f:
+        try:
+            obj_ref = json.load(f)
+        except:
+            obj_ref = f.read().strip()
+
+    #pdb.set_trace()
     report_filename = "report_{}.json".format(name)
     print("TEST", report_filename)
     out = {}
-    diff = abs(res_out - res_ref) / res_ref
-    out["diff"] = diff
+    print("OBJ", obj_ref, file_ref)
+    for i, el in enumerate(obj_ref):
+        out["{}".format(i)] = round(1.* abs(obj_ref[i] - obj_out[i]) / obj_ref[i], 3)
+        
+    diff = [val for k, val in out.items()]
+    print("TEST", diff, out)
     try:
-        assert diff < 0.05
+        assert max(diff) < 0.05
         out["regr"] = "PASSED"
     except(AssertionError):
         out["regr"] = "FAILED"
 
-
     with open(report_filename, "w") as f:
         json.dump(out, f)
-
 
 
 if __name__ == '__main__':
@@ -41,5 +49,4 @@ if __name__ == '__main__':
                         help="name of the test provided by a user")
     args = parser.parse_args()
 
-    test_rand_almosteq(**vars(args))
-
+    test_el_list_eq(**vars(args))

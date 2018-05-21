@@ -1,8 +1,6 @@
 """Running workflows and regression tests for all projects in chosen dictionary"""
 
-import os, subprocess, json
-import itertools
-import pdb
+import os
 
 from workflowregtest import WorkflowRegtest
 
@@ -11,8 +9,10 @@ Workflows_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)),
 
 if __name__ == "__main__":
     for workflow in next(os.walk(Workflows_dir))[1]:
+        print("Workflow Name ", workflow)
         wf = WorkflowRegtest(os.path.join(Workflows_dir, workflow))
         wf.run()
-        wf.merging_output()
-        wf.plot_workflow_result_paralcoord()
-        wf.plot_workflow_result()
+        wf.merging_all_output()
+        # # TODO: this method will be removed
+        wf.plot_all_results_paralcoord()
+        wf.dashboard_workflow()
