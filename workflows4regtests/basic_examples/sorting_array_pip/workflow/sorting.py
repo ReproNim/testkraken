@@ -8,9 +8,9 @@ def sorting(filename):
 
     array2sort = np.array(list2sort)
 
-    array_sorted = array2sort.sort(axis=0)
+    array2sort.sort(axis=0)
 
-    np.save("array_sorted", array_sorted)
+    np.save("array_sorted", array2sort)
 
 
 if __name__ == '__main__':
