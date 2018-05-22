@@ -24,7 +24,7 @@ class AltairPlots(object):
 
 
     def scatter_all(self, var_l):
-        res_plot = self.results[eval(var_l)+["env"]]
+        res_plot = self.results[var_l+["env"]]
         res_transf = res_plot.reset_index().melt(['env', 'index'])
         plot_dict = alt.Chart(res_transf).mark_circle(
                 size=50, opacity=0.5).encode(
@@ -36,7 +36,7 @@ class AltairPlots(object):
 
 
     def barplot_all(self, var_l, y_scale=None):
-        res_plot = self.results[eval(var_l)+["env"]]
+        res_plot = self.results[var_l+["env"]]
         res_transf = res_plot.reset_index().melt(['env', 'index'])
         if y_scale: #should be a tuple, TODO
             y_bar = alt.Y('value:Q', scale=alt.Scale(domain=y_scale))
