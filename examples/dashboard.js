@@ -69,6 +69,8 @@ d3.csv("output_all.csv", function(data) {
     gridUpdate(data);
 
 
+
+    // dj: this part is not used for now
     // TODO(kaczmarj): change colors based on column clicked. Do something
     // similar to MetaSearch: use discrete colors for discrete classes and
     // continuous color pallete for continuous variables.
@@ -114,7 +116,7 @@ d3.csv("output_all.csv", function(data) {
     var plot_keys = column_keys.filter(column_keys => !exclude_keys.includes(column_keys));
 
     // create one plot for each column.
-    plot_keys.map(createPlot)
+    //plot_keys.map(createPlot)
 
     // create one plot for one column.
     // createPlot('brainvolume')

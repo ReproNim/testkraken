@@ -19,7 +19,7 @@ jobs:
             conda update -n base -yq conda
             conda update -yq --all
 
-            pip install cwlref-runner pandas matplotlib mpld3 jinja2 plotly
+            pip install cwlref-runner pandas matplotlib mpld3 jinja2 plotly altair bs4
 
       - run:
           name: Run tests
