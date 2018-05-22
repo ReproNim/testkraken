@@ -67,7 +67,6 @@ def list_to_neurodocker_instruction(iterable):
             'env_name': "test",
             'activate': "true"
         }
-
     elif program_name in ['base']:
         spec = version
     else:
@@ -102,11 +101,22 @@ def prep_python_dict(env):
     `pip_install` items combined.
     """
     env = OrderedDict(env)
-    if 'python' in env:
-        pyversion = "python={} ".format(env['python'])
+    if 'python' in env or 'conda_install' in env or 'pip_install' in env:
+
+        pyversion = env.get('python', 0)
+        conda_install = env.get('conda_install', ' ')
+        if pyversion and "python" in conda_install:
+            raise ValueError(
+                "python can be specified in 'python' key or in 'conda_install'"
+                " key but not in both.")
+        if pyversion:
+            pyversion = "python={} ".format(pyversion)
+        else:
+            pyversion = ""
+
         env['python'] = {
-            'conda_install': pyversion + env.get('conda_install', " "),
-            'pip_install': env.get('pip_install', None),
+            'conda_install': pyversion + conda_install,
+            'pip_install': env.get('pip_install', None)
         }
         env['python']['conda_install'] = env['python']['conda_install'].strip()
         env.pop('conda_install', None)
@@ -139,6 +149,7 @@ def _generate_dockerfile(dir_, neurodocker_dict, sha1):
     image.
     """
     filepath = os.path.join(dir_, "json", "{}.json".format(sha1))
+    dir_ = os.path.abspath(dir_)
 
     with open(filepath, "w") as fp:
         json.dump(neurodocker_dict, fp, indent=4)
