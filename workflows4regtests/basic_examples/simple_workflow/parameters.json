@@ -61,11 +61,11 @@
     "plots": [
        {
        "function": "scatter_all",
-       "var_list": "['test_AA16960:max_diff', 'test_AA20317:max_diff', 'test_AA38614:max_diff', 'test_AA46727:max_diff', 'test_AA49687:max_diff']"
+       "var_list": ["test_AA16960:max_diff", "test_AA20317:max_diff", "test_AA38614:max_diff", "test_AA46727:max_diff", "test_AA49687:max_diff"]
        },
        {
        "function": "barplot_all_rel_error",
-       "var_list": "['test_AA16960:max_diff', 'test_AA20317:max_diff', 'test_AA38614:max_diff', 'test_AA46727:max_diff', 'test_AA49687:max_diff']"
+       "var_list": ["test_AA16960:max_diff", "test_AA20317:max_diff", "test_AA38614:max_diff", "test_AA46727:max_diff", "test_AA49687:max_diff"]
        }
     ]
 
