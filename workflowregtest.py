@@ -31,7 +31,10 @@ class WorkflowRegtest(object):
         with open(os.path.join(self.workflow_path, "parameters.json")) as param_js:
             self.parameters = json.load(param_js, object_pairs_hook=OrderedDict)
         self.env_parameters = self.parameters["env"]
-        self.plot_parameters = self.parameters["plots"]
+        try:
+            self.plot_parameters = self.parameters["plots"]
+        except KeyError:
+            self.plot_parameters = []
         self.script = os.path.join(self.workflow_path, "workflow",
                                    self.parameters["script"])
         self.command = self.parameters["command"] # TODO: adding arg

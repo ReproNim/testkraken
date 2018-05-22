@@ -11,11 +11,13 @@ class AltairPlots(object):
         self.plot_spec = plot_spec
         self._soup = self._index_read()
         self.results = results_df
-
+        self.plot_description = {"scatter_all": "scatter plot for all environments",
+                                 "barplot_all": "barplot for all environments",
+                                 "barplot_all_rel_error": "barplot of the relative errors for all environments"}
 
     def create_plots(self):
         for ii, spec in enumerate(self.plot_spec):
-            self._index_edit(title=spec["function"], id=ii)
+            self._index_edit(title=self.plot_description[spec["function"]], id=ii)
             plot_dict = getattr(self, spec["function"])(spec["var_list"])
             self._js_create(plot_dict, ii)
         self._index_write()
@@ -76,12 +78,15 @@ class AltairPlots(object):
             outf.write(str(self._soup))
 
     def _index_edit(self, title, id):
+        new_break = self._soup.new_tag("p")
+        self._soup.body.find_all("h2")[-1].append(new_break)
+
         new_tag = self._soup.new_tag("h3")
         new_tag.append(title)
-        self._soup.body.append(new_tag)
+        self._soup.body.find_all("h2")[-1].append(new_tag)
 
         new_div = self._soup.new_tag("div", id="alt_{}".format(id))
-        self._soup.body.append(new_div)
+        self._soup.body.find_all("h2")[-1].append(new_div)
 
         new_script = self._soup.new_tag("script", src="alt_{}.js".format(id))
-        self._soup.body.append(new_script)
+        self._soup.body.find_all("h2")[-1].append(new_script)
