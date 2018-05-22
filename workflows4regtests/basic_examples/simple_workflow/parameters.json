@@ -2,8 +2,7 @@
     "command": "python",
     "env": {
         "base": [
-        "debian:stretch",
-        "ubuntu:16.04"
+            "ubuntu:16.04"
         ],
 	"python": [
             "2.7",
@@ -26,15 +25,36 @@
         [
             "int",
             "-n",
-            "1"
+            "3"
         ]
     ],
     "script": "run_demo_workflow.py",
     "tests": [
         {
-	"file": "output/metaflow/AnnArbor_sub16960/save_json/segstats.json", 
-	"script": "check_output.py", 
-	"name": "test"
-	}
+        "file": "output/metaflow/AnnArbor_sub16960/save_json/segstats.json",
+        "script": "check_output.py",
+        "name": "AA16960"
+        },
+        {
+        "file": "output/metaflow/AnnArbor_sub20317/save_json/segstats.json",
+        "script": "check_output.py",
+        "name": "AA20317"
+        },
+        {
+        "file": "output/metaflow/AnnArbor_sub38614/save_json/segstats.json",
+        "script": "check_output.py",
+        "name": "AA38614"
+        }
+    ],
+    "plots": [
+       {
+       "function": "scatter_all",
+       "var_list": "['test_AA16960:max_diff', 'test_AA20317:max_diff', 'test_AA38614:max_diff']"
+    },
+    {
+    "function": "barplot_all_rel_error",
+    "var_list": "['test_AA16960:max_diff', 'test_AA20317:max_diff', 'test_AA38614:max_diff']"
+    }
     ]
+
 }
