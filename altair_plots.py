@@ -24,7 +24,10 @@ class AltairPlots(object):
 
 
     def scatter_all(self, var_l):
-        res_plot = self.results[eval(var_l)+["env"]]
+        if not var_l:
+            # if var_l is not provided, I will plot all
+            var_l = [col for col in self.results.columns if "test" in col]
+        res_plot = self.results[var_l+["env"]]
         res_transf = res_plot.reset_index().melt(['env', 'index'])
         plot_dict = alt.Chart(res_transf).mark_circle(
                 size=50, opacity=0.5).encode(
@@ -35,8 +38,11 @@ class AltairPlots(object):
         return plot_dict
 
 
-    def barplot_all(self, var_l, y_scale=None):
-        res_plot = self.results[eval(var_l)+["env"]]
+    def barplot_all(self, var_l, y_scale=None, default_col="test"):
+        if not var_l:
+            # if var_l is not provided, I will plot all
+            var_l = [col for col in self.results.columns if default_col in col]
+        res_plot = self.results[var_l+["env"]]
         res_transf = res_plot.reset_index().melt(['env', 'index'])
         if y_scale: #should be a tuple, TODO
             y_bar = alt.Y('value:Q', scale=alt.Scale(domain=y_scale))
@@ -57,7 +63,7 @@ class AltairPlots(object):
 
 
     def barplot_all_rel_error(self, var_l):
-        return self.barplot_all(var_l, y_scale=(0,1))
+        return self.barplot_all(var_l, y_scale=(0,1), default_col="rel_error")
 
 
     def _js_create(self, plot_dict, id):
