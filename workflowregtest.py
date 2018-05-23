@@ -119,6 +119,7 @@ class WorkflowRegtest(object):
 
     def merging_all_output(self):
         self.res_all = []
+        self.res_all_flat = []
         no_docker = []
         ii_ok = None # just to have at least one env that docker was ok
         for ii, soft_d in enumerate(self.matrix_envs_dict):
@@ -130,23 +131,25 @@ class WorkflowRegtest(object):
                     el_dict["env"] += "_{}-{}".format(key, el_dict[key])
             if self.docker_status[ii] == "docker ok":
                 ii_ok = ii
-                for (iir, test) in enumerate(self.tests):
-                    file_name = os.path.join(self.working_dir, self.soft_str[ii],
-                                             "report_{}.json".format(test["name"]))
-                    with open(file_name) as f:
-                        f_dict = json.load(f)
-                        for key, res in f_dict.items():
-                                el_dict["test_{}:{}".format(test["name"], key)] = res
+                # merging results from tests and updating self.res_all, self.res_all_flat
+                self._merging_test_output(el_dict, ii)
             else:
-                no_docker.append(ii)
-            self.res_all.append(el_dict)
-
+                no_docker.append((len(self.res_all), len(self.res_all_flat)))
+                self.res_all.append(deepcopy(el_dict))
+                self.res_all_flat.append(deepcopy(el_dict))
+        #pdb.set_trace()
+        # adding "N/A" for all tests for environment which were not created (for whatever reason)
         self.res_keys = self.res_all[ii_ok].keys() - soft_d.keys()
+        self.res_keys_flat = self.res_all_flat[ii_ok].keys() - soft_d.keys()
         if ii_ok and no_docker:
-            for ii in no_docker:
+            for (ii, ii_flat) in no_docker:
                 for key in self.res_keys:
                     self.res_all[ii][key] = "N/A"
+                for key in self.res_keys_flat:
+                    self.res_all_flat[ii_flat][key] = "N/A"
 
+
+        #pdb.set_trace()
         keys_csv = self.res_all[0].keys()
         with open(os.path.join(self.working_dir, "output_all.csv"), 'w') as outfile:
             csv_writer = csv.DictWriter(outfile, keys_csv)
@@ -154,6 +157,54 @@ class WorkflowRegtest(object):
             csv_writer.writerows(self.res_all)
 
         self.res_all_df = pd.DataFrame(self.res_all)
+        self.res_all_flat_df = pd.DataFrame(self.res_all_flat)
+
+
+    def _merging_test_output(self, dict, ii):
+        for (iir, test) in enumerate(self.tests):
+            file_name = os.path.join(self.working_dir, self.soft_str[ii],
+                                     "report_{}.json".format(test["name"]))
+            with open(file_name) as f:
+                f_dict = json.load(f)
+                # checking if test results can be merged
+                # if results form the first test have "col_names" than every singe test
+                # has to have the same values in "col_names"
+                if iir == 0:
+                    try:
+                        col = f_dict["col_names"]
+                    except KeyError:
+                        col = None
+                elif (col and col != f_dict["col_names"]) or (col is None and "col_names" in f_dict.keys()):
+                        raise Exception("tests {} and {} can not be merged, remove "
+                                        "one of the test from the specification".format(
+                            self.tests[0]["name"], test["name"]))
+
+                if col:
+                    # if this is the first test, we create a list with a copy of dict
+                    if iir == 0:
+                        dict_l = []
+                        dict_flat_l = [dict]
+                        for i in range(len(col)):
+                            dict_l.append(deepcopy(dict))
+                    # filling the results in each dictionary from dict_l
+                    for key, res_l in f_dict.items():
+                        if len(col) != len(res_l):
+                            raise Exception("length of {} has to be equal to length of col_names".format(key))
+                        #pdb.set_trace()
+                        for (idt, res) in enumerate(res_l):
+                            dict_l[idt]["test_{}:{}".format(test["name"], key)] = res
+                            dict_flat_l[0]["test_{}:{}:{}".format(test["name"], key, col[idt])] = res
+                else:
+                    if iir == 0:
+                        dict_l = [dict]
+                        dict_flat_l = [dict]
+                    for key, res in f_dict.items():
+                        dict["test_{}:{}".format(test["name"], key)] = res
+
+        #pdb.set_trace()
+        self.res_all += dict_l
+        self.res_all_flat += dict_flat_l
+
 
 
     def plot_all_results_paralcoord(self):
@@ -199,5 +250,5 @@ class WorkflowRegtest(object):
         for js_template in ["dashboard.js", "index.html", "style.css"]:
             shutil.copy2(os.path.join(js_dir, js_template), self.working_dir)
 
-        ap = AltairPlots(self.working_dir, self.res_all_df, self.plot_parameters)
+        ap = AltairPlots(self.working_dir, self.res_all_flat_df, self.plot_parameters)
         ap.create_plots()
