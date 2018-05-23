@@ -29,11 +29,11 @@
     "plots": [
     {
     "function": "scatter_all",
-    "var_list": "['test_regr:0', 'test_regr:1', 'test_regr:2', 'test_regr:3', 'test_regr:4', 'test_regr:5', 'test_regr:6','test_regr:7', 'test_regr:8', 'test_regr:9', 'test_regr:regr']"
+    "var_list": []
     },
     {
     "function": "barplot_all_rel_error",
-    "var_list": "['test_regr:0', 'test_regr:1', 'test_regr:2', 'test_regr:3', 'test_regr:4', 'test_regr:5', 'test_regr:6','test_regr:7', 'test_regr:8', 'test_regr:9', 'test_regr:regr']"
+    "var_list": []
     }
 
     ]
