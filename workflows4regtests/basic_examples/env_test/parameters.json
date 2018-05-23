@@ -2,7 +2,7 @@
     "command": "python",
     "env": {
         "base": [
-            "debian:stretch"
+            ["debian:stretch", "apt"]
         ],
         "conda_env_yml": [
             "environment.yml"
