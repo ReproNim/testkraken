@@ -21,17 +21,22 @@ def test_el_list_eq(file_out, file_ref=None, name=None, **kwargs):
     report_filename = "report_{}.json".format(name)
     print("TEST", report_filename)
     out = {}
+    out["rel_error"] = []
+    out["abs_error"] = []
+    out["col_names"] = []
     print("OBJ", obj_ref, file_ref)
     for i, el in enumerate(obj_ref):
-        out["{}".format(i)] = round(1.* abs(obj_ref[i] - obj_out[i]) / obj_ref[i], 3)
+        out["col_names"].append("el_{}".format(i))
+        out["abs_error"].append(abs(obj_ref[i] - obj_out[i]))
+        out["rel_error"].append(round(1.* abs(obj_ref[i] - obj_out[i]) / obj_ref[i], 3))
         
-    diff = [val for k, val in out.items()]
-    print("TEST", diff, out)
-    try:
-        assert max(diff) < 0.05
-        out["regr"] = "PASSED"
-    except(AssertionError):
-        out["regr"] = "FAILED"
+    #diff = [val for k, val in out.items()]
+    #print("TEST", diff, out)
+    #try:
+    #    assert max(diff) < 0.05
+    #    out["regr"] = "PASSED"
+    #except(AssertionError):
+    #    out["regr"] = "FAILED"
 
     with open(report_filename, "w") as f:
         json.dump(out, f)
