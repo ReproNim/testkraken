@@ -81,9 +81,9 @@ if __name__ == "__main__":
     defstr = ' (default %(default)s)'
     parser = ArgumentParser(description=__doc__,
                             formatter_class=RawTextHelpFormatter)
-    parser.add_argument("-out", dest="file_out",
+    parser.add_argument("-out", nargs="+", dest="file_out",
                         help="file with the output for testing")
-    parser.add_argument("-ref", dest="file_ref",
+    parser.add_argument("-ref", nargs="+", dest="file_ref",
                         help="file with the reference output")
     parser.add_argument("-name", dest="name",
                         help="name of the test provided by a user")
