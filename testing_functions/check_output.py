@@ -28,8 +28,15 @@ def creating_dataframe(files_list):
 
 
 def check_output(file_out, file_ref=None, name=None, **kwargs):
-    expected_files = [file_ref]
-    output_files = [file_out]
+    if type(file_ref) is list:
+        expected_files = file_ref
+    elif type(file_ref) is str:
+        expected_files = [file_ref]
+
+    if type(file_out) is list:
+        output_files = file_out
+    elif type(file_out) is str:
+        output_files = [file_out]
 
     df_exp = creating_dataframe(expected_files)
     df_out = creating_dataframe(output_files)
