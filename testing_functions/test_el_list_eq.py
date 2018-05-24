@@ -5,19 +5,29 @@ import inspect
 
 def test_el_list_eq(file_out, file_ref=None, name=None, **kwargs):
 
-    with open(file_out) as f:
+    if type(file_out) is list:
+        file_out_r = file_out[0]
+    else:
+        file_out_r = file_out
+
+    if type(file_ref) is list:
+        file_ref_r = file_ref[0]
+    else:
+        file_ref_r = file_ref
+
+
+    with open(file_out_r) as f:
         try:
             obj_out = json.load(f)
         except:
             obj_out = f.read().strip()
 
-    with open(file_ref) as f:
+    with open(file_ref_r) as f:
         try:
             obj_ref = json.load(f)
         except:
             obj_ref = f.read().strip()
 
-    #pdb.set_trace()
     report_filename = "report_{}.json".format(name)
     print("TEST", report_filename)
     out = {}
@@ -46,9 +56,9 @@ if __name__ == '__main__':
     from argparse import ArgumentParser, RawTextHelpFormatter
     parser = ArgumentParser(description=__doc__,
                             formatter_class=RawTextHelpFormatter)
-    parser.add_argument("-out", dest="file_out",
+    parser.add_argument("-out", nargs="+", dest="file_out",
                         help="file with the output for testing")
-    parser.add_argument("-ref", dest="file_ref",
+    parser.add_argument("-ref", nargs="+", dest="file_ref",
                         help="file with the reference output")
     parser.add_argument("-name", dest="name",
                         help="name of the test provided by a user")
