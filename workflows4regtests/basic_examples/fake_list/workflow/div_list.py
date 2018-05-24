@@ -11,6 +11,11 @@ def div_list(filename):
         listorig[i] /= 2
         listorig[i] += random.random()/100
         
+    with open('list_final_1.json', 'w') as outfile:
+        json.dump(listorig, outfile)
+    with open('list_final_2.json', 'w') as outfile:
+        json.dump(listorig, outfile)
+
     with open('list_final.json', 'w') as outfile:
         json.dump(listorig, outfile)
 

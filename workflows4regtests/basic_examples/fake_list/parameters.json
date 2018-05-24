@@ -21,7 +21,7 @@
     "script": "div_list.py",
     "tests": [
         {
-	"file": "list_final.json", 
+	"file": ["list_final.json", "list_final_1.json"],
 	"script": "test_el_list_eq.py", 
 	"name": "regr"
 	}

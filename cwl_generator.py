@@ -13,7 +13,14 @@ class CwlGenerator(object):
         self.inputs = parameters["inputs"]
         #TODO clean it
         self.tests_name = ["{}".format(test["name"]) for test in self.tests]
-        tests_file_l = [i["file"] for i in self.tests]
+        tests_file_l = []
+        for test in self.tests:
+            if type(test["file"]) is str:
+                tests_file_l.append(test["file"])
+            elif type(test["file"]) is list:
+                tests_file_l += test["file"]
+        #tests_file_l = [i["file"] for i in self.tests]
+
         self.tests_file_str = ('[' + len(tests_file_l) * '"{}",' + ']').format(*tests_file_l)
         self.report_tests_str = ('[' + len(self.tests_name) * '"report_{}.json",'+ ']').format(
                     *self.tests_name)
@@ -50,7 +57,6 @@ class CwlGenerator(object):
                 "      position: {}\n"
                 "      prefix: {}\n"
                 ).format(ii, input_tuple[0], ii+2, input_tuple[1])
-
         cmd_cwl += (
                 "outputs:\n"
                 "  output_files_tests:\n"
@@ -78,12 +84,16 @@ class CwlGenerator(object):
             "    inputBinding:\n"
             "      position: 1\n"
             "  input_files_out:\n"
-            "    type: File\n"
+            "    type:\n"
+            "      type: array\n"
+            "      items: File\n"
             "    inputBinding:\n"
             "      position: 3\n"
             "      prefix: -out\n"
             "  input_ref:\n"
-            "    type: File\n"
+            "    type:\n"
+            "      type: array\n"
+            "      items: File\n"
             "    inputBinding:\n"
             "      position: 4\n"
             "      prefix: -ref\n"
@@ -111,6 +121,7 @@ class CwlGenerator(object):
             "class: Workflow\n"
             "requirements:\n"
             "   - class: ScatterFeatureRequirement\n"
+            "   - class: MultipleInputFeatureRequirement\n"
             "inputs:\n"
             "  script_workf: File\n"
             "  script_tests:\n"
@@ -156,8 +167,12 @@ class CwlGenerator(object):
             "    scatterMethod: dotproduct\n"
             "    in:\n"
             "      script: script_tests\n"
-            "      input_files_out: workflow/output_files_tests\n"
-            "      input_ref: data_ref\n"
+            "      input_files_out:\n"
+            "        source: [workflow/output_files_tests]\n"
+            "        linkMerge: merge_nested\n"
+            "      input_ref:\n"
+            "        source: [data_ref]\n"
+            "        linkMerge: merge_nested\n"
             "      name: name_tests\n"
             "    out: [output_files_report]\n\n"
         )
@@ -169,7 +184,6 @@ class CwlGenerator(object):
 
     def _creating_main_input(self):
         """Creating input yml file for CWL"""
-
         cmd_in = (
             "script_workf:\n"
             "  class: File\n"
@@ -182,8 +196,9 @@ class CwlGenerator(object):
                        )
         cmd_in += "data_ref:\n"
         for test in self.tests:
-            cmd_in += ("- {class: File, path: " + \
-            os.path.join(self.workflow_path, "data_ref", test["file"]) + "}\n"
+            for file in test["file"]:
+                cmd_in += ("- {class: File, path: " + \
+                os.path.join(self.workflow_path, "data_ref", file) + "}\n"
                        )
         for (ii, input_tuple) in enumerate(self.inputs):
             if input_tuple[0] == "File":
@@ -197,7 +212,6 @@ class CwlGenerator(object):
                 cmd_in += (
                     "input_workf_{}: {}\n"
                     ).format(ii, input_tuple[2])
-
         cmd_in += (
             "name_tests: {}\n".format(self.tests_name)
         )
