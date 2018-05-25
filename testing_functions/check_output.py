@@ -15,7 +15,7 @@ def creating_dataframe(files_list):
     for filename in files_list:
         with open(filename, 'rt') as fp:
             in_dict = json.load(fp)
-            subject = filename.split(os.path.sep)[1]
+            subject = filename.split(os.path.sep)[-3]
             in_dict_mod = {}
             for k, v in in_dict.items():
                 if isinstance(v, list):
@@ -50,30 +50,38 @@ def check_output(file_out, file_ref=None, name=None, **kwargs):
 
     report_filename = "report_{}.json".format(name)
     out = {}
+    # chosing just a few columns
+    keys_test = ["white_voxels", "gray_voxels", "csf_voxels",
+                 "Right-Hippocampus_voxels", "Right-Amygdala_voxels", "Right-Caudate_voxels"]
+    out["col_names"] = list(df_exp.index)
+    for key in keys_test:
+        out["rel_error:{}".format(key.replace("_voxels", ""))] = []
 
-    for key in df_exp.columns:
-        if True:#key in ["white_voxels", "gray_voxels", "csf_voxels", 
-                #   "Right-Hippocampus_voxels", "Right-Amygdala_voxels", "Right-Caudate_voxels"]:
-            if df_exp[key].values[0] != 0.:
-                out["diff:{}".format(key.replace("_voxels", ""))] = round(
-                    1. * abs(df_exp[key].values[0] - df_out[key].values[0]) / df_exp[key].values[0], 5)
-            elif df_out[key].values[0] != 0.:
-                out["diff:{}".format(key.replace("_voxels", ""))] = 1.
+    for subj in df_exp.index:
+        for key in keys_test:
+            if df_exp.loc[subj, key] != 0.:
+                out["rel_error:{}".format(key.replace("_voxels", ""))].append(round(
+                    1. * abs(df_exp.loc[subj, key] - df_out.loc[subj, key]) / df_exp.loc[subj, key], 5))
+            elif df_out.loc[subj, key] != 0.:
+                out["rel_error:{}".format(key.replace("_voxels", ""))].append(1.)
             else:
-                out["diff:{}".format(key.replace("_voxels", ""))] = 0.
+                out["rel_error:{}".format(key.replace("_voxels", ""))].append(0.)
 
-    diff = [val for k, val in out.items()]
+    out["regr"] = []
+    for i, subj in enumerate(out["col_names"]):
+        list_tmp = []
+        for k in out.keys():
+            if k not in ["col_names", "regr"]:
+                list_tmp.append(out[k][i])
+        try:
+            assert max(list_tmp) < 0.05
+            out["regr"].append("PASSED")
+        except(AssertionError):
+            out["regr"].append("FAILED")
 
-    try:
-        assert max(diff) < 0.05
-        out["regr"] = "PASSED"
-    except(AssertionError):
-        out["regr"] = "FAILED"
-
-    out_max = {"max_diff": max(diff)}
-
+    #out_max = {"max_diff": max(diff)}
     with open(report_filename, "w") as f:
-        json.dump(out_max, f)
+        json.dump(out, f)
 
 
 if __name__ == "__main__":
