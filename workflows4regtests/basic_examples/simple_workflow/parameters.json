@@ -2,7 +2,6 @@
     "command": "python",
     "env": {
         "base": [
-            "debian:stretch",
             "ubuntu:16.04"
         ],
 	"python": [
@@ -25,7 +24,7 @@
         [
             "int",
             "-n",
-            "2"
+            "3"
         ]
     ],
     "script": "run_demo_workflow.py",
