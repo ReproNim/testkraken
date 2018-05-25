@@ -10,12 +10,13 @@ import pdb
 def creating_dataframe(files_list):
     """ reads every json file from the files_list and creates one data frame """ 
     outputmap = {0: 'voxels', 1: 'volume'}
-
     df = pd.DataFrame()
-    for filename in files_list:
+    for (i, filename) in enumerate(files_list):
         with open(filename, 'rt') as fp:
             in_dict = json.load(fp)
-            subject = filename.split(os.path.sep)[-3]
+            # in cwl i'm loosing the directory name
+            #subject = filename.split(os.path.sep)[-3]
+            subject = "subject_{}".format(i)
             in_dict_mod = {}
             for k, v in in_dict.items():
                 if isinstance(v, list):
