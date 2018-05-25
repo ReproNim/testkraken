@@ -11,7 +11,6 @@
             "nipype pandas requests"
         ],
         "fsl": [
-            "5.0.9",
             "5.0.10"
         ]
     },
@@ -24,13 +23,13 @@
         [
             "int",
             "-n",
-            "3"
+            "2"
         ]
     ],
     "script": "run_demo_workflow.py",
     "tests": [
         {
-        "file": ["output/metaflow/AnnArbor_sub16960/save_json/segstats.json", "output/metaflow/AnnArbor_sub20317/save_json/segstats.json", "output/metaflow/AnnArbor_sub38614/save_json/segstats.json"],
+        "file": ["output/metaflow/AnnArbor_sub16960/save_json/segstats.json", "output/metaflow/AnnArbor_sub20317/save_json/segstats.json"],
         "script": "check_output.py",
         "name": "reg"
         }
@@ -38,11 +37,11 @@
     "plots": [
        {
        "function": "scatter_all",
-       "var_list": ["test_AA16960:max_diff", "test_AA20317:max_diff", "test_AA38614:max_diff"]
+       "var_list": []
        },
        {
        "function": "barplot_all_rel_error",
-       "var_list": ["test_AA16960:max_diff", "test_AA20317:max_diff", "test_AA38614:max_diff"]
+       "var_list": []
        }
     ]
 
