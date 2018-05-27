@@ -155,10 +155,16 @@ class WorkflowRegtest(object):
                 # for some plots it's easier to use "flat" test structure
                 f_dict_flat = self._flatten_dict_test(f_dict)
                 if iir == 0:
-                    df_el = pd.DataFrame(f_dict)
+                    try:
+                        df_el = pd.DataFrame(f_dict)
+                    except ValueError: # if results are not list
+                        df_el = pd.DataFrame(f_dict, index=[0])
                     df_el_flat = pd.DataFrame(f_dict_flat, index=[0])
                 else:
-                    df_el = df_el.merge(pd.DataFrame(f_dict), how="outer")
+                    try:
+                        df_el = df_el.merge(pd.DataFrame(f_dict), how="outer")
+                    except ValueError: # if results are not list
+                        df_el = df_el.merge(pd.DataFrame(f_dict, index=[0]), how="outer")
                     df_el_flat = pd.concat([df_el_flat, pd.DataFrame(f_dict_flat, index=[0])], axis=1)
 
         df_env = pd.DataFrame(dict_env, index=[0])
@@ -184,16 +190,19 @@ class WorkflowRegtest(object):
                 if type(val) is list:
                     raise Exception("index_name key is required if results are lists")
                 else:
-                    dict["{}.{}".format((test_name, key))] = dict.pop(key)
+                    dict["{}.{}".format(test_name, key)] = dict.pop(key)
             dict["index_name"] = "N/A"
 
 
     def _flatten_dict_test(self, dict):
-        dict_flat = {}
-        for key in set(dict.keys()) - set(["index_name"]):
-            for (i, el) in enumerate(dict[key]):
-                dict_flat["{}:{}".format(key, dict["index_name"][i])] = el
-        return dict_flat
+        if dict["index_name"] == "N/A":
+            return dict
+        else:
+            dict_flat = {}
+            for key in set(dict.keys()) - set(["index_name"]):
+                for (i, el) in enumerate(dict[key]):
+                    dict_flat["{}:{}".format(key, dict["index_name"][i])] = el
+            return dict_flat
 
 
     def plot_all_results_paralcoord(self):

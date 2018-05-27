@@ -29,6 +29,11 @@
         "file": "list_final.json",
         "script": "test_el_list_eq_tmp.py",
         "name": "stat"
+        },
+        {
+        "file": "list_final.json",
+        "script": "test_el_list_eq_tmp_noarray.py",
+        "name": "stat_all"
         }
     ],
     "plots": [
