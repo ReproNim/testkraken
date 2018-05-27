@@ -117,7 +117,6 @@ class WorkflowRegtest(object):
         self._testing_workflow()
 
 
-    # TODO using pandas?
     def merging_all_output(self):
         df_el_l = []
         df_el_flat_l = []
@@ -203,44 +202,6 @@ class WorkflowRegtest(object):
                 for (i, el) in enumerate(dict[key]):
                     dict_flat["{}:{}".format(key, dict["index_name"][i])] = el
             return dict_flat
-
-
-    def plot_all_results_paralcoord(self):
-        import pandas
-        import plotly.graph_objs as go
-        from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
-
-        df = self.res_all_df
-
-        list_pl = []
-        for i, k in self.env_parameters.items():
-            soft_values = df[i]
-            soft_values = soft_values.replace(k, list(range(len(k))))
-            list_pl.append(dict(label=i, values=soft_values, tickvals=list(range(len(k))), ticktext=k ))
-
-        for key in self.res_keys:
-            if "reg" in key:
-                reg_values = df[key]
-                reg_values = reg_values.replace(["PASSED", "FAILED", "N/A"], [1, 0, 2])
-                list_pl.append(dict(label=key, values=reg_values,
-                                    tickvals=[0, 1, 2], ticktext=["failed", "passed", "N/A"]))
-            else:
-                stat_values = df[key]
-                try:
-                    stat_values = stat_values.replace(["N/A"], [-999])
-                except TypeError:
-                    pass
-                list_pl.append(dict(label=key, values=stat_values))
-
-        data = [go.Parcoords(line=dict(color = 'blue'), dimensions=list_pl)]
-
-        layout = go.Layout(
-            plot_bgcolor='#E5E5E5',
-            paper_bgcolor='#E5E5E5'
-        )
-
-        fig = go.Figure(data=data, layout = layout)
-        plot(fig, filename=os.path.join(self.working_dir,'parcoords_{}_All'.format(os.path.basename(self.workflow_path))))
 
 
     def dashboard_workflow(self):
