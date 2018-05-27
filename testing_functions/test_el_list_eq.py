@@ -33,10 +33,10 @@ def test_el_list_eq(file_out, file_ref=None, name=None, **kwargs):
     out = {}
     out["rel_error"] = []
     out["abs_error"] = []
-    out["col_names"] = []
+    out["index_name"] = []
     print("OBJ", obj_ref, file_ref)
     for i, el in enumerate(obj_ref):
-        out["col_names"].append("el_{}".format(i))
+        out["index_name"].append("el_{}".format(i))
         out["abs_error"].append(round(abs(obj_ref[i] - obj_out[i]), 3))
         out["rel_error"].append(round(1.* abs(obj_ref[i] - obj_out[i]) / obj_ref[i], 3))
         

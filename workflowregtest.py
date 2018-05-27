@@ -117,10 +117,10 @@ class WorkflowRegtest(object):
         self._testing_workflow()
 
 
+    # TODO using pandas?
     def merging_all_output(self):
-        self.res_all = []
-        self.res_all_flat = []
-        no_docker = []
+        df_el_l = []
+        df_el_flat_l = []
         ii_ok = None # just to have at least one env that docker was ok
         for ii, soft_d in enumerate(self.matrix_envs_dict):
             #self.res_all.append(deepcopy(soft_d))
@@ -132,79 +132,68 @@ class WorkflowRegtest(object):
             if self.docker_status[ii] == "docker ok":
                 ii_ok = ii
                 # merging results from tests and updating self.res_all, self.res_all_flat
-                self._merging_test_output(el_dict, ii)
+                df_el, df_el_flat = self._merging_test_output(el_dict, ii)
+                df_el_l.append(df_el)
+                df_el_flat_l.append(df_el_flat)
             else:
-                no_docker.append((len(self.res_all), len(self.res_all_flat)))
-                self.res_all.append(deepcopy(el_dict))
-                self.res_all_flat.append(deepcopy(el_dict))
-        #pdb.set_trace()
-        # adding "N/A" for all tests for environment which were not created (for whatever reason)
-        self.res_keys = self.res_all[ii_ok].keys() - soft_d.keys()
-        self.res_keys_flat = self.res_all_flat[ii_ok].keys() - soft_d.keys()
-        if ii_ok and no_docker:
-            for (ii, ii_flat) in no_docker:
-                for key in self.res_keys:
-                    self.res_all[ii][key] = "N/A"
-                for key in self.res_keys_flat:
-                    self.res_all_flat[ii_flat][key] = "N/A"
+                el_dict["env"] = "N/A"
+                df_el_l.append(pd.DataFrame(el_dict, index=[0]))
+                df_el_flat_l.append(pd.DataFrame(el_dict, index=[0]))
+
+        self.res_all_df = pd.concat(df_el_l).reset_index(drop=True)
+        self.res_all_flat_df = pd.concat(df_el_flat_l).reset_index(drop=True)
+        self.res_all_df.to_csv(os.path.join(self.working_dir, "output_all.csv"), index=False)
 
 
-        #pdb.set_trace()
-        keys_csv = self.res_all[0].keys()
-        with open(os.path.join(self.working_dir, "output_all.csv"), 'w') as outfile:
-            csv_writer = csv.DictWriter(outfile, keys_csv)
-            csv_writer.writeheader()
-            csv_writer.writerows(self.res_all)
-
-        self.res_all_df = pd.DataFrame(self.res_all)
-        self.res_all_flat_df = pd.DataFrame(self.res_all_flat)
-
-
-    def _merging_test_output(self, dict, ii):
+    def _merging_test_output(self, dict_env, ii):
         for (iir, test) in enumerate(self.tests):
             file_name = os.path.join(self.working_dir, self.soft_str[ii],
                                      "report_{}.json".format(test["name"]))
             with open(file_name) as f:
                 f_dict = json.load(f)
-                # checking if test results can be merged
-                # if results form the first test have "col_names" than every singe test
-                # has to have the same values in "col_names"
+                self._checking_dict(f_dict, test["name"])
+                # for some plots it's easier to use "flat" test structure
+                f_dict_flat = self._flatten_dict_test(f_dict)
                 if iir == 0:
-                    try:
-                        col = f_dict["col_names"]
-                    except KeyError:
-                        col = None
-                elif (col and col != f_dict["col_names"]) or (col is None and "col_names" in f_dict.keys()):
-                        raise Exception("tests {} and {} can not be merged, remove "
-                                        "one of the test from the specification".format(
-                            self.tests[0]["name"], test["name"]))
-
-                if col:
-                    # if this is the first test, we create a list with a copy of dict
-                    if iir == 0:
-                        dict_l = []
-                        dict_flat_l = [dict]
-                        for i in range(len(col)):
-                            dict_l.append(deepcopy(dict))
-                    # filling the results in each dictionary from dict_l
-                    for key, res_l in f_dict.items():
-                        if len(col) != len(res_l):
-                            raise Exception("length of {} has to be equal to length of col_names".format(key))
-                        #pdb.set_trace()
-                        for (idt, res) in enumerate(res_l):
-                            dict_l[idt]["test_{}:{}".format(test["name"], key)] = res
-                            dict_flat_l[0]["test_{}:{}:{}".format(test["name"], key, col[idt])] = res
+                    df_el = pd.DataFrame(f_dict)
+                    df_el_flat = pd.DataFrame(f_dict_flat, index=[0])
                 else:
-                    if iir == 0:
-                        dict_l = [dict]
-                        dict_flat_l = [dict]
-                    for key, res in f_dict.items():
-                        dict["test_{}:{}".format(test["name"], key)] = res
+                    df_el = df_el.merge(pd.DataFrame(f_dict), how="outer")
+                    df_el_flat = pd.concat([df_el_flat, pd.DataFrame(f_dict_flat, index=[0])], axis=1)
 
-        #pdb.set_trace()
-        self.res_all += dict_l
-        self.res_all_flat += dict_flat_l
+        df_env = pd.DataFrame(dict_env, index=[0])
+        df_el_flat = pd.concat([df_env, df_el_flat], axis=1)
 
+        df_env = pd.concat([df_env] * len(df_el)).reset_index(drop=True)
+        df_el = pd.concat([df_env, df_el], axis=1)
+
+        return df_el, df_el_flat
+
+
+    def _checking_dict(self, dict, test_name):
+        if "index_name" in dict.keys():
+            len_ind = len(dict["index_name"])
+            keys_test = list(dict.keys())
+            keys_test.remove("index_name")
+            for key in keys_test:
+                if len(dict[key]) != len_ind:
+                    raise Exception ("the length for {} should be {}".format(key, len_ind))
+                dict["{}.{}".format(test_name, key)] = dict.pop(key)
+        else:
+            for key, val in dict.items():
+                if type(val) is list:
+                    raise Exception("index_name key is required if results are lists")
+                else:
+                    dict["{}.{}".format((test_name, key))] = dict.pop(key)
+            dict["index_name"] = "N/A"
+
+
+    def _flatten_dict_test(self, dict):
+        dict_flat = {}
+        for key in set(dict.keys()) - set(["index_name"]):
+            for (i, el) in enumerate(dict[key]):
+                dict_flat["{}:{}".format(key, dict["index_name"][i])] = el
+        return dict_flat
 
 
     def plot_all_results_paralcoord(self):
@@ -212,7 +201,7 @@ class WorkflowRegtest(object):
         import plotly.graph_objs as go
         from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
 
-        df = pandas.DataFrame(self.res_all)
+        df = self.res_all_df
 
         list_pl = []
         for i, k in self.env_parameters.items():

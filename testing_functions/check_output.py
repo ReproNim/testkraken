@@ -54,7 +54,7 @@ def check_output(file_out, file_ref=None, name=None, **kwargs):
     # chosing just a few columns
     keys_test = ["white_voxels", "gray_voxels", "csf_voxels",
                  "Right-Hippocampus_voxels", "Right-Amygdala_voxels", "Right-Caudate_voxels"]
-    out["col_names"] = list(df_exp.index)
+    out["index_name"] = list(df_exp.index)
     for key in keys_test:
         out["rel_error:{}".format(key.replace("_voxels", ""))] = []
 
@@ -69,10 +69,10 @@ def check_output(file_out, file_ref=None, name=None, **kwargs):
                 out["rel_error:{}".format(key.replace("_voxels", ""))].append(0.)
 
     out["regr"] = []
-    for i, subj in enumerate(out["col_names"]):
+    for i, subj in enumerate(out["index_name"]):
         list_tmp = []
         for k in out.keys():
-            if k not in ["col_names", "regr"]:
+            if k not in ["index_name", "regr"]:
                 list_tmp.append(out[k][i])
         try:
             assert max(list_tmp) < 0.05

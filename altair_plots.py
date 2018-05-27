@@ -14,6 +14,7 @@ class AltairPlots(object):
         self.plot_description = {"scatter_all": "scatter plot for all environments",
                                  "barplot_all": "barplot for all environments",
                                  "barplot_all_rel_error": "barplot of the relative errors for all environments"}
+        self.drop_key_list_default = ["python", "base", "fsl", "conda_install", "pip_install"]
 
     def create_plots(self):
         for ii, spec in enumerate(self.plot_spec):
@@ -26,8 +27,8 @@ class AltairPlots(object):
     def scatter_all(self, var_l):
         if not var_l:
             # if var_l is not provided, I will plot all
-            var_l = [col for col in self.results.columns if "test" in col]
-        res_plot = self.results[var_l+["env"]]
+            var_l = [col for col in self.results.columns if col not in self.drop_key_list_default]
+        res_plot = self.results[var_l].fillna("NaN")
         res_transf = res_plot.reset_index().melt(['env', 'index'])
         plot_dict = alt.Chart(res_transf).mark_circle(
                 size=50, opacity=0.5).encode(
@@ -42,7 +43,7 @@ class AltairPlots(object):
         if not var_l:
             # if var_l is not provided, I will plot all
             var_l = [col for col in self.results.columns if default_col in col]
-        res_plot = self.results[var_l+["env"]]
+        res_plot = self.results[var_l+['env']].fillna("NaN")
         res_transf = res_plot.reset_index().melt(['env', 'index'])
         if y_scale: #should be a tuple, TODO
             y_bar = alt.Y('value:Q', scale=alt.Scale(domain=y_scale))
@@ -57,7 +58,6 @@ class AltairPlots(object):
         chart = alt.hconcat().properties(background="#a9a3b7")
         for env in [ee for ee in self.results.env if ee != "N/A"]:
             chart |= base.transform_filter(alt.expr.datum.env == env)
-
         plot_dict = chart.to_dict()
         return plot_dict
 
