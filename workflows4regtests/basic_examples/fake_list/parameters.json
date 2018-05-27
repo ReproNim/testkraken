@@ -24,7 +24,12 @@
 	"file": ["list_final.json", "list_final_1.json"],
 	"script": "test_el_list_eq.py", 
 	"name": "regr"
-	}
+	},
+        {
+        "file": ["list_final.json", "list_final_1.json"],
+        "script": "test_el_list_eq_tmp.py",
+        "name": "stat"
+        }
     ],
     "plots": [
     {
