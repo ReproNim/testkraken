@@ -26,7 +26,7 @@
 	"name": "regr"
 	},
         {
-        "file": ["list_final.json", "list_final_1.json"],
+        "file": "list_final.json",
         "script": "test_el_list_eq_tmp.py",
         "name": "stat"
         }
