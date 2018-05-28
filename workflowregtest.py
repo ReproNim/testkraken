@@ -118,8 +118,8 @@ class WorkflowRegtest(object):
 
 
     def merging_all_output(self):
-        self.res_all = []
-        no_docker = []
+        df_el_l = []
+        df_el_flat_l = []
         ii_ok = None # just to have at least one env that docker was ok
         for ii, soft_d in enumerate(self.matrix_envs_dict):
             #self.res_all.append(deepcopy(soft_d))
@@ -130,68 +130,78 @@ class WorkflowRegtest(object):
                     el_dict["env"] += "_{}-{}".format(key, el_dict[key])
             if self.docker_status[ii] == "docker ok":
                 ii_ok = ii
-                for (iir, test) in enumerate(self.tests):
-                    file_name = os.path.join(self.working_dir, self.soft_str[ii],
-                                             "report_{}.json".format(test["name"]))
-                    with open(file_name) as f:
-                        f_dict = json.load(f)
-                        for key, res in f_dict.items():
-                                el_dict["test_{}:{}".format(test["name"], key)] = res
+                # merging results from tests and updating self.res_all, self.res_all_flat
+                df_el, df_el_flat = self._merging_test_output(el_dict, ii)
+                df_el_l.append(df_el)
+                df_el_flat_l.append(df_el_flat)
             else:
-                no_docker.append(ii)
-            self.res_all.append(el_dict)
+                el_dict["env"] = "N/A"
+                df_el_l.append(pd.DataFrame(el_dict, index=[0]))
+                df_el_flat_l.append(pd.DataFrame(el_dict, index=[0]))
 
-        self.res_keys = self.res_all[ii_ok].keys() - soft_d.keys()
-        if ii_ok and no_docker:
-            for ii in no_docker:
-                for key in self.res_keys:
-                    self.res_all[ii][key] = "N/A"
-
-        keys_csv = self.res_all[0].keys()
-        with open(os.path.join(self.working_dir, "output_all.csv"), 'w') as outfile:
-            csv_writer = csv.DictWriter(outfile, keys_csv)
-            csv_writer.writeheader()
-            csv_writer.writerows(self.res_all)
-
-        self.res_all_df = pd.DataFrame(self.res_all)
+        self.res_all_df = pd.concat(df_el_l).reset_index(drop=True)
+        self.res_all_flat_df = pd.concat(df_el_flat_l).reset_index(drop=True)
+        self.res_all_df.to_csv(os.path.join(self.working_dir, "output_all.csv"), index=False)
 
 
-    def plot_all_results_paralcoord(self):
-        import pandas
-        import plotly.graph_objs as go
-        from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
+    def _merging_test_output(self, dict_env, ii):
+        for (iir, test) in enumerate(self.tests):
+            file_name = os.path.join(self.working_dir, self.soft_str[ii],
+                                     "report_{}.json".format(test["name"]))
+            with open(file_name) as f:
+                f_dict = json.load(f)
+                self._checking_dict(f_dict, test["name"])
+                # for some plots it's easier to use "flat" test structure
+                f_dict_flat = self._flatten_dict_test(f_dict)
+                if iir == 0:
+                    try:
+                        df_el = pd.DataFrame(f_dict)
+                    except ValueError: # if results are not list
+                        df_el = pd.DataFrame(f_dict, index=[0])
+                    df_el_flat = pd.DataFrame(f_dict_flat, index=[0])
+                else:
+                    try:
+                        df_el = df_el.merge(pd.DataFrame(f_dict), how="outer")
+                    except ValueError: # if results are not list
+                        df_el = df_el.merge(pd.DataFrame(f_dict, index=[0]), how="outer")
+                    df_el_flat = pd.concat([df_el_flat, pd.DataFrame(f_dict_flat, index=[0])], axis=1)
 
-        df = pandas.DataFrame(self.res_all)
+        df_env = pd.DataFrame(dict_env, index=[0])
+        df_el_flat = pd.concat([df_env, df_el_flat], axis=1)
 
-        list_pl = []
-        for i, k in self.env_parameters.items():
-            soft_values = df[i]
-            soft_values = soft_values.replace(k, list(range(len(k))))
-            list_pl.append(dict(label=i, values=soft_values, tickvals=list(range(len(k))), ticktext=k ))
+        df_env = pd.concat([df_env] * len(df_el)).reset_index(drop=True)
+        df_el = pd.concat([df_env, df_el], axis=1)
 
-        for key in self.res_keys:
-            if "reg" in key:
-                reg_values = df[key]
-                reg_values = reg_values.replace(["PASSED", "FAILED", "N/A"], [1, 0, 2])
-                list_pl.append(dict(label=key, values=reg_values,
-                                    tickvals=[0, 1, 2], ticktext=["failed", "passed", "N/A"]))
-            else:
-                stat_values = df[key]
-                try:
-                    stat_values = stat_values.replace(["N/A"], [-999])
-                except TypeError:
-                    pass
-                list_pl.append(dict(label=key, values=stat_values))
+        return df_el, df_el_flat
 
-        data = [go.Parcoords(line=dict(color = 'blue'), dimensions=list_pl)]
 
-        layout = go.Layout(
-            plot_bgcolor='#E5E5E5',
-            paper_bgcolor='#E5E5E5'
-        )
+    def _checking_dict(self, dict, test_name):
+        if "index_name" in dict.keys():
+            len_ind = len(dict["index_name"])
+            keys_test = list(dict.keys())
+            keys_test.remove("index_name")
+            for key in keys_test:
+                if len(dict[key]) != len_ind:
+                    raise Exception ("the length for {} should be {}".format(key, len_ind))
+                dict["{}.{}".format(test_name, key)] = dict.pop(key)
+        else:
+            for key, val in dict.items():
+                if type(val) is list:
+                    raise Exception("index_name key is required if results are lists")
+                else:
+                    dict["{}.{}".format(test_name, key)] = dict.pop(key)
+            dict["index_name"] = "N/A"
 
-        fig = go.Figure(data=data, layout = layout)
-        plot(fig, filename=os.path.join(self.working_dir,'parcoords_{}_All'.format(os.path.basename(self.workflow_path))))
+
+    def _flatten_dict_test(self, dict):
+        if dict["index_name"] == "N/A":
+            return dict
+        else:
+            dict_flat = {}
+            for key in set(dict.keys()) - set(["index_name"]):
+                for (i, el) in enumerate(dict[key]):
+                    dict_flat["{}:{}".format(key, dict["index_name"][i])] = el
+            return dict_flat
 
 
     def dashboard_workflow(self):
@@ -199,5 +209,5 @@ class WorkflowRegtest(object):
         for js_template in ["dashboard.js", "index.html", "style.css"]:
             shutil.copy2(os.path.join(js_dir, js_template), self.working_dir)
 
-        ap = AltairPlots(self.working_dir, self.res_all_df, self.plot_parameters)
+        ap = AltairPlots(self.working_dir, self.res_all_flat_df, self.plot_parameters)
         ap.create_plots()

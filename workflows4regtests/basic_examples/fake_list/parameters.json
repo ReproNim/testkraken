@@ -21,19 +21,29 @@
     "script": "div_list.py",
     "tests": [
         {
-	"file": "list_final.json", 
+	"file": ["list_final.json", "list_final_1.json"],
 	"script": "test_el_list_eq.py", 
 	"name": "regr"
-	}
+	},
+        {
+        "file": "list_final.json",
+        "script": "test_el_list_eq_tmp.py",
+        "name": "stat"
+        },
+        {
+        "file": "list_final.json",
+        "script": "test_el_list_eq_tmp_noarray.py",
+        "name": "stat_all"
+        }
     ],
     "plots": [
     {
     "function": "scatter_all",
-    "var_list": ["test_regr:0", "test_regr:1", "test_regr:2", "test_regr:3", "test_regr:4", "test_regr:5", "test_regr:6", "test_regr:7", "test_regr:8", "test_regr:9", "test_regr:regr"]
+    "var_list": []
     },
     {
     "function": "barplot_all_rel_error",
-    "var_list": ["test_regr:0", "test_regr:1", "test_regr:2", "test_regr:3", "test_regr:4", "test_regr:5", "test_regr:6", "test_regr:7", "test_regr:8", "test_regr:9", "test_regr:regr"]
+    "var_list": []
     }
 
     ]

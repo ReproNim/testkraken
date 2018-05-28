@@ -13,10 +13,24 @@ class CwlGenerator(object):
         self.inputs = parameters["inputs"]
         #TODO clean it
         self.tests_name = ["{}".format(test["name"]) for test in self.tests]
-        tests_file_l = [i["file"] for i in self.tests]
-        self.tests_file_str = ('[' + len(tests_file_l) * '"{}",' + ']').format(*tests_file_l)
+        tests_file_l = []
+        for test in self.tests:
+            if type(test["file"]) is str:
+                test["file"] = [test["file"]]
+            tests_file_l.append(test["file"])
+        #tests_file_l = [i["file"] for i in self.tests]
+
+        self.tests_file_str = []
+        for test_file in tests_file_l:
+            self.tests_file_str.append(('[' + len(test_file) * '"{}",' + ']').format(*test_file))
         self.report_tests_str = ('[' + len(self.tests_name) * '"report_{}.json",'+ ']').format(
                     *self.tests_name)
+        self.workflow_output_files_tests_str = ('[' + len(self.tests) * 'workflow/output_files_tests_{},' + ']').format(
+                *range(len(self.tests)))
+        self.output_files_tests_str = ('[' + len(self.tests) * 'output_files_tests_{},' + ']').format(
+                *range(len(self.tests)))
+        self.data_ref_str = ('[' + len(self.tests) * 'data_ref_{},' + ']').format(
+                *range(len(self.tests)))
 
     def create_cwl(self):
         self._creating_main_cwl()
@@ -50,16 +64,16 @@ class CwlGenerator(object):
                 "      position: {}\n"
                 "      prefix: {}\n"
                 ).format(ii, input_tuple[0], ii+2, input_tuple[1])
-
-        cmd_cwl += (
-                "outputs:\n"
-                "  output_files_tests:\n"
+        cmd_cwl += "outputs:\n"
+        for (it, test) in enumerate(self.tests):
+            cmd_cwl += (
+                "  output_files_tests_{}:\n"
                 "    type:\n"
                 "      type: array\n"
                 "      items: File\n"
                 "    outputBinding:\n"
                 '      glob: {}\n'
-        ).format(self.tests_file_str)
+            ).format(it, self.tests_file_str[it])
 
         with open("cwl_workflow.cwl", "w") as cwl_file:
             cwl_file.write(cmd_cwl)
@@ -78,12 +92,16 @@ class CwlGenerator(object):
             "    inputBinding:\n"
             "      position: 1\n"
             "  input_files_out:\n"
-            "    type: File\n"
+            "    type:\n"
+            "      type: array\n"
+            "      items: File\n"
             "    inputBinding:\n"
             "      position: 3\n"
             "      prefix: -out\n"
             "  input_ref:\n"
-            "    type: File\n"
+            "    type:\n"
+            "      type: array\n"
+            "      items: File\n"
             "    inputBinding:\n"
             "      position: 4\n"
             "      prefix: -ref\n"
@@ -111,13 +129,10 @@ class CwlGenerator(object):
             "class: Workflow\n"
             "requirements:\n"
             "   - class: ScatterFeatureRequirement\n"
+            "   - class: MultipleInputFeatureRequirement\n"
             "inputs:\n"
             "  script_workf: File\n"
             "  script_tests:\n"
-            "    type:\n"
-            "      type: array\n"
-            "      items: File\n"
-            "  data_ref:\n"
             "    type:\n"
             "      type: array\n"
             "      items: File\n"
@@ -126,6 +141,14 @@ class CwlGenerator(object):
             "      type: array\n"
             "      items: string\n"
         )
+        for (it, test) in enumerate(self.tests):
+            cmd_cwl += (
+            "  data_ref_{}:\n"
+            "    type:\n"
+            "      type: array\n"
+            "      items: File\n"
+            ).format(it)
+
         for (ii, input_tuple) in enumerate(self.inputs):
             cmd_cwl += (
             "  input_workf_{}: {}\n"
@@ -149,18 +172,22 @@ class CwlGenerator(object):
             ).format(ii, ii)
 
         cmd_cwl += (
-            "    out: [output_files_tests]\n"
+            "    out: {}\n"
             "  tests:\n"
             "    run: cwl_tests.cwl\n"
             "    scatter: [input_files_out, script, input_ref, name]\n"
             "    scatterMethod: dotproduct\n"
             "    in:\n"
             "      script: script_tests\n"
-            "      input_files_out: workflow/output_files_tests\n"
-            "      input_ref: data_ref\n"
+            "      input_files_out:\n"
+            "        source: {}\n"
+            "        linkMerge: merge_nested\n"
+            "      input_ref:\n"
+            "        source: {}\n"
+            "        linkMerge: merge_nested\n"
             "      name: name_tests\n"
             "    out: [output_files_report]\n\n"
-        )
+        ).format(self.output_files_tests_str, self.workflow_output_files_tests_str, self.data_ref_str)
 
         with open("cwl.cwl", "w") as cwl_file:
             cwl_file.write(cmd_cwl)
@@ -169,7 +196,6 @@ class CwlGenerator(object):
 
     def _creating_main_input(self):
         """Creating input yml file for CWL"""
-
         cmd_in = (
             "script_workf:\n"
             "  class: File\n"
@@ -180,10 +206,11 @@ class CwlGenerator(object):
             cmd_in += ("- {class: File, path: " + \
             os.path.join(os.path.dirname(os.path.realpath(__file__)), "testing_functions", test["script"]) + "}\n"
                        )
-        cmd_in += "data_ref:\n"
-        for test in self.tests:
-            cmd_in += ("- {class: File, path: " + \
-            os.path.join(self.workflow_path, "data_ref", test["file"]) + "}\n"
+        for it, test in enumerate(self.tests):
+            cmd_in += "data_ref_{}:\n".format(it)
+            for file in list(test["file"]):
+                cmd_in += ("- {class: File, path: " + \
+                os.path.join(self.workflow_path, "data_ref", file) + "}\n"
                        )
         for (ii, input_tuple) in enumerate(self.inputs):
             if input_tuple[0] == "File":
@@ -197,7 +224,6 @@ class CwlGenerator(object):
                 cmd_in += (
                     "input_workf_{}: {}\n"
                     ).format(ii, input_tuple[2])
-
         cmd_in += (
             "name_tests: {}\n".format(self.tests_name)
         )

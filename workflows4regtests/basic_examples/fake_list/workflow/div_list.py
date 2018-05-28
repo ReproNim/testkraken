@@ -3,6 +3,7 @@ import random
 
 def div_list(filename):
     """ a simple function for sorting list"""
+    random.seed(a=3)
     with open(filename) as json_data:
         listorig = json.load(json_data)
 
@@ -10,6 +11,11 @@ def div_list(filename):
         listorig[i] /= 2
         listorig[i] += random.random()/100
         
+    with open('list_final_1.json', 'w') as outfile:
+        json.dump(listorig, outfile)
+    with open('list_final_2.json', 'w') as outfile:
+        json.dump(listorig, outfile)
+
     with open('list_final.json', 'w') as outfile:
         json.dump(listorig, outfile)
 

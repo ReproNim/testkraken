@@ -10,12 +10,13 @@ import pdb
 def creating_dataframe(files_list):
     """ reads every json file from the files_list and creates one data frame """ 
     outputmap = {0: 'voxels', 1: 'volume'}
-
     df = pd.DataFrame()
-    for filename in files_list:
+    for (i, filename) in enumerate(files_list):
         with open(filename, 'rt') as fp:
             in_dict = json.load(fp)
-            subject = filename.split(os.path.sep)[1]
+            # in cwl i'm loosing the directory name
+            #subject = filename.split(os.path.sep)[-3]
+            subject = "subject_{}".format(i)
             in_dict_mod = {}
             for k, v in in_dict.items():
                 if isinstance(v, list):
@@ -28,8 +29,15 @@ def creating_dataframe(files_list):
 
 
 def check_output(file_out, file_ref=None, name=None, **kwargs):
-    expected_files = [file_ref]
-    output_files = [file_out]
+    if type(file_ref) is list:
+        expected_files = file_ref
+    elif type(file_ref) is str:
+        expected_files = [file_ref]
+
+    if type(file_out) is list:
+        output_files = file_out
+    elif type(file_out) is str:
+        output_files = [file_out]
 
     df_exp = creating_dataframe(expected_files)
     df_out = creating_dataframe(output_files)
@@ -43,30 +51,38 @@ def check_output(file_out, file_ref=None, name=None, **kwargs):
 
     report_filename = "report_{}.json".format(name)
     out = {}
+    # chosing just a few columns
+    keys_test = ["white_voxels", "gray_voxels", "csf_voxels",
+                 "Right-Hippocampus_voxels", "Right-Amygdala_voxels", "Right-Caudate_voxels"]
+    out["index_name"] = list(df_exp.index)
+    for key in keys_test:
+        out["rel_error:{}".format(key.replace("_voxels", ""))] = []
 
-    for key in df_exp.columns:
-        if True:#key in ["white_voxels", "gray_voxels", "csf_voxels", 
-                #   "Right-Hippocampus_voxels", "Right-Amygdala_voxels", "Right-Caudate_voxels"]:
-            if df_exp[key].values[0] != 0.:
-                out["diff:{}".format(key.replace("_voxels", ""))] = round(
-                    1. * abs(df_exp[key].values[0] - df_out[key].values[0]) / df_exp[key].values[0], 5)
-            elif df_out[key].values[0] != 0.:
-                out["diff:{}".format(key.replace("_voxels", ""))] = 1.
+    for subj in df_exp.index:
+        for key in keys_test:
+            if df_exp.loc[subj, key] != 0.:
+                out["rel_error:{}".format(key.replace("_voxels", ""))].append(round(
+                    1. * abs(df_exp.loc[subj, key] - df_out.loc[subj, key]) / df_exp.loc[subj, key], 5))
+            elif df_out.loc[subj, key] != 0.:
+                out["rel_error:{}".format(key.replace("_voxels", ""))].append(1.)
             else:
-                out["diff:{}".format(key.replace("_voxels", ""))] = 0.
+                out["rel_error:{}".format(key.replace("_voxels", ""))].append(0.)
 
-    diff = [val for k, val in out.items()]
+    out["regr"] = []
+    for i, subj in enumerate(out["index_name"]):
+        list_tmp = []
+        for k in out.keys():
+            if k not in ["index_name", "regr"]:
+                list_tmp.append(out[k][i])
+        try:
+            assert max(list_tmp) < 0.05
+            out["regr"].append("PASSED")
+        except(AssertionError):
+            out["regr"].append("FAILED")
 
-    try:
-        assert max(diff) < 0.05
-        out["regr"] = "PASSED"
-    except(AssertionError):
-        out["regr"] = "FAILED"
-
-    out_max = {"max_diff": max(diff)}
-
+    #out_max = {"max_diff": max(diff)}
     with open(report_filename, "w") as f:
-        json.dump(out_max, f)
+        json.dump(out, f)
 
 
 if __name__ == "__main__":
@@ -74,9 +90,9 @@ if __name__ == "__main__":
     defstr = ' (default %(default)s)'
     parser = ArgumentParser(description=__doc__,
                             formatter_class=RawTextHelpFormatter)
-    parser.add_argument("-out", dest="file_out",
+    parser.add_argument("-out", nargs="+", dest="file_out",
                         help="file with the output for testing")
-    parser.add_argument("-ref", dest="file_ref",
+    parser.add_argument("-ref", nargs="+", dest="file_ref",
                         help="file with the reference output")
     parser.add_argument("-name", dest="name",
                         help="name of the test provided by a user")
