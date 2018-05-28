@@ -18,6 +18,10 @@ class AltairPlots(object):
 
     def create_plots(self):
         for ii, spec in enumerate(self.plot_spec):
+            if spec["function"] not in self.plot_description.keys():
+                raise Exception("{} is not available, available plotting functions: {}".format(
+                    spec["function"], list(self.plot_description.keys())
+                ))
             self._index_edit(title=self.plot_description[spec["function"]], id=ii)
             plot_dict = getattr(self, spec["function"])(spec["var_list"])
             self._js_create(plot_dict, ii)
@@ -39,14 +43,19 @@ class AltairPlots(object):
         return plot_dict
 
 
-    def barplot_all(self, var_l, y_scale=None, default_col="test"):
+    def barplot_all(self, var_l, y_scale=None, y_max_check=False, default_col="test"):
         if not var_l:
             # if var_l is not provided, I will plot all
             var_l = [col for col in self.results.columns if default_col in col]
         res_plot = self.results[var_l+['env']].fillna("NaN")
         res_transf = res_plot.reset_index().melt(['env', 'index'])
         if y_scale: #should be a tuple, TODO
-            y_bar = alt.Y('value:Q', scale=alt.Scale(domain=y_scale))
+            if y_max_check:
+                y_max = round(self.results[var_l].max().max() + .1, 2)
+                y_scale_update = (y_scale[0], y_max)
+                y_bar = alt.Y('value:Q', scale=alt.Scale(domain=y_scale_update))
+            else:
+                y_bar = alt.Y('value:Q', scale=alt.Scale(domain=y_scale))
         else:
             y_bar = 'value:Q'
         base = alt.Chart(res_transf).mark_bar(
@@ -63,7 +72,7 @@ class AltairPlots(object):
 
 
     def barplot_all_rel_error(self, var_l):
-        return self.barplot_all(var_l, y_scale=(0,1), default_col="rel_error")
+        return self.barplot_all(var_l, y_scale=(0,1), y_max_check=True, default_col="rel_error")
 
 
     def _js_create(self, plot_dict, id):
