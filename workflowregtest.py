@@ -185,8 +185,9 @@ class WorkflowRegtest(object):
                     raise Exception ("the length for {} should be {}".format(key, len_ind))
                 dict["{}.{}".format(test_name, key)] = dict.pop(key)
         else:
-            for key, val in dict.items():
-                if type(val) is list:
+            keys_test = list(dict.keys())
+            for key in keys_test:
+                if type(dict[key]) is list:
                     raise Exception("index_name key is required if results are lists")
                 else:
                     dict["{}.{}".format(test_name, key)] = dict.pop(key)
