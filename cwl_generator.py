@@ -205,8 +205,13 @@ class CwlGenerator(object):
                 cmd_in["input_workf_{}".format(ii)] = {}
                 cmd_in["input_workf_{}".format(ii)]["class"] = input_tuple[0]
                 cmd_in["input_workf_{}".format(ii)]["path"] = os.path.join(self.workflow_path, "data_input", input_tuple[2])
+            elif input_tuple[0] == "int":
+                cmd_in["input_workf_{}".format(ii)] = int(input_tuple[2])
+            elif input_tuple[0] == "float":
+                cmd_in["input_workf_{}".format(ii)] = float(input_tuple[2])
             else:
                 cmd_in["input_workf_{}".format(ii)] = input_tuple[2]
+
         cmd_in["name_tests"] = self.tests_name
 
         with open("input.yml", "w") as inp_file:
