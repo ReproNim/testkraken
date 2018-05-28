@@ -42,6 +42,10 @@
     "var_list": []
     },
     {
+    "function": "scatter_2var",
+    "var_list": [["regr:rel_error", "regr:abs_error"]]
+    },
+    {
     "function": "barplot_all_rel_error",
     "var_list": []
     }
