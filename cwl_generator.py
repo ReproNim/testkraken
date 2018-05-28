@@ -1,4 +1,5 @@
 import os, pdb
+import ruamel.yaml
 
 
 class CwlGenerator(object):
@@ -13,24 +14,18 @@ class CwlGenerator(object):
         self.inputs = parameters["inputs"]
         #TODO clean it
         self.tests_name = ["{}".format(test["name"]) for test in self.tests]
-        tests_file_l = []
-        for test in self.tests:
+        self.tests_file_l = []
+        self.output_files_tests_l = []
+        self.workflow_output_files_tests_l = []
+        self.data_ref_l = []
+        for it, test in enumerate(self.tests):
             if type(test["file"]) is str:
                 test["file"] = [test["file"]]
-            tests_file_l.append(test["file"])
-        #tests_file_l = [i["file"] for i in self.tests]
+            self.tests_file_l.append(test["file"])
+            self.output_files_tests_l.append("output_files_tests_{}".format(it))
+            self.workflow_output_files_tests_l.append("workflow/output_files_tests_{}".format(it))
+            self.data_ref_l.append("data_ref_{}".format(it))
 
-        self.tests_file_str = []
-        for test_file in tests_file_l:
-            self.tests_file_str.append(('[' + len(test_file) * '"{}",' + ']').format(*test_file))
-        self.report_tests_str = ('[' + len(self.tests_name) * '"report_{}.json",'+ ']').format(
-                    *self.tests_name)
-        self.workflow_output_files_tests_str = ('[' + len(self.tests) * 'workflow/output_files_tests_{},' + ']').format(
-                *range(len(self.tests)))
-        self.output_files_tests_str = ('[' + len(self.tests) * 'output_files_tests_{},' + ']').format(
-                *range(len(self.tests)))
-        self.data_ref_str = ('[' + len(self.tests) * 'data_ref_{},' + ']').format(
-                *range(len(self.tests)))
 
     def create_cwl(self):
         self._creating_main_cwl()
@@ -41,192 +36,178 @@ class CwlGenerator(object):
 
     def _creating_workflow_cwl(self):
         """Creating cwl file"""
-        cmd_cwl = (
-            "#!/usr/bin/env cwl-runner\n"
-            "cwlVersion: v1.0\n"
-            "class: CommandLineTool\n"
-            "baseCommand: {}\n"
-            "hints:\n"
-            "  DockerRequirement:\n"
-            "    dockerPull: {}\n\n"
-            "inputs:\n"
-            "  script:\n"
-            "    type: File\n"
-            "    inputBinding:\n"
-            "      position: 1\n"
-        ).format(self.command, self.image)
+        cmd_cwl = {}
+        cmd_cwl["cwlVersion"] = "v1.0"
+        cmd_cwl["class"] = "CommandLineTool"
+        cmd_cwl["baseCommand"] = self.command
+        cmd_cwl["hints"] = {}
+        cmd_cwl["hints"]["DockerRequirement"] = {}
+        cmd_cwl["hints"]["DockerRequirement"]["dockerPull"] = self.image
+
+        cmd_cwl["inputs"] = {}
+        cmd_cwl["inputs"]["script"] = {}
+        cmd_cwl["inputs"]["script"]["type"] = "File"
+        cmd_cwl["inputs"]["script"]["inputBinding"] = {}
+        cmd_cwl["inputs"]["script"]["inputBinding"]["position"] = 1
 
         for (ii, input_tuple) in enumerate(self.inputs):
-            cmd_cwl += (
-                "  input_files_{}:\n"
-                "    type: {}\n"
-                "    inputBinding:\n"
-                "      position: {}\n"
-                "      prefix: {}\n"
-                ).format(ii, input_tuple[0], ii+2, input_tuple[1])
-        cmd_cwl += "outputs:\n"
+            cmd_cwl["inputs"]["input_files_{}".format(ii)] = {}
+            cmd_cwl["inputs"]["input_files_{}".format(ii)]["type"] = input_tuple[0]
+            cmd_cwl["inputs"]["input_files_{}".format(ii)]["inputBinding"] = {}
+            cmd_cwl["inputs"]["input_files_{}".format(ii)]["inputBinding"]["position"] = ii + 2
+            cmd_cwl["inputs"]["input_files_{}".format(ii)]["inputBinding"]["prefix"] = input_tuple[1]
+
+
+        cmd_cwl["outputs"] = {}
         for (it, test) in enumerate(self.tests):
-            cmd_cwl += (
-                "  output_files_tests_{}:\n"
-                "    type:\n"
-                "      type: array\n"
-                "      items: File\n"
-                "    outputBinding:\n"
-                '      glob: {}\n'
-            ).format(it, self.tests_file_str[it])
+            cmd_cwl["outputs"]["output_files_tests_{}".format(it)] = {}
+            cmd_cwl["outputs"]["output_files_tests_{}".format(it)]["type"] = {}
+            cmd_cwl["outputs"]["output_files_tests_{}".format(it)]["type"]["type"] = "array"
+            cmd_cwl["outputs"]["output_files_tests_{}".format(it)]["type"]["items"] = "File"
+            cmd_cwl["outputs"]["output_files_tests_{}".format(it)]["outputBinding"] = {}
+            cmd_cwl["outputs"]["output_files_tests_{}".format(it)]["outputBinding"]["glob"] = self.tests_file_l[it]
 
         with open("cwl_workflow.cwl", "w") as cwl_file:
-            cwl_file.write(cmd_cwl)
-
+            print("# !/usr/bin/env cwl-runner", file=cwl_file)
+            print(ruamel.yaml.dump(cmd_cwl), file=cwl_file)
 
 
     def _creating_tests_cwl(self):
-        cmd_cwl = (
-            "# !/usr/bin/env cwl-runner\n"
-            "cwlVersion: v1.0\n"
-            "class: CommandLineTool\n"
-            "baseCommand: python\n\n"
-            "inputs:\n"
-            "  script:\n"
-            "    type: File\n"
-            "    inputBinding:\n"
-            "      position: 1\n"
-            "  input_files_out:\n"
-            "    type:\n"
-            "      type: array\n"
-            "      items: File\n"
-            "    inputBinding:\n"
-            "      position: 3\n"
-            "      prefix: -out\n"
-            "  input_ref:\n"
-            "    type:\n"
-            "      type: array\n"
-            "      items: File\n"
-            "    inputBinding:\n"
-            "      position: 4\n"
-            "      prefix: -ref\n"
-            "  name:\n"
-            "    type: string\n"
-            "    inputBinding:\n"
-            "      position: 5\n"
-            "      prefix: -name\n"
-            "outputs:\n"
-            "  output_files_report:\n"
-            "    type: File\n"
-            "    outputBinding:\n"
-            "      glob: {}\n"
-        ).format(self.report_tests_str)
+        cmd_cwl = {}
+        cmd_cwl["cwlVersion"] = "v1.0"
+        cmd_cwl["class"] = "CommandLineTool"
+        cmd_cwl["baseCommand"] = "python"
+
+        cmd_cwl["inputs"] = {}
+        cmd_cwl["inputs"]["script"] = {}
+        cmd_cwl["inputs"]["script"]["type"] = "File"
+        cmd_cwl["inputs"]["script"]["inputBinding"] = {}
+        cmd_cwl["inputs"]["script"]["inputBinding"]["position"] = 1
+
+        cmd_cwl["inputs"]["input_files_out"] = {}
+        cmd_cwl["inputs"]["input_files_out"]["type"] = {}
+        cmd_cwl["inputs"]["input_files_out"]["type"]["type"] = "array"
+        cmd_cwl["inputs"]["input_files_out"]["type"]["items"] = "File"
+        cmd_cwl["inputs"]["input_files_out"]["inputBinding"] = {}
+        cmd_cwl["inputs"]["input_files_out"]["inputBinding"]["position"] = 3
+        cmd_cwl["inputs"]["input_files_out"]["inputBinding"]["prefix"] = "-out"
+
+        cmd_cwl["inputs"]["input_ref"] = {}
+        cmd_cwl["inputs"]["input_ref"]["type"] = {}
+        cmd_cwl["inputs"]["input_ref"]["type"]["type"] = "array"
+        cmd_cwl["inputs"]["input_ref"]["type"]["items"] = "File"
+        cmd_cwl["inputs"]["input_ref"]["inputBinding"] = {}
+        cmd_cwl["inputs"]["input_ref"]["inputBinding"]["position"] = 4
+        cmd_cwl["inputs"]["input_ref"]["inputBinding"]["prefix"] = "-ref"
+
+        cmd_cwl["inputs"]["name"] = {}
+        cmd_cwl["inputs"]["name"]["type"] = "string"
+        cmd_cwl["inputs"]["name"]["inputBinding"] = {}
+        cmd_cwl["inputs"]["name"]["inputBinding"]["position"] = 5
+        cmd_cwl["inputs"]["name"]["inputBinding"]["prefix"] = "-name"
+
+        cmd_cwl["outputs"] = {}
+        cmd_cwl["outputs"]["output_files_report"] = {}
+        cmd_cwl["outputs"]["output_files_report"]["type"] = "File"
+        cmd_cwl["outputs"]["output_files_report"]["outputBinding"] = {}
+        cmd_cwl["outputs"]["output_files_report"]["outputBinding"]["glob"] = "report_*.json"
 
         with open("cwl_tests.cwl", "w") as cwl_file:
-            cwl_file.write(cmd_cwl)
+            print("# !/usr/bin/env cwl-runner", file=cwl_file)
+            print(ruamel.yaml.dump(cmd_cwl), file=cwl_file)
 
 
     def _creating_main_cwl(self):
         """Creating cwl file"""
-        cmd_cwl = (
-            "#!/usr/bin/env cwl-runner\n"
-            "cwlVersion: v1.0\n"
-            "class: Workflow\n"
-            "requirements:\n"
-            "   - class: ScatterFeatureRequirement\n"
-            "   - class: MultipleInputFeatureRequirement\n"
-            "inputs:\n"
-            "  script_workf: File\n"
-            "  script_tests:\n"
-            "    type:\n"
-            "      type: array\n"
-            "      items: File\n"
-            "  name_tests:\n"
-            "    type:\n"
-            "      type: array\n"
-            "      items: string\n"
-        )
+        cmd_cwl = {}
+        cmd_cwl["cwlVersion"] = "v1.0"
+        cmd_cwl["class"] = "Workflow"
+        cmd_cwl["requirements"] = [{"class": "ScatterFeatureRequirement"},
+                                   {"class": "MultipleInputFeatureRequirement"}]
+
+
+        cmd_cwl["inputs"] = {}
+        cmd_cwl["inputs"]["script_workf"] = "File"
+        cmd_cwl["inputs"]["script_tests"] = {}
+        cmd_cwl["inputs"]["script_tests"]["type"] = {}
+        cmd_cwl["inputs"]["script_tests"]["type"]["type"] = "array"
+        cmd_cwl["inputs"]["script_tests"]["type"]["items"] = "File"
+        cmd_cwl["inputs"]["name_tests"] = {}
+        cmd_cwl["inputs"]["name_tests"]["type"] = {}
+        cmd_cwl["inputs"]["name_tests"]["type"]["type"] = "array"
+        cmd_cwl["inputs"]["name_tests"]["type"]["items"] = "string"
         for (it, test) in enumerate(self.tests):
-            cmd_cwl += (
-            "  data_ref_{}:\n"
-            "    type:\n"
-            "      type: array\n"
-            "      items: File\n"
-            ).format(it)
-
+            cmd_cwl["inputs"]["data_ref_{}".format(it)] = {}
+            cmd_cwl["inputs"]["data_ref_{}".format(it)]["type"] = {}
+            cmd_cwl["inputs"]["data_ref_{}".format(it)]["type"]["type"] = "array"
+            cmd_cwl["inputs"]["data_ref_{}".format(it)]["type"]["items"] = "File"
         for (ii, input_tuple) in enumerate(self.inputs):
-            cmd_cwl += (
-            "  input_workf_{}: {}\n"
-                ).format(ii, input_tuple[0])
-        cmd_cwl += (
-            "outputs:\n"
-            "  tests_rep:\n"
-            "    type:\n"    
-            "      type: array\n"
-            "      items: File\n"
-            "    outputSource: tests/output_files_report\n"
-            "steps:\n"
-            "  workflow:\n"
-            "    run: cwl_workflow.cwl\n"
-            "    in:\n"
-            "      script: script_workf\n"
-        )
-        for (ii, input_tuple) in enumerate(self.inputs):
-            cmd_cwl += (
-                "      input_files_{}: input_workf_{}\n"
-            ).format(ii, ii)
+            cmd_cwl["inputs"]["input_workf_{}".format(ii)] = {}
+            cmd_cwl["inputs"]["input_workf_{}".format(ii)]["type"] = input_tuple[0]
 
-        cmd_cwl += (
-            "    out: {}\n"
-            "  tests:\n"
-            "    run: cwl_tests.cwl\n"
-            "    scatter: [input_files_out, script, input_ref, name]\n"
-            "    scatterMethod: dotproduct\n"
-            "    in:\n"
-            "      script: script_tests\n"
-            "      input_files_out:\n"
-            "        source: {}\n"
-            "        linkMerge: merge_nested\n"
-            "      input_ref:\n"
-            "        source: {}\n"
-            "        linkMerge: merge_nested\n"
-            "      name: name_tests\n"
-            "    out: [output_files_report]\n\n"
-        ).format(self.output_files_tests_str, self.workflow_output_files_tests_str, self.data_ref_str)
+
+        cmd_cwl["outputs"] = {}
+        cmd_cwl["outputs"]["tests_rep"] = {}
+        cmd_cwl["outputs"]["tests_rep"]["type"] = {}
+        cmd_cwl["outputs"]["tests_rep"]["type"]["type"] = "array"
+        cmd_cwl["outputs"]["tests_rep"]["type"]["items"] = "File"
+        cmd_cwl["outputs"]["tests_rep"]["outputSource"] = "tests/output_files_report"
+
+        cmd_cwl["steps"] = {}
+        cmd_cwl["steps"]["workflow"] = {}
+        cmd_cwl["steps"]["workflow"]["run"] = "cwl_workflow.cwl"
+        cmd_cwl["steps"]["workflow"]["in"] = {}
+        cmd_cwl["steps"]["workflow"]["in"]["script"] = "script_workf"
+        for (ii, input_tuple) in enumerate(self.inputs):
+            cmd_cwl["steps"]["workflow"]["in"]["input_files_{}".format(ii)] = "input_workf_{}".format(ii)
+        cmd_cwl["steps"]["workflow"]["out"] = self.output_files_tests_l
+
+        cmd_cwl["steps"]["tests"] = {}
+        cmd_cwl["steps"]["tests"]["run"] = "cwl_tests.cwl"
+        cmd_cwl["steps"]["tests"]["scatter"] = ["input_files_out", "script", "input_ref", "name"]
+        cmd_cwl["steps"]["tests"]["scatterMethod"] = "dotproduct"
+        cmd_cwl["steps"]["tests"]["in"] = {}
+        cmd_cwl["steps"]["tests"]["in"]["script"] = "script_tests"
+        cmd_cwl["steps"]["tests"]["in"]["input_files_out"] = {}
+        cmd_cwl["steps"]["tests"]["in"]["input_files_out"]["source"] = self.workflow_output_files_tests_l
+        cmd_cwl["steps"]["tests"]["in"]["input_files_out"]["linkMerge"] = "merge_nested"
+        cmd_cwl["steps"]["tests"]["in"]["input_ref"] = {}
+        cmd_cwl["steps"]["tests"]["in"]["input_ref"]["source"] = self.data_ref_l
+        cmd_cwl["steps"]["tests"]["in"]["input_ref"]["linkMerge"] = "merge_nested"
+        cmd_cwl["steps"]["tests"]["in"]["name"] = "name_tests"
+        cmd_cwl["steps"]["tests"]["out"] = ["output_files_report"]
 
         with open("cwl.cwl", "w") as cwl_file:
-            cwl_file.write(cmd_cwl)
-
-
+            print("# !/usr/bin/env cwl-runner", file=cwl_file)
+            print(ruamel.yaml.dump(cmd_cwl), file=cwl_file)
 
     def _creating_main_input(self):
         """Creating input yml file for CWL"""
-        cmd_in = (
-            "script_workf:\n"
-            "  class: File\n"
-            "  path: {}\n"
-            "script_tests:\n"
-        ).format(self.script)
+        cmd_in = {}
+        cmd_in["script_workf"] = {}
+        cmd_in["script_workf"]["class"] = "File"
+        cmd_in["script_workf"]["path"] = self.script
+        cmd_in["script_tests"] = []
         for test in self.tests:
-            cmd_in += ("- {class: File, path: " + \
-            os.path.join(os.path.dirname(os.path.realpath(__file__)), "testing_functions", test["script"]) + "}\n"
-                       )
+            cmd_in["script_tests"].append(
+                {"class": "File",
+                 "path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "testing_functions",test["script"])}
+            )
         for it, test in enumerate(self.tests):
-            cmd_in += "data_ref_{}:\n".format(it)
+            cmd_in["data_ref_{}".format(it)] = []
             for file in list(test["file"]):
-                cmd_in += ("- {class: File, path: " + \
-                os.path.join(self.workflow_path, "data_ref", file) + "}\n"
-                       )
+                cmd_in["data_ref_{}".format(it)].append(
+                    {"class": "File",
+                     "path": os.path.join(self.workflow_path, "data_ref", file)}
+                )
         for (ii, input_tuple) in enumerate(self.inputs):
             if input_tuple[0] == "File":
-                cmd_in += (
-                    "input_workf_{}:\n"
-                    "  class: {}\n"
-                    "  path: {}\n"
-                    ).format(ii, input_tuple[0],
-                             os.path.join(self.workflow_path, "data_input", input_tuple[2]))
+                cmd_in["input_workf_{}".format(ii)] = {}
+                cmd_in["input_workf_{}".format(ii)]["class"] = input_tuple[0]
+                cmd_in["input_workf_{}".format(ii)]["path"] = os.path.join(self.workflow_path, "data_input", input_tuple[2])
             else:
-                cmd_in += (
-                    "input_workf_{}: {}\n"
-                    ).format(ii, input_tuple[2])
-        cmd_in += (
-            "name_tests: {}\n".format(self.tests_name)
-        )
+                cmd_in["input_workf_{}".format(ii)] = input_tuple[2]
+        cmd_in["name_tests"] = self.tests_name
 
         with open("input.yml", "w") as inp_file:
-            inp_file.write(cmd_in)
+            print(ruamel.yaml.dump(cmd_in), file=inp_file)
