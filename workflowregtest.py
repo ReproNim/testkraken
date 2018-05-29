@@ -183,14 +183,14 @@ class WorkflowRegtest(object):
             for key in keys_test:
                 if len(dict[key]) != len_ind:
                     raise Exception ("the length for {} should be {}".format(key, len_ind))
-                dict["{}.{}".format(test_name, key)] = dict.pop(key)
+                dict["{}:{}".format(test_name, key)] = dict.pop(key)
         else:
             keys_test = list(dict.keys())
             for key in keys_test:
                 if type(dict[key]) is list:
                     raise Exception("index_name key is required if results are lists")
                 else:
-                    dict["{}.{}".format(test_name, key)] = dict.pop(key)
+                    dict["{}:{}".format(test_name, key)] = dict.pop(key)
             dict["index_name"] = "N/A"
 
 
@@ -210,5 +210,5 @@ class WorkflowRegtest(object):
         for js_template in ["dashboard.js", "index.html", "style.css"]:
             shutil.copy2(os.path.join(js_dir, js_template), self.working_dir)
 
-        ap = AltairPlots(self.working_dir, self.res_all_flat_df, self.plot_parameters)
+        ap = AltairPlots(self.working_dir, self.res_all_df, self.res_all_flat_df, self.plot_parameters)
         ap.create_plots()
