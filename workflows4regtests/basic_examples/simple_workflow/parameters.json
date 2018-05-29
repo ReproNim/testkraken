@@ -42,7 +42,7 @@
        },
        {
        "function": "scatter_2var",
-       "var_list": [["reg:rel_error:white", "reg:rel_error:gray"], ["reg:rel_error:Right-Hippocampus", "rel:reg_error:Right-Amygdala"]]
+       "var_list": [["reg:rel_error:white", "reg:rel_error:gray"], ["reg:rel_error:Right-Hippocampus", "reg:rel_error:Right-Amygdala"]]
        },
        {
        "function": "barplot_all_rel_error",
