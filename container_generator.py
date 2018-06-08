@@ -38,6 +38,7 @@ import json
 import os
 import subprocess
 from collections import OrderedDict
+import pdb
 
 
 def list_to_neurodocker_instruction(iterable):
@@ -87,7 +88,8 @@ def instructions_to_neurodocker_specs(instructions):
     if isinstance(base, (list, tuple)):
         pkg_manager = base[1]
         instructions = list(instructions)
-        instructions[0] = base[0]  # Modify "base" instruction in-place.
+        el_base = ("base", base[0])
+        instructions[0] = el_base  # Modify "base" instruction in-place.
         instructions = tuple(instructions)
     else:
         pkg_manager = "apt"

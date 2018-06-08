@@ -12,6 +12,7 @@ import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt, mpld3
 import pandas as pd
+import pdb
 
 import container_generator as cg
 import cwl_generator as cwlg
@@ -133,9 +134,8 @@ class WorkflowRegtest(object):
             #self.res_all.append(deepcopy(soft_d))
             el_dict = deepcopy(soft_d)
             if isinstance(el_dict["base"], (list, tuple)):
-                el_dict["env"] = "base-" + el_dict["base"][0]
-            else:
-                el_dict["env"] = "base-" + el_dict["base"]
+                el_dict["base"] = el_dict.pop("base")[0]
+            el_dict["env"] = "base-" + el_dict["base"]
             for key in self.env_parameters.keys():
                 if key != "base":  # this is already included and it's always the first part
                     el_dict["env"] += "_{}-{}".format(key, el_dict[key])

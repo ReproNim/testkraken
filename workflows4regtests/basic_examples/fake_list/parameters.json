@@ -2,8 +2,8 @@
     "command": "python",
     "env": {
         "base": [
-            "debian:stretch",
-            "ubuntu:16.04",
+            ["debian:stretch", "apt"],
+            ["centos:7", "yum"],
             "fake"
         ],
         "python": [
