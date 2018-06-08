@@ -38,6 +38,7 @@ import json
 import os
 import subprocess
 from collections import OrderedDict
+import pdb
 
 
 def list_to_neurodocker_instruction(iterable):
@@ -80,8 +81,20 @@ def instructions_to_neurodocker_specs(instructions):
     """Return dictionary compatible with Neurodocker given a list of
     instructions.
     """
+    if instructions[0][0] != "base":
+        raise ValueError("first neurodocker instruction must be BASE.")
+    base = instructions[0][1]
+    # 'base' can be a list or tuple with (BASE_IMAGE, APT|YUM).
+    if isinstance(base, (list, tuple)):
+        pkg_manager = base[1]
+        instructions = list(instructions)
+        el_base = ("base", base[0])
+        instructions[0] = el_base  # Modify "base" instruction in-place.
+        instructions = tuple(instructions)
+    else:
+        pkg_manager = "apt"
     return {
-        "pkg_manager": "apt",
+        "pkg_manager": pkg_manager,
         "check_urls": False,
         "instructions": instructions
     }
@@ -163,6 +176,8 @@ def _generate_dockerfile(dir_, neurodocker_dict, sha1):
     cmd = base_cmd.format(dir=dir_,
                           filepath=basename)
     output = subprocess.check_output(cmd.split())
+    print(output)
+    print("foobar")
     return output.decode()
 
 

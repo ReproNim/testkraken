@@ -1,18 +1,18 @@
 """Object to orchestrate worflow execution and output tests."""
 
+import ast
 import itertools
 import json, csv
 import os, shutil
 import subprocess
 import tempfile
-import pdb
 from collections import OrderedDict
 from copy import deepcopy
 import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt, mpld3
-import numpy as np
 import pandas as pd
+import pdb
 
 import container_generator as cg
 import cwl_generator as cwlg
@@ -64,7 +64,16 @@ class WorkflowRegtest(object):
         self.soft_str = []
         for ii, specs in enumerate(self.matrix_of_envs):
             self.soft_str.append("_".join([string.split('::')[1].replace(':', '') for string in specs]))
-            self.matrix_of_envs[ii] = [string.split('::') for string in specs]
+            s = [string.split('::') for string in specs]
+
+            # If the package manager is specified along with base image, the
+            # pair is a string type: "['debian:stretch', 'apt']"
+            # Convert that string to a list.
+            base = s[0][1]
+            if "apt" in base or "yum" in base:
+                s[0][1] = ast.literal_eval(base)  # safe eval
+
+            self.matrix_of_envs[ii] = s
 
         # creating additional a dictionary version
         self.matrix_envs_dict = [OrderedDict(mat) for mat in self.matrix_of_envs]
@@ -124,6 +133,8 @@ class WorkflowRegtest(object):
         for ii, soft_d in enumerate(self.matrix_envs_dict):
             #self.res_all.append(deepcopy(soft_d))
             el_dict = deepcopy(soft_d)
+            if isinstance(el_dict["base"], (list, tuple)):
+                el_dict["base"] = el_dict.pop("base")[0]
             el_dict["env"] = "base-" + el_dict["base"]
             for key in self.env_parameters.keys():
                 if key != "base":  # this is already included and it's always the first part

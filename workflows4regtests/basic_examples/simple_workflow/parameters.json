@@ -2,10 +2,10 @@
     "command": "python",
     "env": {
         "base": [
-            "ubuntu:16.04"
+            ["ubuntu:16.04", "apt"],
+            ["centos:7", "yum"]
         ],
 	"python": [
-            "2.7",		  
             "3.5"
         ],
         "conda_install": [
