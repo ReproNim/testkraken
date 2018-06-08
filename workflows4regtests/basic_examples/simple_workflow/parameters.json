@@ -2,7 +2,7 @@
     "command": "python",
     "env": {
         "base": [
-            "ubuntu:16.04"
+            ["ubuntu:16.04", "apt"]
         ],
 	"python": [
             "2.7",		  
