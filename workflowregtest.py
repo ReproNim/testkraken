@@ -132,7 +132,10 @@ class WorkflowRegtest(object):
         for ii, soft_d in enumerate(self.matrix_envs_dict):
             #self.res_all.append(deepcopy(soft_d))
             el_dict = deepcopy(soft_d)
-            el_dict["env"] = "base-" + el_dict["base"]
+            if isinstance(el_dict["base"], (list, tuple)):
+                el_dict["env"] = "base-" + el_dict["base"][0]
+            else:
+                el_dict["env"] = "base-" + el_dict["base"]
             for key in self.env_parameters.keys():
                 if key != "base":  # this is already included and it's always the first part
                     el_dict["env"] += "_{}-{}".format(key, el_dict[key])
