@@ -1,5 +1,5 @@
 command: python
-envs:
+env:
   base:
   - {image: debian:stretch, pkg-manager: apt}
   - {image: centos:7, pkg-manager: yum}
