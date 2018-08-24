@@ -1,0 +1,13 @@
+command: python
+env:
+  base: {image: debian:stretch, pkg-manager: apt}
+  miniconda:
+  - {conda_install: python=3.5}
+  - {conda_install: python=2.7}
+inputs:
+- [string, -s, ala]
+- [int, -n, '3']
+script: concatenate.py
+tests:
+- {file: string_conc.txt, name: regr1, script: test_obj_eq.py}
+

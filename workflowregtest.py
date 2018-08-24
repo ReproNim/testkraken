@@ -12,6 +12,7 @@ import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt, mpld3
 import pandas as pd
+import ruamel.yaml
 import pdb
 
 import container_generator as cg
@@ -28,8 +29,8 @@ class WorkflowRegtest(object):
         self.workflow_path = workflow_path
         self.working_dir = os.path.join(self.base_dir, os.path.basename(self.workflow_path) + "_cwl")
         os.makedirs(self.working_dir, exist_ok=True)
-        with open(os.path.join(self.workflow_path, "parameters.json")) as param_js:
-            self.parameters = json.load(param_js, object_pairs_hook=OrderedDict)
+        with open(os.path.join(self.workflow_path, "parameters.yaml")) as param_yml:
+            self.parameters = ruamel.yaml.load(param_yml)
         self.env_parameters = self.parameters["env"]
         try:
             self.plot_parameters = self.parameters["plots"]
@@ -46,38 +47,47 @@ class WorkflowRegtest(object):
         self.docker_status = []
 
         self._create_matrix_of_envs()
+        self._create_matrix_of_string_envs()
 
 
     def _create_matrix_of_envs(self):
         """Create matrix of all combinations of environment variables.
             Create a list of short descriptions of envs as single strings"""
-        params_as_strings = []
+        self.env_spec_lists = []
+        self.keys_envs = []
         for key, val in self.env_parameters.items():
-            if isinstance(val, (list, tuple)):
-                formatted = tuple("{}::{}".format(key, vv) for vv in val)
+            self.keys_envs.append(key)
+            print("KEY< VALL", key, val)
+            # val should be dictionary with options, list of dicionaries, or dictionary with "common" and "shared"
+            #pdb.set_trace()
+            if type(val) is list:
+                self.env_spec_lists.append(val)
+            elif (type(val) is dict) and (["common", "varied"] == sorted(list(val.keys()))):
+                # common part should be a single dictionary, varied should be a list
+                if type(val["common"]) is not dict:
+                    raise Exception("common part of {} should be a dictionary".format(key))
+                elif type(val["varied"]) is not list:
+                    raise Exception("varied part of {} should be a list".format(key))
+                # checking if common and varied have the same key
+                elif any([bool(set(val["common"].keys()) & set(var_dict.keys())) for var_dict in val["varied"]]):
+                    # TODO: I should probably except the situation for conda_install, pip_install and just merge two strings
+                    raise Exception("common and varied parts for {} have the same key".format(key))
+                else:
+                    #print("TTT", [var_dict.update(val["common"]) for var_dict in val["varied"]])
+                    #pdb.set_trace()
+                    for var_dict in val["varied"]:
+                        var_dict.update(val["common"])
+                    self.env_spec_lists.append(val["varied"])
+            elif type(val) is dict:
+                self.env_spec_lists.append([val])
             else:
-                formatted = tuple("{}::{}".format(key, val))
-            params_as_strings.append(formatted)
+                raise Exception("value for {} has to be either list or dictionary".format(key))
 
-        self.matrix_of_envs = list(itertools.product(*params_as_strings))
 
-        self.soft_str = []
-        for ii, specs in enumerate(self.matrix_of_envs):
-            self.soft_str.append("_".join([string.split('::')[1].replace(':', '') for string in specs]))
-            s = [string.split('::') for string in specs]
+        self.matrix_of_envs = list(itertools.product(*self.env_spec_lists))
 
-            # If the package manager is specified along with base image, the
-            # pair is a string type: "['debian:stretch', 'apt']"
-            # Convert that string to a list.
-            base = s[0][1]
-            if "apt" in base or "yum" in base:
-                s[0][1] = ast.literal_eval(base)  # safe eval
-
-            self.matrix_of_envs[ii] = s
-
-        # creating additional a dictionary version
-        self.matrix_envs_dict = [OrderedDict(mat) for mat in self.matrix_of_envs]
-
+         # generating a simple name for envs (gave up on including env info)
+        self.env_names = ["env_{}".format(ii) for ii in range(len(self.matrix_of_envs))]
 
 
     def _testing_workflow(self):
@@ -85,17 +95,16 @@ class WorkflowRegtest(object):
         Writing environmental parameters to report text file."""
 
         sha_list = [key for key in self.mapping]
-        for ii, software_vers_str in enumerate(self.soft_str):
+        for ii, name in enumerate(self.env_names):
             #self.report_txt.write("\n * Environment:\n{}\n".format(software_vers))
             if self.docker_status[ii] == "docker ok":
                 image = "repronim/regtests:{}".format(sha_list[ii])
-                self._run_cwl(image, software_vers_str)
+                self._run_cwl(image, name)
 
 
     def _generate_docker_image(self):
         """Generate all Dockerfiles"""
-        self.mapping = cg.get_dict_of_neurodocker_dicts(self.matrix_of_envs)
-
+        self.mapping = cg.get_dict_of_neurodocker_dicts(self.keys_envs, self.matrix_of_envs)
         os.makedirs(os.path.join(self.workflow_path, 'json'), exist_ok=True) # TODO: self.workflow_path is temporary
         for sha1, neurodocker_dict in self.mapping.items():
             try:
@@ -126,19 +135,36 @@ class WorkflowRegtest(object):
         self._testing_workflow()
 
 
+    def _create_matrix_of_string_envs(self):
+        """creating a short string representation of various versions of software that can be used on dashboard"""
+        # TODO: should probaby depend o the key, e.g. image name for base, vesiorn for fsl, for python more complicated
+        _env_string_lists = []
+        for (ii, key_versions) in enumerate(self.env_spec_lists):
+            #pdb.set_trace()
+            _env_string_lists.append(["{}: version {}".format(self.keys_envs[ii], jj) for jj in range(len(key_versions))])
+            #pdb.set_trace()
+            #pass
+
+        _env_string_matrix = list(itertools.product(*_env_string_lists))
+
+        self.env_sring_dict_matrix = []
+        for env_params in _env_string_matrix:
+            env_dict = {}
+            for env_trs in env_params:
+                key, version = env_trs.split(": ")
+                env_dict[key] = version
+            self.env_sring_dict_matrix.append(env_dict)
+
+
     def merging_all_output(self):
         df_el_l = []
         df_el_flat_l = []
         ii_ok = None # just to have at least one env that docker was ok
-        for ii, soft_d in enumerate(self.matrix_envs_dict):
+        # TODO: to jedyne miejsce z self.matric_en..
+        for ii, soft_d in enumerate(self.env_sring_dict_matrix):
             #self.res_all.append(deepcopy(soft_d))
             el_dict = deepcopy(soft_d)
-            if isinstance(el_dict["base"], (list, tuple)):
-                el_dict["base"] = el_dict.pop("base")[0]
-            el_dict["env"] = "base-" + el_dict["base"]
-            for key in self.env_parameters.keys():
-                if key != "base":  # this is already included and it's always the first part
-                    el_dict["env"] += "_{}-{}".format(key, el_dict[key])
+            el_dict["env"] = self.env_names[ii]
             if self.docker_status[ii] == "docker ok":
                 ii_ok = ii
                 # merging results from tests and updating self.res_all, self.res_all_flat
@@ -150,6 +176,7 @@ class WorkflowRegtest(object):
                 df_el_l.append(pd.DataFrame(el_dict, index=[0]))
                 df_el_flat_l.append(pd.DataFrame(el_dict, index=[0]))
 
+        # TODO: not sure if I need both
         self.res_all_df = pd.concat(df_el_l).reset_index(drop=True)
         self.res_all_flat_df = pd.concat(df_el_flat_l).reset_index(drop=True)
         self.res_all_df.to_csv(os.path.join(self.working_dir, "output_all.csv"), index=False)
@@ -157,7 +184,7 @@ class WorkflowRegtest(object):
 
     def _merging_test_output(self, dict_env, ii):
         for (iir, test) in enumerate(self.tests):
-            file_name = os.path.join(self.working_dir, self.soft_str[ii],
+            file_name = os.path.join(self.working_dir, self.env_names[ii],
                                      "report_{}.json".format(test["name"]))
             with open(file_name) as f:
                 f_dict = json.load(f)

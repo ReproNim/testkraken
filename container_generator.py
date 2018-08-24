@@ -41,62 +41,34 @@ from collections import OrderedDict
 import pdb
 
 
-def list_to_neurodocker_instruction(iterable):
-    """Return a program entry compatible with Neurodocker.
-
-    Example
-    -------
-    >>> list_to_neurodocker_instruction(['fsl', '5.0.10'])
-    ('fsl', {'version': '5.0.10'})
-    """
-    program_name, version = iterable
-
-    # In the case of python, `version` is a dictionary of `conda_install` and
-    # `pip_install`.
-    if program_name in ['python']:
-        program_name = "miniconda"
-        spec = {
-            **version,
-            'env_name': "test",
-            'activate': "true"
-        }
-    elif program_name in ['conda_env_yml']:
-        program_name = "miniconda"
-        env_yml_path = version
-        spec = {
-            'yaml_file': env_yml_path,
-            'env_name': "test",
-            'activate': "true"
-        }
-    elif program_name in ['base']:
-        spec = version
-    else:
-        spec = {
-            'version': version,
-        }
-    return (program_name, spec)
-
-
-def instructions_to_neurodocker_specs(instructions):
+def instructions_to_neurodocker_specs(keys, env_spec):
     """Return dictionary compatible with Neurodocker given a list of
     instructions.
     """
-    if instructions[0][0] != "base":
-        raise ValueError("first neurodocker instruction must be BASE.")
-    base = instructions[0][1]
-    # 'base' can be a list or tuple with (BASE_IMAGE, APT|YUM).
-    if isinstance(base, (list, tuple)):
-        pkg_manager = base[1]
-        instructions = list(instructions)
-        el_base = ("base", base[0])
-        instructions[0] = el_base  # Modify "base" instruction in-place.
-        instructions = tuple(instructions)
-    else:
-        pkg_manager = "apt"
+    instructions = []
+    if "base" not in keys:
+        raise Exception("base image has to be provided")
+
+    for ii, key in enumerate(keys):
+        if key == "base":
+            try:
+                instructions.append(("base", env_spec[ii]["image"]))
+            except KeyError:
+                raise Exception("image has to be provided in base")
+            pkg_manager = env_spec[ii].get("pkg-manager", "apt")
+        elif key == "miniconda":
+            # TODO: not sure what is required
+            env_spec[ii].setdefault('env_name', "test")
+            env_spec[ii].setdefault('activate', "true")
+            instructions.append((key, env_spec[ii]))
+        elif key in ["fsl"]: #TODO: have to find what are acceptable argument for neurodocker
+            instructions.append((key, env_spec[ii]))
+        else:
+            raise Exception("key has to be base, miniconda or fsl")
     return {
         "pkg_manager": pkg_manager,
         "check_urls": False,
-        "instructions": instructions
+        "instructions": tuple(instructions)
     }
 
 
@@ -109,48 +81,14 @@ def get_dictionary_hash(d):
     return sha1.hexdigest()
 
 
-def prep_python_dict(env):
-    """Modify in-place list of environments with `python`, `conda_install`, and
-    `pip_install` items combined.
-    """
-    env = OrderedDict(env)
-    if 'python' in env or 'conda_install' in env or 'pip_install' in env:
-
-        pyversion = env.get('python', 0)
-        conda_install = env.get('conda_install', ' ')
-        if pyversion and "python" in conda_install:
-            raise ValueError(
-                "python can be specified in 'python' key or in 'conda_install'"
-                " key but not in both.")
-        if pyversion:
-            pyversion = "python={} ".format(pyversion)
-        else:
-            pyversion = ""
-
-        env['python'] = {
-            'conda_install': pyversion + conda_install,
-            'pip_install': env.get('pip_install', None)
-        }
-        env['python']['conda_install'] = env['python']['conda_install'].strip()
-        env.pop('conda_install', None)
-        env.pop('pip_install', None)
-    env = list(env.items())
-    return env
-
-
-def get_dict_of_neurodocker_dicts(env_matrix):
+def get_dict_of_neurodocker_dicts(env_keys, env_matrix):
     """Return dictionary of Neurodocker dictionaries given a matrix of
     environment parameters. Keys are the SHA-1 hashes of the 'instructions'
     portion of the Neurodocker dictionary.
     """
     dict_of_neurodocker_dicts = []
     for ii, params in enumerate(env_matrix):
-        # Move around miniconda-related keys into one dictionary value per
-        # environment.
-        params = prep_python_dict(params)
-        instructions = tuple(
-            list_to_neurodocker_instruction(ii) for ii in params)
-        neurodocker_dict = instructions_to_neurodocker_specs(instructions)
+        neurodocker_dict = instructions_to_neurodocker_specs(env_keys, params)
         this_hash = get_dictionary_hash(neurodocker_dict['instructions'])
         dict_of_neurodocker_dicts.append((this_hash, neurodocker_dict))
     print("ENV MAT", env_matrix)
@@ -166,7 +104,6 @@ def _generate_dockerfile(dir_, neurodocker_dict, sha1):
 
     with open(filepath, "w") as fp:
         json.dump(neurodocker_dict, fp, indent=4)
-
     base_cmd = (
         "docker run --rm -v {dir}/json:/json:ro kaczmarj/neurodocker:testkraut"
         " generate --file /json/{filepath}"
