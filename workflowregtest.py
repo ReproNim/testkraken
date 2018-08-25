@@ -32,7 +32,7 @@ class WorkflowRegtest(object):
         with open(os.path.join(self.workflow_path, "parameters.yaml")) as param_yml:
             self.parameters = ruamel.yaml.load(param_yml)
         self.env_parameters = self.parameters["env"]
-        self.fixed_env_parameters = self.parameters.get("fixed_env")
+        self.fixed_env_parameters = self.parameters.get("fixed_env", {})
         try:
             self.plot_parameters = self.parameters["plots"]
         except KeyError:
