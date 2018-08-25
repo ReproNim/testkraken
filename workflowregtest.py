@@ -32,6 +32,7 @@ class WorkflowRegtest(object):
         with open(os.path.join(self.workflow_path, "parameters.yaml")) as param_yml:
             self.parameters = ruamel.yaml.load(param_yml)
         self.env_parameters = self.parameters["env"]
+        self.fixed_env_parameters = self.parameters.get("fixed_env")
         try:
             self.plot_parameters = self.parameters["plots"]
         except KeyError:
@@ -47,21 +48,27 @@ class WorkflowRegtest(object):
         self.docker_status = []
 
         self._create_matrix_of_envs()
+        if self.fixed_env_parameters:
+            self._adding_fixed_envs()
         self._create_matrix_of_string_envs()
+
+         # generating a simple name for envs (gave up on including env info)
+        self.env_names = ["env_{}".format(ii) for ii in range(len(self.matrix_of_envs))]
 
 
     def _create_matrix_of_envs(self):
         """Create matrix of all combinations of environment variables.
             Create a list of short descriptions of envs as single strings"""
-        self.env_spec_lists = []
         self.keys_envs = []
+        # lists of full specification (all versions for each software/key)
+        self.soft_vers_spec = {}
         for key, val in self.env_parameters.items():
             self.keys_envs.append(key)
             print("KEY< VALL", key, val)
             # val should be dictionary with options, list of dicionaries, or dictionary with "common" and "shared"
             #pdb.set_trace()
             if type(val) is list:
-                self.env_spec_lists.append(val)
+                self.soft_vers_spec[key] = val
             elif (type(val) is dict) and (["common", "varied"] == sorted(list(val.keys()))):
                 # common part should be a single dictionary, varied should be a list
                 if type(val["common"]) is not dict:
@@ -77,17 +84,29 @@ class WorkflowRegtest(object):
                     #pdb.set_trace()
                     for var_dict in val["varied"]:
                         var_dict.update(val["common"])
-                    self.env_spec_lists.append(val["varied"])
+                    self.soft_vers_spec[key] = val["varied"]
             elif type(val) is dict:
-                self.env_spec_lists.append([val])
+                self.soft_vers_spec[key] = [val]
             else:
                 raise Exception("value for {} has to be either list or dictionary".format(key))
 
+        self.matrix_of_envs = list(itertools.product(*self.soft_vers_spec.values()))
 
-        self.matrix_of_envs = list(itertools.product(*self.env_spec_lists))
 
-         # generating a simple name for envs (gave up on including env info)
-        self.env_names = ["env_{}".format(ii) for ii in range(len(self.matrix_of_envs))]
+
+    def _adding_fixed_envs(self):
+        # adding fixed env to the environments, all fixed anv should have the same keys as env
+        if type(self.fixed_env_parameters) is dict:
+            self.fixed_env_parameters = [self.fixed_env_parameters]
+
+        for fixed_env in self.fixed_env_parameters:
+            if sorted(self.keys_envs) != sorted(list(fixed_env.keys())):
+                raise Exception("fixed env should have the same keys as env")
+            else:
+                fixed_env_spec = []
+                for key in self.keys_envs:
+                    fixed_env_spec.append(fixed_env[key])
+            self.matrix_of_envs.append(tuple(fixed_env_spec))
 
 
     def _testing_workflow(self):
@@ -138,29 +157,40 @@ class WorkflowRegtest(object):
     def _create_matrix_of_string_envs(self):
         """creating a short string representation of various versions of software that can be used on dashboard"""
         # TODO: should probaby depend o the key, e.g. image name for base, vesiorn for fsl, for python more complicated
-        _env_string_lists = []
-        for (ii, key_versions) in enumerate(self.env_spec_lists):
-            #pdb.set_trace()
-            _env_string_lists.append(["{}: version {}".format(self.keys_envs[ii], jj) for jj in range(len(key_versions))])
-            #pdb.set_trace()
-            #pass
+        self.string_softspec_dict = {}
+        self.soft_vers_string = {}
+        #tu trzeba dodac wersje z fixed (ale nie mozna product zrobic)
+        for (key, key_versions) in self.soft_vers_spec.items():
+            _verions_per_key = []
+            for jj, version in enumerate(key_versions):
+                _verions_per_key.append("{}: version_{}".format(key, jj))
+                self.string_softspec_dict["{}: version_{}".format(key, jj)] = version
+            self.soft_vers_string[key] = _verions_per_key
 
-        _env_string_matrix = list(itertools.product(*_env_string_lists))
+        # creating products from dictionary
+        all_keys, all_values = zip(*self.soft_vers_string.items())
+        self.env_sring_dict_matrix = [dict(zip(all_keys, values)) for values in itertools.product(*all_values)]
 
-        self.env_sring_dict_matrix = []
-        for env_params in _env_string_matrix:
-            env_dict = {}
-            for env_trs in env_params:
-                key, version = env_trs.split(": ")
-                env_dict[key] = version
-            self.env_sring_dict_matrix.append(env_dict)
+        # including info from th fixed envs
+        for fixed_env in self.fixed_env_parameters:
+            _envs_versions = {}
+            for key in self.keys_envs:
+                # checking if the software already in self.softspec_string_dict
+                if fixed_env[key] in self.soft_vers_spec[key]:
+                    ind = self.soft_vers_spec[key].index(fixed_env[key])
+                    _envs_versions[key] = "{}: version_{}".format(key, ind)
+                else:
+                    # creating a new version
+                    _vers_str = "{}: version_{}".format(key, len(self.soft_vers_spec[key]))
+                    self.soft_vers_spec[key].append(fixed_env[key])
+                    _envs_versions[key] = _vers_str
+            self.env_sring_dict_matrix.append(_envs_versions)
 
 
     def merging_all_output(self):
         df_el_l = []
         df_el_flat_l = []
         ii_ok = None # just to have at least one env that docker was ok
-        # TODO: to jedyne miejsce z self.matric_en..
         for ii, soft_d in enumerate(self.env_sring_dict_matrix):
             #self.res_all.append(deepcopy(soft_d))
             el_dict = deepcopy(soft_d)
