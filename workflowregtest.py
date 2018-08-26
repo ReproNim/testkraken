@@ -207,6 +207,8 @@ class WorkflowRegtest(object):
                 df_el_flat_l.append(pd.DataFrame(el_dict, index=[0]))
 
         # TODO: not sure if I need both
+        for df in df_el_flat_l:
+            print("pandas version, DF", pd.__version__, df)
         self.res_all_df = pd.concat(df_el_l).reset_index(drop=True)
         self.res_all_flat_df = pd.concat(df_el_flat_l).reset_index(drop=True)
         self.res_all_df.to_csv(os.path.join(self.working_dir, "output_all.csv"), index=False)
