@@ -1,0 +1,27 @@
+command: python
+env:
+  base:
+  - {image: debian:stretch, pkg-manager: apt}
+  - {image: centos:7, pkg-manager: yum}
+  - {image: fake, pkg-manager: yum}
+  miniconda:
+  - {conda_install: 'python=3.5'}
+  - {conda_install: 'python=2.7'}
+inputs:
+- [File, -f, list_orig.json]
+plots:
+- function: scatter_all
+  var_list: []
+- function: scatter_2var
+  var_list:
+  - [regr:rel_error, regr:abs_error]
+- function: barplot_all_rel_error
+  var_list: []
+script: div_list.py
+tests:
+- file: [list_final.json, list_final_1.json]
+  name: regr
+  script: test_el_list_eq.py
+- {file: list_final.json, name: stat, script: test_el_list_eq_tmp.py}
+- {file: list_final.json, name: stat_all, script: test_el_list_eq_tmp_noarray.py}
+
