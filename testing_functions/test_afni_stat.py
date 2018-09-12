@@ -38,7 +38,7 @@ def test_file_eq(file_out, file_ref=None, name=None, **kwargs):
                     er_l.append(0)
             error = max(er_l)
         if "blur" in key or "ave" in key or "glob" in key:
-            out["max_ref_er: {}".format(key)] = error
+            out["max_rel_error: {}".format(key)] = error
 
     report_filename = "report_{}.json".format(name)
     print("TEST", report_filename)
