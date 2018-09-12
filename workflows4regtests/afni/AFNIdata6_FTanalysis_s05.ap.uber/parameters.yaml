@@ -7,7 +7,8 @@ env:
   afni:
     version: latest
   miniconda:
-    conda_install: python=3.5
+  - conda_install: python=3.5
+  - conda_install: python=2.7
 inputs:
 - - File
   - ''
