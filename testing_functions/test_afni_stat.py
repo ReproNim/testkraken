@@ -24,8 +24,6 @@ def test_file_eq(file_out, file_ref=None, name=None, **kwargs):
     dict_ref = creating_dictionary(file_ref)
 
     for key, val_r in  dict_ref.items():
-        if "glob" not in key or "ave" not in key or "blur" not in key:
-            continue
         if (key not in dict_out.keys()) or (len(dict_out[key]) != len(dict_ref[key])):
             error = -99999
         else:
@@ -38,7 +36,8 @@ def test_file_eq(file_out, file_ref=None, name=None, **kwargs):
                 else:
                     er_l.append(0)
             error = max(er_l)
-        out["max_ref_er: {}".format(key)] = error
+        if "blur" in key or "ave" in key or "glob" in key:
+            out["max_ref_er: {}".format(key)] = error
 
     report_filename = "report_{}.json".format(name)
     print("TEST", report_filename)
