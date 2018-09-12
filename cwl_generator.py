@@ -55,7 +55,9 @@ class CwlGenerator(object):
             cmd_cwl["inputs"]["input_files_{}".format(ii)]["type"] = input_tuple[0]
             cmd_cwl["inputs"]["input_files_{}".format(ii)]["inputBinding"] = {}
             cmd_cwl["inputs"]["input_files_{}".format(ii)]["inputBinding"]["position"] = ii + 2
-            cmd_cwl["inputs"]["input_files_{}".format(ii)]["inputBinding"]["prefix"] = input_tuple[1]
+            # TODO: it should be changed (using dict instead of list?)
+            if input_tuple[1]:
+                cmd_cwl["inputs"]["input_files_{}".format(ii)]["inputBinding"]["prefix"] = input_tuple[1]
 
 
         cmd_cwl["outputs"] = {}

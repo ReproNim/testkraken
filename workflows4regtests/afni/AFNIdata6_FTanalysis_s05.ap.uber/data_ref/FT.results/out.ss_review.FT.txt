@@ -1,0 +1,47 @@
+
+subject ID                : FT
+AFNI version              : AFNI_18.2.15
+AFNI package              : linux_openmp_64
+TRs removed (per run)     : 2
+num stim classes provided : 2
+final anatomy dset        : anat_final.FT+tlrc.HEAD
+final stats dset          : stats.FT+tlrc.HEAD
+final voxel resolution    : 2.500000	2.500000	2.500000
+
+motion limit              : 0.3
+num TRs above mot limit   : 3
+average motion (per TR)   : 0.075313
+average censored motion   : 0.0689467
+max motion displacement   : 1.65986
+max censored displacement : 1.0295
+outlier limit             : 0.1
+average outlier frac (TR) : 0.00276734
+num TRs above out limit   : 1
+
+num runs found            : 3
+num TRs per run           : 150 150 150
+num TRs per run (applied) : 146 148 150
+num TRs per run (censored): 4 2 0
+fraction censored per run : 0.0266667 0.0133333 0
+TRs total (uncensored)    : 450
+TRs total                 : 444
+degrees of freedom used   : 20
+degrees of freedom left   : 424
+
+TRs censored              : 6
+censor fraction           : 0.013333
+num regs of interest      : 2
+num TRs per stim (orig)   : 240 239
+num TRs censored per stim : 6 0
+fraction TRs censored     : 0.025 0.000
+ave mot per sresp (orig)  : 0.078156 0.071051
+ave mot per sresp (cens)  : 0.066231 0.071051
+
+TSNR average              : 219.025
+global correlation (GCOR) : 0.065944
+anat/EPI mask Dice coef   : 0.828722
+maximum F-stat (masked)   : 904.824
+blur estimates (ACF)      : 0.678248 3.16331 10.7559
+blur estimates (FWHM)     : 0 0 0
+
+

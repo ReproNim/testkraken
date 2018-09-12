@@ -1,0 +1,36 @@
+env:
+  base:
+  - image: debian:stretch
+    pkg-manager: apt
+  - image: ubuntu:16.04
+    pkg-manager: apt
+  afni:
+    version: latest
+  miniconda:
+    conda_install: python=3.5
+inputs:
+- - File
+  - ''
+  - FT_anat.nii
+- - File
+  - ''
+  - FT_epi_r1.nii
+- - File
+  - ''
+  - FT_epi_r2.nii
+- - File
+  - ''
+  - FT_epi_r3.nii
+- - File
+  - ''
+  - AV1_vis.txt
+- - File
+  - ''
+  - AV2_aud.txt
+script: s05.ap.uber
+command: tcsh
+tests:
+- file: FT.results/out.ss_review.FT.txt
+  script: test_afni_stat.py
+  name: stat
+
