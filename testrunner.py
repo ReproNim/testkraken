@@ -12,7 +12,7 @@ if __name__ == "__main__":
         print("workflow all", workflow)
         if "AFNI" in workflow:
             print("Workflow Name ", workflow)
-            wf = WorkflowRegtest(os.path.join(Workflows_dir, workflow))
+            wf = WorkflowRegtest(os.path.join(Workflows_dir, workflow[:-1]))
             wf.run()
             wf.merging_all_output()
             wf.dashboard_workflow()

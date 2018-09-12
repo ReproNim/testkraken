@@ -24,6 +24,7 @@ def test_file_eq(file_out, file_ref=None, name=None, **kwargs):
     dict_ref = creating_dictionary(file_ref)
 
     for key, val_r in  dict_ref.items():
+        print("ALL KEYS: ", key, dict_ref[key], dict_out[key])
         if (key not in dict_out.keys()) or (len(dict_out[key]) != len(dict_ref[key])):
             error = -99999
         else:
