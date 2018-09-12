@@ -33,4 +33,8 @@ tests:
 - file: FT.results/out.ss_review.FT.txt
   script: test_afni_stat.py
   name: stat
-
+plots:
+- function: scatter_all
+  var_list: []
+- function: barplot_all_rel_error
+  var_list: []
