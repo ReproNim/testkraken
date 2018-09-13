@@ -30,7 +30,7 @@
 
   <body>
     <nav class="navbar navbar-default navbar-fixed-top">
-      <h1 class="navbar-brand">ReproNim Robustness Test Results</h1>
+      <h1 class="navbar-brand">ReproTest</h1>
     </nav>
 
     <!-- parallel coordinate plot -->
@@ -43,26 +43,16 @@
     </div>
 
     <!-- summaries / plots based on input csv -->
-    <div id="summary" class="top-buffer">
-      <h2>Summary</h2>
-      <p>Include general descriptive statistics about the tests run.</p>
-      <ul>
-        <li>Number of tests run (#passed, #failed, #error)</li>
-        <li>Information on runtime? (amount of time taken, etc)</li>
-      </ul>
+    <div id="envs" class="top-buffer">
+      <h2>Description of environments</h2>
     </div>
 
     <div id="foo:bar:"></div>
 
     <div id="plots">
       <h2>Plots</h2>
-      <ul>
-        <li>Where relevant, include plots of results. For example, brain volume per environment.</li>
-      </ul>
 
-      <div id='chart-bar-brainvolume'></div>
     </div>
-
 
     <script src="dashboard.js"></script>
 

@@ -70,19 +70,6 @@ d3.csv("output_all.csv", function(data) {
 
 
 
-    // dj: this part is not used for now
-    // TODO(kaczmarj): change colors based on column clicked. Do something
-    // similar to MetaSearch: use discrete colors for discrete classes and
-    // continuous color pallete for continuous variables.
-    //
-    // parcoords.svg
-    // .selectAll(".dimension")
-    // .on("click", changeColor);
-
-    // Add useful charts for results. Here we plot brain volume.
-    // TODO+QUESTION(kaczmarj): what should plots look like? Should they
-    // be comparisons to the reference data?
-
 
     // Add plot of data[column] to HTML, and render.
     // column is a string of a column name in data.
@@ -109,16 +96,5 @@ d3.csv("output_all.csv", function(data) {
         });
     }
 
-
-    // Create new array of keys from which we will plot.
-    // Exclude these keys as an example.
-    var exclude_keys = ["id", "base", "ants", "freesurfer", "mindboggle"];
-    var plot_keys = column_keys.filter(column_keys => !exclude_keys.includes(column_keys));
-
-    // create one plot for each column.
-    //plot_keys.map(createPlot)
-
-    // create one plot for one column.
-    // createPlot('brainvolume')
 
 });
