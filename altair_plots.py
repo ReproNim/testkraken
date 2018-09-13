@@ -68,7 +68,7 @@ class AltairPlots(object):
         res_transf = res_plot.reset_index().melt(['env', 'index'])
         if y_scale: #should be a tuple, TODO
             if y_max_check:
-                y_max = round(self.results_flat[var_l].max().max() + .1, 2)
+                y_max = self.results_flat[var_l].max().max() *1.2 #round(self.results_flat[var_l].max().max() + .1, 2)
                 y_scale_update = (y_scale[0], y_max)
                 y_bar = alt.Y('value:Q', scale=alt.Scale(domain=y_scale_update))
             else:
