@@ -73,40 +73,57 @@ d3.csv("output_all.csv", function(data) {
         .updateAxes();
     });
 
+  function tabulate(data, columns) {
+		var table = d3.select('#grid').append('table')
+		var thead = table.append('thead')
+		var	tbody = table.append('tbody');
 
+		// append the header row
+		thead.append('tr')
+		  .selectAll('th')
+		  .data(columns).enter()
+		  .append('th')
+		    .text(function (column) { return column; })
+		    .style('background-color', 'black')
+		    .style('color', 'white')
+		    .style("border", "2px solid green")
+		    .style("padding", "6px");
 
+		// create a row for each object in the data
+		var rows = tbody.selectAll('tr')
+		  .data(data)
+		  .enter()
+		  .append('tr')
+		  .style("background-color", function(d, i){
+		    if ( i % 2) {
+		        return 'pink';
+		    } else {
+		        return 'blue';
+		    }
+		  })
+		  .style("border", "1px solid green")
+		  .style("padding", "6px")
+		  ;
 
-    // slickgrid
-//    var column_keys = d3.keys(data[0]);
+		// create a cell in each row for each column
+		var cells = rows.selectAll('td')
+		  .data(function (row) {
+		    return columns.map(function (column) {
+		      return {column: column, value: row[column]};
+		    });
+		  })
+		  .enter()
+		  .append('td')
+		    .text(function (d) { return d.value; })
+		    .style("border", "2px solid green")
+		    .style("padding", "6px")
+		    ;
 
-//    var options = {
-//        enableCellNavigation: true,
-//        enableColumnReorder: false,
-//        multiColumnSort: false,
-//        forceFitColumns: true
-//    };
+	  return table;
+	}
 
-//    var columns = column_keys.map(function (key) {
-//        return {
-//            id: key,
-//            name: key,
-//            field: key,
-//            sortable: false
-//        };
-//    });
-
-//    dataView = new Slick.Data.DataView();
-//    var grid = new Slick.Grid("#grid", dataView, columns, options);
-    // var pager = new Slick.Controls.Pager(dataView, grid, $("#pager"));
-
-//    function gridUpdate(data) {
-//        dataView.beginUpdate();
-//        dataView.setItems(data);
-//        dataView.endUpdate();
-//    }
-
-    // fill grid with data
-//    gridUpdate(data);
+	// render the table(s)
+	tabulate(data, d3.keys(data[0])); // 2 column table
 
 
 });
