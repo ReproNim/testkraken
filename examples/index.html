@@ -24,6 +24,11 @@
     <script src="https://cdn.jsdelivr.net/npm/vega-embed@3.9.0"></script>
     <!-- End Vega -->
 
+    <!-- Select 2 -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/js/select2.min.js"></script>
+    <!-- End Select 2 -->
+
     <link rel="stylesheet" type="text/css" href="style.css" />
 
   </head>
@@ -36,9 +41,21 @@
     <!-- parallel coordinate plot -->
     <div id="parcoord-plot" class="parcoords bg-onedark"></div>
 
+    <br><br/>
+
+    <div id="var_select"></div>
+
+    <select multiple name="event_type[]" class="form-control" id="selectEvents">
+    </select>
+
+    <script>
+      </script>
+
+    <br><br/>
+
     <!-- grid of test info / results -->
     <div id="grid-container">
-        <div id="pager"></div>
+ <!--       <div id="pager"></div>  -->
         <div id="grid"></div>
     </div>
 
