@@ -69,32 +69,4 @@ d3.csv("output_all.csv", function(data) {
     gridUpdate(data);
 
 
-
-
-    // Add plot of data[column] to HTML, and render.
-    // column is a string of a column name in data.
-    function createPlot(column) {
-        // create new div in the html page.
-        var this_div = document.createElement('div');
-        // assign this div some unique id. the plot requires this id.
-        this_div.id = column.replace(/:/g, "-");
-        // get the div container plot.
-        var plots_container_div = document.getElementById("plots");
-        // append the new div into this container div.
-        plots_container_div.appendChild(this_div);
-
-        // create plot.
-        var chart = c3.generate({
-            bindto: "#" + this_div.id,
-            data: {
-                json: data,
-                type: "bar",
-                keys: {
-                    value: [column]
-                }
-            }
-        });
-    }
-
-
 });
