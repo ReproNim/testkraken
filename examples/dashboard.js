@@ -151,6 +151,8 @@ d3.csv("output_all.csv", function(data) {
 		  .enter()
 		  .append('td')
 
+    rows.selectAll("td").text(function (d) { return d.value; })
+
     rows.selectAll("td")
       .data(columns_new)
       .exit()
@@ -182,7 +184,7 @@ d3.csv("output_all.csv", function(data) {
         .render()
         .updateAxes();
 
-        //update(["base"])
+    update(usedaxis_list)
 
 
     });
@@ -199,7 +201,7 @@ d3.csv("output_all.csv", function(data) {
         .render()
         .updateAxes();
 
-        // update(["ants"])
+    update(usedaxis_list)
 
     });
 
