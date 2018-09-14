@@ -145,11 +145,14 @@ d3.csv("output_all.csv", function(data) {
     rows.selectAll("td")
 		  .data(function (row) {
 		    return columns_new.map(function (column) {
+		      console.log("in updat rows", column, row[column])
 		      return {column: column, value: row[column]};
 		    });
 		  })
 		  .enter()
 		  .append('td')
+
+    rows.selectAll("td").text(function (d) { return d.value; })
 
     rows.selectAll("td")
       .data(columns_new)
@@ -182,7 +185,7 @@ d3.csv("output_all.csv", function(data) {
         .render()
         .updateAxes();
 
-        update(["base"])
+        update(usedaxis_list)
 
 
     });
@@ -199,7 +202,7 @@ d3.csv("output_all.csv", function(data) {
         .render()
         .updateAxes();
 
-         update(["ants"])
+         update(usedaxis_list)
 
     });
 
