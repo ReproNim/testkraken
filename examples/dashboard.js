@@ -97,24 +97,30 @@ d3.csv("output_all.csv", function(data) {
 	//tabulate(data, d3.keys(data[0]))
     //grid.append(tabulate(grid, data, d3.keys(data[0])));
 
-    function update(columns_new){
-    table.selectAll("th")
+   function update(columns_new){
+    table.selectAll('thead').selectAll("tr").selectAll("th")
           .data(columns_new)
       .enter()
       .append("th")
 
-    table.selectAll("th")
+//    table.selectAll("th")
         .text(function(d, i){
+
           return d
         })
+        .style('background-color', 'black')
+		 .style('color', 'white')
+		 .style("border", "2px solid green")
+		 .style("padding", "6px");
 
-    table.selectAll("th")
+
+    table.selectAll('thead').selectAll("tr").selectAll("th")
         .data(columns_new)
         .exit()
         .remove("th")
 
 
-	tbody.selectAll('tr')
+	table.selectAll('tbody').selectAll('tr')
 		  .data(data)
 		  .enter()
 		  .append('tr')
@@ -130,30 +136,31 @@ d3.csv("output_all.csv", function(data) {
 		  ;
     console.log("data(columns_new)", data);
 
-    tbody.selectAll("tr")
+    table.selectAll('tbody').selectAll("tr")
       .data(data)
       .exit()
       .remove("tr")
 
 
-    rows.selectAll("td")
+    table.selectAll('tbody').selectAll('tr').selectAll("td")
       .data(columns_new)
       .enter()
       .append("td")
 
 
-    rows.selectAll("td")
+    table.selectAll('tbody').selectAll('tr').selectAll("td")
 		  .data(function (row) {
 		    return columns_new.map(function (column) {
+		      console.log("in updat rows", column, row[column])
 		      return {column: column, value: row[column]};
 		    });
 		  })
 		  .enter()
 		  .append('td')
 
-    rows.selectAll("td").text(function (d) { return d.value; })
+    table.selectAll('tbody').selectAll('tr').selectAll("td").text(function (d) { return d.value; })
 
-    rows.selectAll("td")
+    table.selectAll('tbody').selectAll('tr').selectAll("td")
       .data(columns_new)
       .exit()
       .remove("td")
