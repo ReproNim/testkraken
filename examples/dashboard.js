@@ -182,7 +182,7 @@ d3.csv("output_all.csv", function(data) {
         .render()
         .updateAxes();
 
-        update(["base"])
+        //update(["base"])
 
 
     });
@@ -199,7 +199,7 @@ d3.csv("output_all.csv", function(data) {
         .render()
         .updateAxes();
 
-         update(["ants"])
+        // update(["ants"])
 
     });
 
