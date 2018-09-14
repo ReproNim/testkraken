@@ -37,7 +37,7 @@ d3.csv("output_all.csv", function(data) {
         //.color(function (d) {return colorByResult(d.result); })
         .render()
         .reorderable()
-        //.brushMode("1D-axes")
+        .brushMode("1D-axes")
         .autoscale();
 
 
