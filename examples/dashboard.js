@@ -35,6 +35,7 @@ d3.csv("output_all.csv", function(data) {
         .margin({ top: 30, left: 0, bottom: 20, right: 0 })
         .hideAxis(hideaxis_list)
         //.color(function (d) {return colorByResult(d.result); })
+        .color("indigo")
         .render()
         .reorderable()
         .brushMode("1D-axes")
@@ -55,9 +56,9 @@ d3.csv("output_all.csv", function(data) {
 		  .data(columns).enter()
 		  .append('th')
 		    .text(function (column) { return column; })
-		    .style('background-color', 'black')
-		    .style('color', 'white')
-		    .style("border", "2px solid green")
+		    .style('background-color', '#5c1cab66')
+		    .style('color', 'black')
+		    .style("border", "2px solid #5c1cab")
 		    .style("padding", "6px");
 
 		// create a row for each object in the data
@@ -67,12 +68,13 @@ d3.csv("output_all.csv", function(data) {
 		  .append('tr')
 		  .style("background-color", function(d, i){
 		    if ( i % 2) {
-		        return 'pink';
+		        return 'white';
 		    } else {
-		        return 'blue';
+		        return '#bea4dd33';
 		    }
 		  })
-		  .style("border", "1px solid green")
+		  .style("color", "black")
+		  .style("border", "1px solid #5c1cab66")
 		  .style("padding", "6px")
 		  ;
 
@@ -86,7 +88,7 @@ d3.csv("output_all.csv", function(data) {
 		  .enter()
 		  .append('td')
 		    .text(function (d) { return d.value; })
-		    .style("border", "2px solid green")
+		    .style("border", "2px solid #5c1cab")
 		    .style("padding", "6px")
 		    ;
 
@@ -108,9 +110,9 @@ d3.csv("output_all.csv", function(data) {
 
           return d
         })
-        .style('background-color', 'black')
-		 .style('color', 'white')
-		 .style("border", "2px solid green")
+        .style('background-color', '#5c1cab66')
+		 .style('color', 'black')
+		 .style("border", "2px solid #5c1cab")
 		 .style("padding", "6px");
 
 
@@ -126,12 +128,13 @@ d3.csv("output_all.csv", function(data) {
 		  .append('tr')
 		  .style("background-color", function(d, i){
 		    if ( i % 2) {
-		        return 'pink';
+		        return 'white';
 		    } else {
-		        return 'blue';
+		        return '#bea4dd33';
 		    }
 		  })
-		  .style("border", "1px solid green")
+		  .style("color", "black")
+		  .style("border", "1px solid #5c1cab")
 		  .style("padding", "6px")
 		  ;
     console.log("data(columns_new)", data);
