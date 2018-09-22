@@ -211,6 +211,14 @@ class WorkflowRegtest(object):
         self.res_all_flat_df = pd.concat(df_el_flat_l).reset_index(drop=True)
         self.res_all_df.to_csv(os.path.join(self.working_dir, "output_all.csv"), index=False)
 
+        # saving also detailed about the environment
+        soft_vers_description = {}
+        for key, val in self.soft_vers_spec.items():
+            soft_vers_description[key] = [{"version": "version_{}".format(i), "description": str(spec)}
+                                          for (i, spec) in enumerate(val)]
+        with open(os.path.join(self.working_dir, "envs_descr.json"), "w") as f:
+            json.dump(soft_vers_description, f)
+
 
     def _merging_test_output(self, dict_env, ii):
         for (iir, test) in enumerate(self.tests):

@@ -68,12 +68,12 @@ color: #2c48a8
 
 
 .select2-selection__choice {
-    background-color: #5c1cab !important;
-    color: white
+    background-color: #5c1cab66 !important;
+    color: black
 }
 
 .select2-selection.select2-selection--multiple {
 
-    background-color: #5c1cab66;
+    background-color: #bea4dd33;
     margin: 15px;
 }
