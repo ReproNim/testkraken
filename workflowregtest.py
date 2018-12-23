@@ -15,9 +15,9 @@ import pandas as pd
 import ruamel.yaml
 import pdb
 
-import container_generator as cg
-import cwl_generator as cwlg
-from altair_plots import AltairPlots
+from . import container_generator as cg
+from . import cwl_generator as cwlg
+from .altair_plots import AltairPlots
 
 
 class WorkflowRegtest(object):
