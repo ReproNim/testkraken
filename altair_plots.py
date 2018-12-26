@@ -1,7 +1,6 @@
 import altair as alt
 import bs4
 import os, pdb
-import pandas as pd
 
 
 class AltairPlots(object):
@@ -41,7 +40,7 @@ class AltairPlots(object):
                 x='variable:N',
                 y='value:Q',
                 color='env:N').properties(
-                width=400, background="#a9a3b7").interactive().to_dict()
+                width=400, background="white").interactive().to_dict()
         return plot_dict
 
 
@@ -56,7 +55,7 @@ class AltairPlots(object):
                 color='env:N').properties(
                 width=400).interactive()
             plot.append(plot_el)
-        plot_dict = alt.hconcat(*plot).properties(background="#a9a3b7").to_dict()
+        plot_dict = alt.hconcat(*plot).properties(background="white").to_dict()
         return plot_dict
 
 
@@ -81,7 +80,7 @@ class AltairPlots(object):
                 x='variable:N',
                 color='env:N').properties(
                 width=400)
-        chart = alt.hconcat().properties(background="#a9a3b7")
+        chart = alt.hconcat().properties(background="white")
         for env in [ee for ee in self.results_flat.env if ee != "N/A"]:
             chart |= base.transform_filter(alt.expr.datum.env == env)
         plot_dict = chart.to_dict()
