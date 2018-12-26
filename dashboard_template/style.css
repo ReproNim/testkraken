@@ -1,7 +1,14 @@
-body, .bg-onedark { background: hsl(220, 13%, 18%); }
+body, .bg-parcoords {
+    background: white;
+    font-family: "Avenir" !important;
+    margin: 10px}
+}
 
-h1, h2, h3, li, p, text {
+li, p, text {
   color: rgb(197,202,211);
+}
+h1, h2, h3 {
+color: #2c48a8
 }
 .padding-0 { padding-left: 0; padding-right: 0; }
 .parcoords > canvas {
@@ -10,7 +17,7 @@ h1, h2, h3, li, p, text {
 }
 .parcoords text {
   font: 16px sans-serif;
-  fill: rgb(197,202,211);
+  fill: rgba(0,0,0, 0.5);
 }
 .parcoords text.label {
   font: 18px sans-serif;
@@ -57,4 +64,16 @@ h1, h2, h3, li, p, text {
    height: 40vh;
    overflow: hidden;
    overflow-y: scroll;
+}
+
+
+.select2-selection__choice {
+    background-color: #5c1cab66 !important;
+    color: black
+}
+
+.select2-selection.select2-selection--multiple {
+
+    background-color: #bea4dd33;
+    margin: 15px;
 }

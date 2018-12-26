@@ -1,6 +1,7 @@
 var parcoords;
 var dataset;
 var dataView;
+var envs;
 
 
 d3.csv("output_all.csv", function(data) {
@@ -35,12 +36,14 @@ d3.csv("output_all.csv", function(data) {
         .margin({ top: 30, left: 0, bottom: 20, right: 0 })
         .hideAxis(hideaxis_list)
         //.color(function (d) {return colorByResult(d.result); })
+        .color("indigo")
         .render()
         .reorderable()
         .brushMode("1D-axes")
         .autoscale();
 
 
+// creating table with results
 
     var columns = d3.keys(data[0])
 
@@ -55,9 +58,9 @@ d3.csv("output_all.csv", function(data) {
 		  .data(columns).enter()
 		  .append('th')
 		    .text(function (column) { return column; })
-		    .style('background-color', 'black')
-		    .style('color', 'white')
-		    .style("border", "2px solid green")
+		    .style('background-color', '#5c1cab66')
+		    .style('color', 'black')
+		    .style("border", "2px solid #5c1cab")
 		    .style("padding", "6px");
 
 		// create a row for each object in the data
@@ -67,12 +70,13 @@ d3.csv("output_all.csv", function(data) {
 		  .append('tr')
 		  .style("background-color", function(d, i){
 		    if ( i % 2) {
-		        return 'pink';
+		        return 'white';
 		    } else {
-		        return 'blue';
+		        return '#bea4dd33';
 		    }
 		  })
-		  .style("border", "1px solid green")
+		  .style("color", "black")
+		  .style("border", "1px solid #5c1cab66")
 		  .style("padding", "6px")
 		  ;
 
@@ -86,7 +90,7 @@ d3.csv("output_all.csv", function(data) {
 		  .enter()
 		  .append('td')
 		    .text(function (d) { return d.value; })
-		    .style("border", "2px solid green")
+		    .style("border", "2px solid #5c1cab")
 		    .style("padding", "6px")
 		    ;
 
@@ -98,6 +102,8 @@ d3.csv("output_all.csv", function(data) {
     //grid.append(tabulate(grid, data, d3.keys(data[0])));
 
    function update(columns_new){
+    // TODO: not sure if I have to update everything as in this function
+    function update(columns_new){
     table.selectAll('thead').selectAll("tr").selectAll("th")
           .data(columns_new)
       .enter()
@@ -108,9 +114,9 @@ d3.csv("output_all.csv", function(data) {
 
           return d
         })
-        .style('background-color', 'black')
-		 .style('color', 'white')
-		 .style("border", "2px solid green")
+        .style('background-color', '#5c1cab66')
+		 .style('color', 'black')
+		 .style("border", "2px solid #5c1cab")
 		 .style("padding", "6px");
 
 
@@ -126,12 +132,13 @@ d3.csv("output_all.csv", function(data) {
 		  .append('tr')
 		  .style("background-color", function(d, i){
 		    if ( i % 2) {
-		        return 'pink';
+		        return 'white';
 		    } else {
-		        return 'blue';
+		        return '#bea4dd33';
 		    }
 		  })
-		  .style("border", "1px solid green")
+		  .style("color", "black")
+		  .style("border", "1px solid #5c1cab")
 		  .style("padding", "6px")
 		  ;
     console.log("data(columns_new)", data);
@@ -165,8 +172,6 @@ d3.csv("output_all.csv", function(data) {
       .exit()
       .remove("td")
 
-
-
     }
 
     var usedaxis_list = d3.keys(data[0])
@@ -191,9 +196,7 @@ d3.csv("output_all.csv", function(data) {
         .render()
         .updateAxes();
 
-    update(usedaxis_list)
-
-
+        update(usedaxis_list)
     });
 
         $("#selectEvents").on("select2:unselect", function(e) {
@@ -208,11 +211,60 @@ d3.csv("output_all.csv", function(data) {
         .render()
         .updateAxes();
 
-    update(usedaxis_list)
-
+        update(usedaxis_list)
     });
+});
 
 
+d3.json("envs_descr.json", function(data) {
+    //console.log("env descr", keys(data));
+    envs = data;
+
+    function tabulate(data, columns, key) {
+        var table = d3.select('#envs')
+        table.append('table').append("caption").text(key).style("color", "#2c48a8")
+        var thead = table.append('thead')
+        var	tbody = table.append('tbody');
+        console.log("col in tabular", columns)
+        console.log("data in tabular", data)
+        // append the header row
+        thead.append('tr')
+          .selectAll('th')
+          .data(columns).enter()
+          .append('th')
+          .style("color", "#2c48a8")
+            .text(function (column) { return column; })
+          .style("border", "1px solid black");
+
+        // create a row for each object in the data
+        var rows = tbody.selectAll('tr')
+          .data(data)
+          .enter()
+          .append('tr')
+          .style("border", "1px solid black");
+
+        // create a cell in each row for each column
+        var cells = rows.selectAll('td')
+          .data(function (row) {
+            return columns.map(function (column) {
+              return {column: column, value: row[column]};
+            });
+          })
+          .enter()
+          .append('td')
+            .text(function (d) { return d.value; })
+          .style("border", "1px solid #2c48a8")
+          .style("padding", "6px");
+
+      return table;
+    }
 
 
+  var softkeys = Object.keys(data);
+  console.log("env descr", softkeys);
+  for (k in softkeys){
+  console.log("key", k, softkeys[k], data[softkeys[k]]);
+    tabulate(data[softkeys[k]], ["version", "description"], softkeys[k])
+    d3.select('#envs').append("BBB")
+  }
 });
