@@ -1,16 +1,13 @@
 """Object to orchestrate worflow execution and output tests."""
 
-import ast
 import itertools
-import json, csv
+import json
 import os, shutil
 import subprocess
 import tempfile
-from collections import OrderedDict
 from copy import deepcopy
 import matplotlib
 matplotlib.use('agg')
-import matplotlib.pyplot as plt, mpld3
 import pandas as pd
 import ruamel.yaml
 import pdb
@@ -58,15 +55,14 @@ class WorkflowRegtest(object):
 
     def _create_matrix_of_envs(self):
         """Create matrix of all combinations of environment variables.
-            Create a list of short descriptions of envs as single strings"""
+        Create a list of short descriptions of envs as single strings
+        """
         self.keys_envs = []
         # lists of full specification (all versions for each software/key)
         self.soft_vers_spec = {}
         for key, val in self.env_parameters.items():
             self.keys_envs.append(key)
-            print("KEY< VALL", key, val)
-            # val should be dictionary with options, list of dicionaries, or dictionary with "common" and "shared"
-            #pdb.set_trace()
+            # val should be dictionary with options, list of dictionaries, or dictionary with "common" and "shared"
             if type(val) is list:
                 self.soft_vers_spec[key] = val
             elif (type(val) is dict) and (["common", "varied"] == sorted(list(val.keys()))):
@@ -77,11 +73,9 @@ class WorkflowRegtest(object):
                     raise Exception("varied part of {} should be a list".format(key))
                 # checking if common and varied have the same key
                 elif any([bool(set(val["common"].keys()) & set(var_dict.keys())) for var_dict in val["varied"]]):
-                    # TODO: I should probably except the situation for conda_install, pip_install and just merge two strings
+                    # TODO: I should probably accept when conda_install and pip_install and just merge two strings
                     raise Exception("common and varied parts for {} have the same key".format(key))
                 else:
-                    #print("TTT", [var_dict.update(val["common"]) for var_dict in val["varied"]])
-                    #pdb.set_trace()
                     for var_dict in val["varied"]:
                         var_dict.update(val["common"])
                     self.soft_vers_spec[key] = val["varied"]
@@ -95,7 +89,9 @@ class WorkflowRegtest(object):
 
 
     def _adding_fixed_envs(self):
-        # adding fixed env to the environments, all fixed anv should have the same keys as env
+        """Adding fixed env to the environments,
+        all fixed envs should have the same keys as other envs
+        """
         if type(self.fixed_env_parameters) is dict:
             self.fixed_env_parameters = [self.fixed_env_parameters]
 
@@ -111,8 +107,8 @@ class WorkflowRegtest(object):
 
     def _testing_workflow(self):
         """Run workflow for all env combination, testing for all tests.
-        Writing environmental parameters to report text file."""
-
+        Writing environmental parameters to report text file.
+        """
         sha_list = [key for key in self.mapping]
         for ii, name in enumerate(self.env_names):
             #self.report_txt.write("\n * Environment:\n{}\n".format(software_vers))
@@ -155,17 +151,18 @@ class WorkflowRegtest(object):
 
 
     def _create_matrix_of_string_envs(self):
-        """creating a short string representation of various versions of software that can be used on dashboard"""
-        # TODO: should probaby depend o the key, e.g. image name for base, vesiorn for fsl, for python more complicated
+        """creating a short string representation of various versions of the software
+        that will be used on the dashboard.
+        """
+        # TODO: should depend o the key? e.g. image name for base, version for fsl, for python more complicated
         self.string_softspec_dict = {}
         self.soft_vers_string = {}
-        #tu trzeba dodac wersje z fixed (ale nie mozna product zrobic)
         for (key, key_versions) in self.soft_vers_spec.items():
-            _verions_per_key = []
+            _versions_per_key = []
             for jj, version in enumerate(key_versions):
-                _verions_per_key.append("{}: version_{}".format(key, jj))
+                _versions_per_key.append("{}: version_{}".format(key, jj))
                 self.string_softspec_dict["{}: version_{}".format(key, jj)] = version
-            self.soft_vers_string[key] = _verions_per_key
+            self.soft_vers_string[key] = _versions_per_key
 
         # creating products from dictionary
         all_keys, all_values = zip(*self.soft_vers_string.items())
@@ -190,13 +187,11 @@ class WorkflowRegtest(object):
     def merging_all_output(self):
         df_el_l = []
         df_el_flat_l = []
-        ii_ok = None # just to have at least one env that docker was ok
         for ii, soft_d in enumerate(self.env_sring_dict_matrix):
             #self.res_all.append(deepcopy(soft_d))
             el_dict = deepcopy(soft_d)
             el_dict["env"] = self.env_names[ii]
             if self.docker_status[ii] == "docker ok":
-                ii_ok = ii
                 # merging results from tests and updating self.res_all, self.res_all_flat
                 df_el, df_el_flat = self._merging_test_output(el_dict, ii)
                 df_el_l.append(df_el)
@@ -211,7 +206,7 @@ class WorkflowRegtest(object):
         self.res_all_flat_df = pd.concat(df_el_flat_l).reset_index(drop=True)
         self.res_all_df.to_csv(os.path.join(self.working_dir, "output_all.csv"), index=False)
 
-        # saving also detailed about the environment
+        # saving detailed describtion about the environment
         soft_vers_description = {}
         for key, val in self.soft_vers_spec.items():
             soft_vers_description[key] = [{"version": "version_{}".format(i), "description": str(spec)}
@@ -221,6 +216,7 @@ class WorkflowRegtest(object):
 
 
     def _merging_test_output(self, dict_env, ii):
+        """merging all test outputs"""
         for (iir, test) in enumerate(self.tests):
             file_name = os.path.join(self.working_dir, self.env_names[ii],
                                      "report_{}.json".format(test["name"]))
@@ -271,20 +267,22 @@ class WorkflowRegtest(object):
 
 
     def _flatten_dict_test(self, dict):
+        """flattening the dictionary"""
         if dict["index_name"] == "N/A":
             return dict
         else:
             dict_flat = {}
-            for key in set(dict.keys()) - set(["index_name"]):
+            for key in set(dict.keys()) - {"index_name"}:
                 for (i, el) in enumerate(dict[key]):
                     dict_flat["{}:{}".format(key, dict["index_name"][i])] = el
             return dict_flat
 
 
     def dashboard_workflow(self):
+        # copy html/js/css templates to the workflow specific directory
         js_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "examples")
         for js_template in ["dashboard.js", "index.html", "style.css"]:
             shutil.copy2(os.path.join(js_dir, js_template), self.working_dir)
-
+        # adding altair plots #TODO: move to js?
         ap = AltairPlots(self.working_dir, self.res_all_df, self.res_all_flat_df, self.plot_parameters)
         ap.create_plots()
