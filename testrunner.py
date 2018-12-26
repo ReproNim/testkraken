@@ -10,3 +10,4 @@ def runner(workflow_dir):
     wf.run()
     wf.merging_all_output()
     wf.dashboard_workflow()
+

@@ -101,6 +101,7 @@ d3.csv("output_all.csv", function(data) {
 	//tabulate(data, d3.keys(data[0]))
     //grid.append(tabulate(grid, data, d3.keys(data[0])));
 
+   function update(columns_new){
     // TODO: not sure if I have to update everything as in this function
     function update(columns_new){
     table.selectAll('thead').selectAll("tr").selectAll("th")
@@ -196,8 +197,6 @@ d3.csv("output_all.csv", function(data) {
         .updateAxes();
 
         update(usedaxis_list)
-
-
     });
 
         $("#selectEvents").on("select2:unselect", function(e) {
@@ -212,8 +211,7 @@ d3.csv("output_all.csv", function(data) {
         .render()
         .updateAxes();
 
-         update(usedaxis_list)
-
+        update(usedaxis_list)
     });
 });
 
