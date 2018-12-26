@@ -61,7 +61,7 @@ def instructions_to_neurodocker_specs(keys, env_spec):
             env_spec[ii].setdefault('env_name', "test")
             env_spec[ii].setdefault('activate', "true")
             instructions.append((key, env_spec[ii]))
-        elif key in ["fsl"]: #TODO: have to find what are acceptable argument for neurodocker
+        elif key in ["fsl", "afni"]: #TODO: have to find what are acceptable argument for neurodocker
             instructions.append((key, env_spec[ii]))
         else:
             raise Exception("key has to be base, miniconda or fsl")
