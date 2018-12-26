@@ -1,6 +1,6 @@
-"""Checking if lists from two json files are equal"""
+"""Comparing statistics after AFNI run (out.ss_review.FT.txt file)"""
 from __future__ import division
-import os, json, filecmp, pdb
+import os, json, pdb
 
 
 def creating_dictionary(filename):
@@ -12,10 +12,8 @@ def creating_dictionary(filename):
                 try:
                     val = [float(v) for v in key_val[1].split()]
                 except ValueError:
-                    #pdb.set_trace()
                     continue
                 res_dict[key_val[0]] = val
-            #pdb.set_trace()
     return res_dict
 
 def test_file_eq(file_out, file_ref=None, name=None, **kwargs):
