@@ -280,7 +280,7 @@ class WorkflowRegtest(object):
 
     def dashboard_workflow(self):
         # copy html/js/css templates to the workflow specific directory
-        js_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "examples")
+        js_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboard_template")
         for js_template in ["dashboard.js", "index.html", "style.css"]:
             shutil.copy2(os.path.join(js_dir, js_template), self.working_dir)
         # adding altair plots #TODO: move to js?
