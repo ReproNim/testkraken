@@ -157,7 +157,7 @@ d3.csv("output_all.csv", function(data) {
     table.selectAll('tbody').selectAll('tr').selectAll("td")
 		  .data(function (row) {
 		    return columns_new.map(function (column) {
-		      console.log("in updat rows", column, row[column])
+		      //console.log("in updat rows", column, row[column])
 		      return {column: column, value: row[column]};
 		    });
 		  })
@@ -196,8 +196,6 @@ d3.csv("output_all.csv", function(data) {
         .updateAxes();
 
         update(usedaxis_list)
-
-
     });
 
         $("#selectEvents").on("select2:unselect", function(e) {
@@ -207,6 +205,8 @@ d3.csv("output_all.csv", function(data) {
         usedaxis_list.splice(usedaxis_list.indexOf(e.params.data.id), 1 );
         console.log("removing soething", e.params.data.id);
         console.log("hideaxis_list", hideaxis_list);
+        console.log("usedaxis_list", usedaxis_list);
+        console.log("eee", e, e.params);
         //parcoords.hideAxis(hideaxis_list).updateAxes();
         parcoords.hideAxis(hideaxis_list)
         .render()
@@ -270,3 +270,209 @@ d3.json("envs_descr.json", function(data) {
     d3.select('#envs').append("BBB")
   }
 });
+
+//for barplots
+// TODO:
+//1. odseparowac testy dla grupy i pojedynczych elementow
+//2. jak traktowac poszczegolne elementy
+//3. wywalic na stale wpisane testname_eg
+//4. obliczac max i dostosowywac rysowanie
+//5.(?) rozne kolory dla roznych env?
+//6.(?) polaczyc scatter plot z barplot
+d3.csv("output_all.csv", function(data) {
+        testname_eg = "regr:rel_error";
+
+        function barplots(data, testname) {
+            values_test = []
+            data.forEach(function(d,i){values_test.push(d[testname])})
+            console.log("values_test", values_test)
+
+            var bars = d3
+                .select("#barplot")
+                .selectAll(".barContainer")
+                .data(values_test)
+                .enter()
+                .append("div")
+                .attr("class", "barContainer");
+
+            bars.append("div").attr("class", "barText");
+
+            bars.append("div").attr("class", "bar").style("width", 0);
+
+            // update text
+            d3.select("#barplot").selectAll(".barText").data(data).text(function(d) {
+                return d.env + ", " + d.index_name;
+            });
+
+            // update data
+            d3.select("#barplot")
+              .selectAll(".bar")
+              .data(values_test)
+              .transition()
+              .duration(1000)
+              .style("width", function(d) {
+              // TODO should calculated max
+              if (d>0) {return 50000*d+"px"} else {return "1px"}
+              })
+              .text(function(d) {
+                //TODO 100 should be probably removed
+                return (100*d).toFixed(1)});
+
+
+            // this is so things look nice
+            //  d3.select("#barplot").selectAll(".bar").each(function(d) {
+            //    if (d) {
+            //      d3.select(this).style("padding-right", "5px");
+            //    } else {
+            //      d3.select(this).style("padding-right", "0px");
+            //    }
+            //  });
+
+            // TODO: try moving to style
+            document.getElementById("left").style.marginLeft = "50px";
+        };
+
+        barplots(data, testname_eg);
+
+        // select options (wasn't able to use from Anisha examples, so using similar to previous)
+        var keys_all = Object.keys(data[0]);
+        keys_tests = [];
+        keys_all.forEach(function(d,i){if(d.startsWith("regr")){keys_tests.push(d)}})
+        console.log("keys_tests: ", keys_tests)
+
+
+        // give select2 all the possible options
+        $("#histSelect").select2({data: keys_tests})
+
+        //initialize the value
+        $("#histSelect").val(testname_eg).trigger("change")
+
+        // changing barplot when option is changed
+        $("#histSelect").on("select2:select", function(e) {
+        console.log('changes in histSelect', e.params.data.id);
+         barplots(data, e.params.data.id);
+        })
+})
+
+
+
+
+//TODO
+//for barplots with axis
+d3.csv("output_all.csv", function(data) {
+        testname_eg = "regr:rel_error";
+
+        function axis(data, testname) {
+
+        var margin = 30;
+        var width = 800;
+        var height = 300;
+
+        var xScale = d3.scale.ordinal()
+        .domain([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27])
+        .rangeBands([0,width]);
+
+        var yScale = d3.scale.linear()
+        .domain([0,0.1])
+        .range([height,0]);
+
+        var chart = d3.select(".chart")
+        chart.attr("width",width + 2*margin)
+            .attr("height",height + 2*margin)
+            .append("g")
+                .attr("transform","translate(" + margin + "," + margin + ")")
+//            .selectAll("rect")
+//            .data(data)
+//            .enter().append("rect")
+//            .attr("width", 30)
+//            .attr("height",function(d) { return height - yScale(d); })
+//            .attr("x",function(d,i) { return xScale(i); })
+//            .attr("y",function(d) { return yScale(d); });
+
+
+        var xAxis = d3.svg.axis()
+            .scale(xScale)
+            .orient("bottom")
+            //.ticks(1);
+
+        //cos jest zle ze scale y albo left orient
+        var yAxis = d3.svg.axis()
+            .scale(yScale)
+            .orient("left")
+            //.ticks(5); //doesnt work
+
+        chart.append("g")
+            .attr("transform", "translate(" + margin + "," + (height+margin) + ")")
+            .attr("class","x axis")
+            .call(xAxis);
+
+        chart.append("g")
+            .attr("transform", "translate(" + margin + "," + margin + ")")
+            .attr("class","y axis")
+            .call(yAxis);
+
+        return {
+            svg: chart,
+            xScale: xScale,
+            yScale: yScale,
+//            xValue: xValue,
+//            yValue: yValue,
+            xAxis: xAxis,
+            yAxis: yAxis
+          };
+    };
+
+    function barplots(ax, data, testname) {
+          // set domain again in case data changed bounds
+//          xScale.domain([d3.min(data, ax.xValue), d3.max(data, ax.xValue)]);
+          ax.yScale.domain([0.,1]);
+
+        //redraw axis
+        ax.svg.selectAll(".x.axis").call(ax.xAxis);
+        ax.svg.selectAll(".y.axis").call(ax.yAxis);
+
+
+        values_test = []
+        data.forEach(function(d,i){values_test.push(d[testname])})
+        values_bar_test = []
+        values_test.forEach(function(d){values_bar_test.push(10000*d)})
+        console.log("values_test", values_test)
+
+        //add data
+        ax.svg
+            .selectAll(".bar")
+            .data(values_test)
+            .enter()
+            .append("div")
+            .attr("class", "bar")
+            .text(function(d){return (100*d).toFixed(1)});
+
+        ax.svg.selectAll(".bar").data(values_bar_test)
+            .style("height", function(d){return d + "px";})
+            .style("margin-top", function(d){return (100-d) + "px";})
+
+
+//        values_test = []
+//        data.forEach(function(d,i){values_test.push(d[testname])})
+//        values_bar_test = []
+//        values_test.forEach(function(d){values_bar_test.push(10000*d)})
+//        console.log("values_test", values_test)
+//
+//        //var mybar = d3.select("#barplot").selectAll(".bar")
+//        d3.select("#barplot").selectAll(".bar")
+//        .data(values_test)
+//        .enter().append("div")
+//        .attr("class", "bar")
+//        //.text(function(d){return (100*d).toFixed(1)});
+//
+//        d3.select("#barplot").selectAll(".bar").data(values_bar_test)
+//        .style("height", function(d){return d + "px";})
+//        .style("margin-top", function(d){return (100-d) + "px";})
+    };
+
+
+
+    ax = axis(data, testname_eg);
+    barplots(ax, data, testname_eg);
+
+})

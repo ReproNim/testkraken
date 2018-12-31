@@ -24,41 +24,61 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/js/select2.min.js"></script>
     <!-- End Select 2 -->
 
+
+    <script src="https://d3js.org/d3-array.v1.min.js"></script>
+    <script src="https://d3js.org/d3-color.v1.min.js"></script>
+    <script src="https://d3js.org/d3-format.v1.min.js"></script>
+    <script src="https://d3js.org/d3-interpolate.v1.min.js"></script>
+    <script src="https://d3js.org/d3-time.v1.min.js"></script>
+    <script src="https://d3js.org/d3-time-format.v2.min.js"></script>
+    <script src="https://d3js.org/d3-scale.v2.min.js"></script>
+
+
     <link rel="stylesheet" type="text/css" href="style.css" />
 
   </head>
 
   <body>
 
-  <div><h1>TestKraken</h1></div>
+      <div><h1>TestKraken</h1></div>
 
-    <!-- parallel coordinate plot -->
-    <div id="parcoord-plot" class="parcoords bg-parcoords"></div>
+      <!-- parallel coordinate plot -->
+      <div id="parcoord-plot" class="parcoords bg-parcoords"></div>
 
-    <br><br/>
+      <br><br/>
 
-    <select multiple name="event_type[]" class="form-control" id="selectEvents"></select>
+      <select multiple name="event_type[]" class="form-control" id="selectEvents"></select>
 
-    <br><br/>
+      <br><br/>
 
-    <!-- grid of test info / results -->
-    <div id="grid-container", style="margin-left:45px;">
-        <div id="grid"></div>
-    </div>
+      <!-- grid of test info / results -->
+      <div id="grid-container", style="margin-left:45px;">
+          <div id="grid"></div>
+      </div>
 
-    <!-- summaries / plots based on input csv -->
-    <div id="envs" class="top-buffer">
-      <h2>Description of environments</h2>
-        <div id="envs"></div>
-    </div>
+      <!-- summaries / plots based on input csv -->
+      <div id="envs" class="top-buffer">
+          <h2>Description of environments</h2>
+          <div id="envs"></div>
+      </div>
 
-    <br><br/>
+      <p></p>
 
-    <!-- additional plots -->
-    <div id="plots">
-      <h2>Plots</h2>
-    </div>
+      <!--<svg class="chart"></svg>-->
 
-    <script src="dashboard.js"></script>
+      <!-- additional plots -->
+      <div class="main top-buffer">
+          <div id="left">
+              <h2>JS plots</h2>
+              <select id="histSelect"></select>
+              <div id="barplot"></div>
+          </div>
+      </div>
+
+      <div id="plots_altair" class="top-buffer">
+          <h2>Plots</h2>
+      </div>
+
+      <script src="dashboard.js"></script>
 
   </body>
