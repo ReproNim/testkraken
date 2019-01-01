@@ -4,7 +4,7 @@ env:
   - {image: debian:stretch, pkg-manager: apt}
   - {image: ubuntu:16.04, pkg-manager: apt}
   miniconda:
-    common: {pip_install: numpy}
+    common: {pip_install: [numpy]}
     varied:
     - {conda_install: [python=3.5]}
     - {conda_install: [python=2.7]}
