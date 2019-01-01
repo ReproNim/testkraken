@@ -18,8 +18,8 @@ def _instructions_to_neurodocker_specs(keys, env_spec):
     Parameters
     ----------
     keys: list of strings. 'base' must be included.
-    env_spec: dictionary of environment spec. This should be a single
-        environment.
+    env_spec: list or tuple of dictionaries. Each dictionary is the
+        specification for a single environment.
 
     Returns
     -------
@@ -38,9 +38,13 @@ def _instructions_to_neurodocker_specs(keys, env_spec):
                 raise Exception("image has to be provided in base")
             pkg_manager = env_spec[ii].get("pkg-manager", "apt")
         elif key == "miniconda":
-            # TODO(kaczmarj): prefer use_env=base.
-            # TODO(kaczmarj): make sure to copy yaml file if using 'yaml_file'.
-            env_spec[ii].setdefault('create_env', 'neuro')
+            # Copy yaml environment file into the container.
+            if 'yaml_file' in env_spec[ii].keys():
+                instructions.append(
+                    ('copy', (env_spec[ii]['yaml_file'], env_spec[ii]['yaml_file'])))
+                env_spec[ii].setdefault('create_env', 'testkraut')
+            else:
+                env_spec[ii].setdefault('use_env', 'base')
             this_instruction = (key, env_spec[ii])
         elif key in ["fsl", "afni"]:
             this_instruction = (key, env_spec[ii])
