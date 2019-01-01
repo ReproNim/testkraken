@@ -32,11 +32,17 @@ def _instructions_to_neurodocker_specs(keys, env_spec):
 
     for ii, key in enumerate(keys):
         if key == "base":
-            try:
-                this_instruction = ('base', env_spec[ii]['image'])
-            except KeyError:
+            base_image = env_spec[ii].get('image', None)
+            if base_image is None:
                 raise Exception("image has to be provided in base")
-            pkg_manager = env_spec[ii].get("pkg-manager", "apt")
+            this_instruction = ('base', base_image)
+            if 'pkg_manager' not in env_spec[ii].keys():
+                pkg_manager = 'apt'  # assume apt
+                for img in {'centos', 'fedora'}:
+                    if img in base_image:
+                        pkg_manager = 'yum'
+            else:
+                pkg_manager = env_spec[ii]['pkg_manager']
         elif key == "miniconda":
             # Copy yaml environment file into the container.
             if 'yaml_file' in env_spec[ii].keys():
