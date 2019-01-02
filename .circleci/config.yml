@@ -19,13 +19,13 @@ jobs:
             conda update -n base -yq conda
             conda update -yq --all
 
-            pip install cwlref-runner pandas matplotlib mpld3 jinja2 plotly altair bs4 pytest
+            pip install --no-cache-dir -e /home/circleci/regtests[test]
 
       - run:
           name: Run tests
           no_output_timeout: 60m
           command: |
             source ~/.bashrc
-            pytest -vs tests/test_basic_examples.py
+            pytest -vs testkraken/tests/test_basic_examples.py
       - store_artifacts:
           path: /home/circleci/regtests
