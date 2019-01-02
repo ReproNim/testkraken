@@ -49,6 +49,7 @@ def _instructions_to_neurodocker_specs(keys, env_spec):
                 instructions.append(
                     ('copy', (env_spec[ii]['yaml_file'], env_spec[ii]['yaml_file'])))
             env_spec[ii].setdefault('create_env', 'testkraut')
+            env_spec[ii].setdefault('activate', True)
             this_instruction = (key, env_spec[ii])
         elif key in ["fsl", "afni"]:
             this_instruction = (key, env_spec[ii])
