@@ -12,9 +12,9 @@ import pandas as pd
 import ruamel.yaml
 import pdb
 
-from . import container_generator as cg
-from . import cwl_generator as cwlg
-from .altair_plots import AltairPlots
+import testkraken.container_generator as cg
+import testkraken.cwl_generator as cwlg
+from testkraken.altair_plots import AltairPlots
 
 
 class WorkflowRegtest(object):

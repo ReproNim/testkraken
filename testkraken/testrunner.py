@@ -1,6 +1,6 @@
 """Running workflows and regression tests for all projects in chosen dictionary"""
 
-from .workflowregtest import WorkflowRegtest
+from testkraken.workflowregtest import WorkflowRegtest
 import os, pdb
 
 
