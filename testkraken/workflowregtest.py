@@ -8,7 +8,6 @@ import tempfile
 from copy import deepcopy
 import matplotlib
 matplotlib.use('agg')
-import pandas as pd
 import ruamel.yaml
 import pdb
 
