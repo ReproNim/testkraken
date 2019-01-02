@@ -4,13 +4,12 @@ env:
   - {image: debian:stretch, pkg-manager: apt}
   - {image: ubuntu:16.04, pkg-manager: apt}
   miniconda:
-    common: {pip_install: numpy}
+    common: {pip_install: [numpy]}
     varied:
-    - {conda_install: python=3.5}
-    - {conda_install: python=2.7}
+    - {conda_install: [python=3.5]}
+    - {conda_install: [python=2.7]}
 inputs:
 - [File, -f, list2sort.json]
 script: sorting.py
 tests:
 - {file: array_sorted.npy, name: regr1, script: test_arr_eq.py}
-

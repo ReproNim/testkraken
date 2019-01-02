@@ -1,130 +1,116 @@
-"""Methods to generate Dockerfiles with Neurodocker.
+"""Methods to generate Dockerfiles with Neurodocker."""
 
-
-Example
--------
-```python
-import os
-import tempfile
-
-from testrunner import WorkflowRegtest
-from container_generator import (create_matrix_of_envs,
-                                 get_dict_of_neurodocker_dicts,
-                                 generate_dockerfile)
-
-wf = WorkflowRegtest('workflows4regtests/basic_examples/sorting_list/')
-matrix = create_matrix_of_envs(wf.parameters['env'])
-mapping = get_dict_of_neurodocker_dicts(matrix)
-
-tmpdir = tempfile.TemporaryDirectory(prefix="tmp-json-files-",
-                                     dir=os.getcwd())
-os.mkdir(os.path.join(tmpdir.name, 'json'))
-keep_tmpdir = True
-
-try:
-    for sha1, neurodocker_dict in mapping.items():
-        generate_dockerfile(tmpdir.name, neurodocker_dict, sha1)
-
-except Exception as e:
-    raise
-finally:
-    if not keep_tmpdir:
-        tmpdir.cleanup()
-```
-
-"""
-
+import copy
+import hashlib
 import json
 import os
 import subprocess
 from collections import OrderedDict
 import pdb
 
+NEURODOCKER_IMAGE = 'kaczmarj/neurodocker@sha256:9490c8bd4cfbadfad3b531f406b4c09f9135150148b89fa0cceb6db82a3e2967'
 
-def instructions_to_neurodocker_specs(keys, env_spec):
+
+def _instructions_to_neurodocker_specs(keys, env_spec):
     """Return dictionary compatible with Neurodocker given a list of
     instructions.
+
+    Parameters
+    ----------
+    keys: list of strings. 'base' must be included.
+    env_spec: list or tuple of dictionaries. Each dictionary is the
+        specification for a single environment.
+
+    Returns
+    -------
+    A dictionary compatible with Neurodocker.
     """
+    env_spec = copy.deepcopy(env_spec)
     instructions = []
     if "base" not in keys:
-        raise Exception("base image has to be provided")
+        raise ValueError("base image has to be provided")
 
     for ii, key in enumerate(keys):
         if key == "base":
-            try:
-                instructions.append(("base", env_spec[ii]["image"]))
-            except KeyError:
+            base_image = env_spec[ii].get('image', None)
+            if base_image is None:
                 raise Exception("image has to be provided in base")
-            pkg_manager = env_spec[ii].get("pkg-manager", "apt")
+            this_instruction = ('base', base_image)
+            if 'pkg_manager' not in env_spec[ii].keys():
+                pkg_manager = 'apt'  # assume apt
+                for img in {'centos', 'fedora'}:
+                    if img in base_image:
+                        pkg_manager = 'yum'
+            else:
+                pkg_manager = env_spec[ii]['pkg_manager']
         elif key == "miniconda":
-            # TODO: not sure what is required
-            env_spec[ii].setdefault('env_name', "test")
-            env_spec[ii].setdefault('activate', "true")
-            instructions.append((key, env_spec[ii]))
-        elif key in ["fsl", "afni"]: #TODO: have to find what are acceptable argument for neurodocker
-            instructions.append((key, env_spec[ii]))
+            # Copy yaml environment file into the container.
+            if 'yaml_file' in env_spec[ii].keys():
+                instructions.append(
+                    ('copy', (env_spec[ii]['yaml_file'], env_spec[ii]['yaml_file'])))
+            env_spec[ii].setdefault('create_env', 'testkraut')
+            env_spec[ii].setdefault('activate', True)
+            this_instruction = (key, env_spec[ii])
+        elif key in ["fsl", "afni"]:
+            this_instruction = (key, env_spec[ii])
         else:
             raise Exception("key has to be base, miniconda or fsl")
+        instructions.append(this_instruction)
     return {
         "pkg_manager": pkg_manager,
-        "check_urls": False,
-        "instructions": tuple(instructions)
+        "instructions": tuple(instructions),
     }
 
 
-def get_dictionary_hash(d):
-    """Return SHA-1 hash of dictionary `d`."""
-    import hashlib
-    import json
-
-    sha1 = hashlib.sha1(json.dumps(d, sort_keys=True).encode())
-    return sha1.hexdigest()
+def _get_dictionary_hash(d):
+    """Return SHA-1 hash of dictionary `d`. The dictionary is JSON-encoded
+    prior to getting the hash value.
+    """
+    return hashlib.sha1(json.dumps(d, sort_keys=True).encode()).hexdigest()
 
 
 def get_dict_of_neurodocker_dicts(env_keys, env_matrix):
-    """Return dictionary of Neurodocker dictionaries given a matrix of
-    environment parameters. Keys are the SHA-1 hashes of the 'instructions'
-    portion of the Neurodocker dictionary.
+    """Return dictionary of Neurodocker specifications.
+
+    Parameters
+    ----------
+    env_keys: list of keys in the environment. Must include 'base'.
+    env_matrix: list of dictionary, where each dictionary specifies an environment.
+        Each dictionary must contain the keys in `env_keys`.
+
+    Returns
+    -------
+    Ordered dictionary of Neurodocker specifications. The keys in this dictionary are the
+    sha1 values for the JSON-encoded dictionaries, and the values are the corresponding
+    dictionaries.
     """
-    dict_of_neurodocker_dicts = []
+    d = []
     for ii, params in enumerate(env_matrix):
-        neurodocker_dict = instructions_to_neurodocker_specs(env_keys, params)
-        this_hash = get_dictionary_hash(neurodocker_dict['instructions'])
-        dict_of_neurodocker_dicts.append((this_hash, neurodocker_dict))
-    print("ENV MAT", env_matrix)
-    return OrderedDict(dict_of_neurodocker_dicts)
+        neurodocker_dict = _instructions_to_neurodocker_specs(env_keys, params)
+        this_hash = _get_dictionary_hash(neurodocker_dict['instructions'])
+        d.append((this_hash, neurodocker_dict))
+    return OrderedDict(d)
 
 
-def _generate_dockerfile(dir_, neurodocker_dict, sha1):
-    """Return string representation of Dockerfile with the Neurodocker Docker
-    image.
+def generate_dockerfile(neurodocker_dict):
+    """Return string representation of Dockerfile, made with Neurodocker
+    Docker image.
     """
-    filepath = os.path.join(dir_, "json", "{}.json".format(sha1))
-    dir_ = os.path.abspath(dir_)
-
-    with open(filepath, "w") as fp:
-        json.dump(neurodocker_dict, fp, indent=4)
-    base_cmd = (
-        "docker run --rm -v {dir}/json:/json:ro kaczmarj/neurodocker:testkraut"
-        " generate --file /json/{filepath}"
-    )
-
-    basename = os.path.basename(filepath)
-    cmd = base_cmd.format(dir=dir_,
-                          filepath=basename)
-    output = subprocess.check_output(cmd.split())
-    print(output)
-    print("foobar")
-    return output.decode()
+    cmd = "docker run --rm -i -a stdin -a stdout {image} generate docker -"
+    cmd = cmd.format(image=NEURODOCKER_IMAGE)
+    output = subprocess.run(
+        cmd.split(),
+        input=json.dumps(neurodocker_dict).encode(),
+        check=True,
+        stdout=subprocess.PIPE).stdout.decode()
+    return output
 
 
-def generate_dockerfile(dir_, neurodocker_dict, sha1):
-    """Generate and save Dockerfiles to `dir_`."""
-    dockerfile = _generate_dockerfile(dir_, neurodocker_dict, sha1)
-    path = "Dockerfile.{}".format(sha1)
-    path = os.path.join(dir_, path)
+def write_dockerfile(neurodocker_dict, filepath):
+    """Generate and write Dockerfile to `filepath`."""
+    dockerfile = generate_dockerfile(neurodocker_dict)
 
-    with open(path, 'w') as fp:
+    with open(filepath, 'w') as fp:
         fp.write(dockerfile)
 
 
@@ -153,7 +139,7 @@ def build_image(filepath, build_context=None, tag=None, build_opts=None):
 
     if build_context is not None:
         build_context = os.path.abspath(build_context)
-        filepath = os.path.join(build_context, filepath)
+        filepath = os.path.abspath(filepath)
         cmd += " -f {} {}".format(filepath, build_context)
     else:
         filepath = os.path.abspath(filepath)
@@ -163,8 +149,7 @@ def build_image(filepath, build_context=None, tag=None, build_opts=None):
 
 
 def docker_main(workflow_path, neurodocker_dict, sha1):
-    generate_dockerfile(workflow_path, neurodocker_dict, sha1)
-
     filepath = os.path.join(workflow_path, 'Dockerfile.{}'.format(sha1))
+    write_dockerfile(neurodocker_dict=neurodocker_dict, filepath=filepath)
     tag = "repronim/regtests:{}".format(sha1)
     build_image(filepath, build_context=workflow_path, tag=tag)

@@ -5,8 +5,8 @@ env:
   - {image: centos:7, pkg-manager: yum}
   - {image: fake, pkg-manager: yum}
   miniconda:
-  - {conda_install: 'python=3.5'}
-  - {conda_install: 'python=2.7'}
+  - {conda_install: ['python=3.5']}
+  - {conda_install: ['python=2.7']}
 inputs:
 - [File, -f, list_orig.json]
 plots:
@@ -24,4 +24,3 @@ tests:
   script: test_el_list_eq.py
 - {file: list_final.json, name: stat, script: test_el_list_eq_tmp.py}
 - {file: list_final.json, name: stat_all, script: test_el_list_eq_tmp_noarray.py}
-

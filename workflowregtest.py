@@ -27,7 +27,7 @@ class WorkflowRegtest(object):
         self.working_dir = os.path.join(self.base_dir, os.path.basename(self.workflow_path) + "_cwl")
         os.makedirs(self.working_dir, exist_ok=True)
         with open(os.path.join(self.workflow_path, "parameters.yaml")) as param_yml:
-            self.parameters = ruamel.yaml.load(param_yml)
+            self.parameters = ruamel.yaml.safe_load(param_yml)
         self.env_parameters = self.parameters["env"]
         self.fixed_env_parameters = self.parameters.get("fixed_env", {})
         try:
@@ -120,7 +120,6 @@ class WorkflowRegtest(object):
     def _generate_docker_image(self):
         """Generate all Dockerfiles"""
         self.mapping = cg.get_dict_of_neurodocker_dicts(self.keys_envs, self.matrix_of_envs)
-        os.makedirs(os.path.join(self.workflow_path, 'json'), exist_ok=True) # TODO: self.workflow_path is temporary
         for sha1, neurodocker_dict in self.mapping.items():
             try:
                 print("building images: {}".format(neurodocker_dict))

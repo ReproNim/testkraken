@@ -5,14 +5,13 @@ env:
   - {image: ubuntu:16.04, pkg-manager: apt}
   - {image: ubuntu:17.10, pkg-manager: apt}
   miniconda:
-  - {conda_install: python=3.5}
-  - {conda_install: python=2.7}
+  - {conda_install: [python=3.5]}
+  - {conda_install: [python=2.7]}
 fixed_env:
   base: {image: ubuntu:16.04, pkg-manager: apt}
-  miniconda: {conda_install: python=3.6}
+  miniconda: {conda_install: [python=3.6]}
 inputs: []
 script: mean_random_numbers.py
 tests:
 - {file: mean.json, name: tests1, script: test_rand_almosteq.py}
 - {file: mean_2.json, name: tests2, script: test_rand_almosteq.py}
-
