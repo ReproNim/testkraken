@@ -2,6 +2,20 @@
 
 Use _Testkraken_ to test workflows in a matrix of parametrized environments.
 
+## Installation
+
+_Testkraken_ can be installed with `pip`:
+
+```bash
+$ pip install .
+```
+
+Developers should use the development installation:
+
+```bash
+$ pip install -e .[dev]
+```
+
 ## Preparing workflow for testing
 
 * each workflow should have a separate dictionary under `workflows4regtests`
