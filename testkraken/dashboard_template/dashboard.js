@@ -284,7 +284,10 @@ d3.csv("output_all.csv", function(data) {
 
         function barplots(data, testname) {
             values_test = []
-            data.forEach(function(d,i){values_test.push(d[testname])})
+            data.forEach(function(d,i){
+                if(d[testname].length > 0) {values_test.push(d[testname])}
+                else {values_test.push(NaN)}
+            })
             console.log("values_test", values_test)
 
             var bars = d3
@@ -312,7 +315,7 @@ d3.csv("output_all.csv", function(data) {
               .duration(1000)
               .style("width", function(d) {
               // TODO should calculated max
-              if (d>0) {return 50000*d+"px"} else {return "1px"}
+              if (d>0) {return 100*d+"px"} else {return "1px"}
               })
               .text(function(d) {
                 //TODO 100 should be probably removed
@@ -330,6 +333,7 @@ d3.csv("output_all.csv", function(data) {
 
             // TODO: try moving to style
             document.getElementById("left").style.marginLeft = "50px";
+             document.getElementById("right").style.marginLeft = "50px";
         };
 
         barplots(data, testname_eg);
@@ -337,7 +341,7 @@ d3.csv("output_all.csv", function(data) {
         // select options (wasn't able to use from Anisha examples, so using similar to previous)
         var keys_all = Object.keys(data[0]);
         keys_tests = [];
-        keys_all.forEach(function(d,i){if(d.startsWith("regr")){keys_tests.push(d)}})
+        keys_all.forEach(function(d,i){if(d.startsWith("regr") || d.startsWith("stat")){keys_tests.push(d)}})
         console.log("keys_tests: ", keys_tests)
 
 
@@ -358,36 +362,52 @@ d3.csv("output_all.csv", function(data) {
 
 
 //TODO
-//for barplots with axis
+// scatter plots with axis
 d3.csv("output_all.csv", function(data) {
-        testname_eg = "regr:rel_error";
+        x_eg = "regr:rel_error";
+        y_eg = "regr:abs_error";
 
-        function axis(data, testname) {
+    function axis(data, x_var, y_var) {
+        var margin = { top: 20, right: 20, bottom: 30, left: 160 };
+        var width = 500 - margin.left - margin.right;
+        var height = 300 - margin.top - margin.bottom;
 
-        var margin = 30;
-        var width = 800;
-        var height = 300;
 
-        var xScale = d3.scale.ordinal()
-        .domain([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27])
-        .rangeBands([0,width]);
+
+        var xValue = function(d){
+            if(d[x_var].startsWith("env") || d[x_var].startsWith("vers")) {return +d[x_var].split("_")[1]}
+            else if(d[x_var].length > 0) {return +d[x_var]}
+            else {return null}
+            }
+
+        var yValue = function(d){
+            if(d[y_var].startsWith("env") || d[y_var].startsWith("vers")) {return +d[y_var].split("_")[1]}
+            if(d[y_var].length > 0) {return +d[y_var]}
+            else {return null}
+            }
+
+
+        console.log("X MIN", d3.max(data, xValue))
+        console.log("Y MIN", d3.max(data, yValue))
+
+        var x_min = d3.min(data, xValue)
+        var x_max = d3.max(data, xValue)
+        var y_min = d3.min(data, yValue)
+        var y_max = d3.max(data, yValue)
+
+        var xScale = d3.scale.linear()
+        .domain([x_min, x_max])
+        .range([0,width]);
 
         var yScale = d3.scale.linear()
-        .domain([0,0.1])
+        .domain([y_min, y_max])
         .range([height,0]);
 
         var chart = d3.select(".chart")
-        chart.attr("width",width + 2*margin)
-            .attr("height",height + 2*margin)
-            .append("g")
-                .attr("transform","translate(" + margin + "," + margin + ")")
-//            .selectAll("rect")
-//            .data(data)
-//            .enter().append("rect")
-//            .attr("width", 30)
-//            .attr("height",function(d) { return height - yScale(d); })
-//            .attr("x",function(d,i) { return xScale(i); })
-//            .attr("y",function(d) { return yScale(d); });
+                      .attr("width",width + margin.left + margin.right+30)
+                      .attr("height",height + margin.top + margin.bottom)
+                      .append("g")
+                      .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
 
 
         var xAxis = d3.svg.axis()
@@ -395,84 +415,154 @@ d3.csv("output_all.csv", function(data) {
             .orient("bottom")
             //.ticks(1);
 
-        //cos jest zle ze scale y albo left orient
         var yAxis = d3.svg.axis()
             .scale(yScale)
             .orient("left")
             //.ticks(5); //doesnt work
 
         chart.append("g")
-            .attr("transform", "translate(" + margin + "," + (height+margin) + ")")
+            .attr("transform", "translate(0," + height + ")")
             .attr("class","x axis")
-            .call(xAxis);
+            .call(xAxis)
+            .append("text")
+            .attr("class", "label")
+            .attr("x", width)
+            .attr("y", -6)
+            .attr("dx", "-4.71em")
+
 
         chart.append("g")
-            .attr("transform", "translate(" + margin + "," + margin + ")")
             .attr("class","y axis")
-            .call(yAxis);
+            .call(yAxis)
+            .append("text")
+            .attr("class", "label")
+            .attr("transform", "rotate(-90)")
+            .attr("y", -50)
+            .attr("x", -10)
+            .attr("dx", "-14.71em");
+
 
         return {
             svg: chart,
             xScale: xScale,
             yScale: yScale,
-//            xValue: xValue,
-//            yValue: yValue,
             xAxis: xAxis,
             yAxis: yAxis
           };
     };
 
-    function barplots(ax, data, testname) {
-          // set domain again in case data changed bounds
-//          xScale.domain([d3.min(data, ax.xValue), d3.max(data, ax.xValue)]);
-          ax.yScale.domain([0.,1]);
+    function scatter(ax, data, x_var, y_var){
+
+        var xValue = function(d){
+           console.log("AAA", d[x_var])
+            if(d[x_var].split("_").length == 2) {return +d[x_var].split("_")[1]}
+            else if(d[x_var].length > 0 && isFinite(+d[x_var])) {return +d[x_var]}
+            else {return null}
+            }
+
+        var yValue = function(d){
+            if(d[y_var].split("_").length == 2) {return +d[y_var].split("_")[1]}
+            else if(d[y_var].length > 0 && isFinite(+d[y_var])) {return +d[y_var]}
+            else {return null}
+            }
+
+        var x_min = d3.min(data, xValue)
+        var x_max = d3.max(data, xValue)
+        var y_min = d3.min(data, yValue)
+        var y_max = d3.max(data, yValue)
+
+
+        // if min and max are the same is hard call Scale.domain
+        if(x_min == x_max && x_min != 0.){x_min = 0.9 * x_min; x_max = 1.1 * x_max}
+        else if(x_min == x_max && x_min == 0.){x_min = -0.1; x_max = 0.1}
+        if(y_min == y_max && y_min != 0.){y_min = 0.9 * y_min; y_max = 1.1 * y_max}
+        else if(y_min == y_max && y_min == 0.){y_min = -0.1; y_max = 0.1}
+
+
+        // set domain again in case data changed bounds
+        ax.xScale.domain([x_min, x_max]);
+        ax.yScale.domain([y_min, y_max]);
 
         //redraw axis
-        ax.svg.selectAll(".x.axis").call(ax.xAxis);
-        ax.svg.selectAll(".y.axis").call(ax.yAxis);
-
-
-        values_test = []
-        data.forEach(function(d,i){values_test.push(d[testname])})
-        values_bar_test = []
-        values_test.forEach(function(d){values_bar_test.push(10000*d)})
-        console.log("values_test", values_test)
+        ax.svg.selectAll(".x.axis").call(ax.xAxis).selectAll(".label").text(x_var);
+        ax.svg.selectAll(".y.axis").call(ax.yAxis).selectAll(".label").text(y_var);
 
         //add data
         ax.svg
-            .selectAll(".bar")
-            .data(values_test)
-            .enter()
-            .append("div")
-            .attr("class", "bar")
-            .text(function(d){return (100*d).toFixed(1)});
+          .selectAll(".dot")
+          .data(data)
+          .enter()
+          .append("circle")
+          .attr("class", "dot");
 
-        ax.svg.selectAll(".bar").data(values_bar_test)
-            .style("height", function(d){return d + "px";})
-            .style("margin-top", function(d){return (100-d) + "px";})
-
-
-//        values_test = []
-//        data.forEach(function(d,i){values_test.push(d[testname])})
-//        values_bar_test = []
-//        values_test.forEach(function(d){values_bar_test.push(10000*d)})
-//        console.log("values_test", values_test)
-//
-//        //var mybar = d3.select("#barplot").selectAll(".bar")
-//        d3.select("#barplot").selectAll(".bar")
-//        .data(values_test)
-//        .enter().append("div")
-//        .attr("class", "bar")
-//        //.text(function(d){return (100*d).toFixed(1)});
-//
-//        d3.select("#barplot").selectAll(".bar").data(values_bar_test)
-//        .style("height", function(d){return d + "px";})
-//        .style("margin-top", function(d){return (100-d) + "px";})
-    };
+        //update data
+        ax.svg
+          .selectAll(".dot")
+          .transition()
+          .duration(2000)
+          .attr("cx", function(d) {
+            //console.log("xValue", x_var, xValue(d), ax.xScale(xValue(d)))
+            return ax.xScale(xValue(d));
+          })
+          .attr("cy", function(d) {
+            //console.log("yValue", y_var, yValue(d), ax.yScale(yValue(d)))
+            return ax.yScale(yValue(d));
+          });
 
 
+        // try adding events here (mouseover to black)
+        //TODO
 
-    ax = axis(data, testname_eg);
-    barplots(ax, data, testname_eg);
+        // not sure if needed at the end
+        //remove dots
+//        ax.svg
+//          .selectAll(".dot")//
+//          //.selectAll("circle")
+//          .data(data)
+//          .exit()
+//          .remove(".dot");
+//          .transition()
+//          .duration(1000)
+//          .style("opacity", 1e-6)
+//          .attr("cy", function(d) {
+//            return 0;
+//          })
+//          .remove(".dot");
+    }
+
+    ax = axis(data, x_eg, y_eg);
+    scatter(ax, data, x_eg, y_eg);
+
+    var x_cur = x_eg;
+    var y_cur = y_eg;
+
+
+    var keys_all = Object.keys(data[0]);
+
+    // give select2 all the possible options
+    $("#xSelect").select2({data: keys_all})
+
+    //initialize the value
+    $("#xSelect").val(x_eg).trigger("change")
+
+    // changing barplot when option is changed
+    $("#xSelect").on("select2:select", function(e) {
+     x_cur = e.params.data.id;
+     console.log('changes in xSelect', x_cur, y_cur);
+     scatter(ax, data, x_cur, y_cur)
+    })
+
+    // give select2 all the possible options
+    $("#ySelect").select2({data: keys_all})
+
+    //initialize the value
+    $("#ySelect").val(y_eg).trigger("change")
+
+    // changing barplot when option is changed
+    $("#ySelect").on("select2:select", function(e) {
+     y_cur = e.params.data.id;
+     console.log('changes in ySelect', x_cur, y_cur);
+     scatter(ax, data, x_cur, y_cur)
+    })
 
 })

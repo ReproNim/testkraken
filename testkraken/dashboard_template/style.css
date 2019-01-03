@@ -88,7 +88,7 @@ color: #2c48a8
 
 #left {
   float: left;
-  width: 60%;
+  width: 40%;
 }
 
 #right {
@@ -118,6 +118,12 @@ clear: both;
   color: black;
 }
 
+.dot {
+  stroke: #313E50; /*circle border*/
+  fill: steelblue; /*circle color*/
+  r: 7; /*circle radius*/
+}
+
 .axis path,
 .axis line {
     fill: none;
@@ -128,3 +134,4 @@ clear: both;
 .axis text {
     font-family: sans-serif;
     font-size: 11px;
+
