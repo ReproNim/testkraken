@@ -273,14 +273,14 @@ d3.json("envs_descr.json", function(data) {
 
 //for barplots
 // TODO:
-//1. odseparowac testy dla grupy i pojedynczych elementow
-//2. jak traktowac poszczegolne elementy
-//3. wywalic na stale wpisane testname_eg
-//4. obliczac max i dostosowywac rysowanie
-//5.(?) rozne kolory dla roznych env?
+//1. odseparowac testy dla grupy i pojedynczych elementow(?)
 //6.(?) polaczyc scatter plot z barplot
 d3.csv("output_all.csv", function(data) {
-        testname_eg = "regr:rel_error";
+        var keys_all = Object.keys(data[0]);
+        keys_tests = [];
+        // plotting only variable that starts with "regr" and "stat"
+        keys_all.forEach(function(d,i){if(d.startsWith("regr") || d.startsWith("stat")){keys_tests.push(d)}})
+        console.log("keys_tests: ", keys_tests)
 
         function barplots(data, testname) {
             values_test = []
@@ -289,6 +289,8 @@ d3.csv("output_all.csv", function(data) {
                 else {values_test.push(NaN)}
             })
             console.log("values_test", values_test)
+            var val_max = d3.max(values_test);
+
 
             var bars = d3
                 .select("#barplot")
@@ -303,8 +305,10 @@ d3.csv("output_all.csv", function(data) {
             bars.append("div").attr("class", "bar").style("width", 0);
 
             // update text
+            // collecting env; optionally saving index_name if exists (should be generalized to "index_..."
             d3.select("#barplot").selectAll(".barText").data(data).text(function(d) {
-                return d.env + ", " + d.index_name;
+                if(Object.keys(d).includes("index_name")) {return d.env + ", " + d.index_name;}
+                else {return d.env}
             });
 
             // update data
@@ -315,11 +319,11 @@ d3.csv("output_all.csv", function(data) {
               .duration(1000)
               .style("width", function(d) {
               // TODO should calculated max
-              if (d>0) {return 100*d+"px"} else {return "1px"}
+              if (d>0) {return d / val_max * 250 +"px"} else {return "1px"}
               })
               .text(function(d) {
                 //TODO 100 should be probably removed
-                return (100*d).toFixed(1)});
+                return d});//(100*d).toFixed(1)});
 
 
             // this is so things look nice
@@ -336,20 +340,16 @@ d3.csv("output_all.csv", function(data) {
              document.getElementById("right").style.marginLeft = "10px";
         };
 
-        barplots(data, testname_eg);
+        // starting from the first element of keys_tests
+        barplots(data, keys_tests[0]);
 
         // select options (wasn't able to use from Anisha examples, so using similar to previous)
-        var keys_all = Object.keys(data[0]);
-        keys_tests = [];
-        keys_all.forEach(function(d,i){if(d.startsWith("regr") || d.startsWith("stat")){keys_tests.push(d)}})
-        console.log("keys_tests: ", keys_tests)
-
 
         // give select2 all the possible options
         $("#histSelect").select2({data: keys_tests})
 
         //initialize the value
-        $("#histSelect").val(testname_eg).trigger("change")
+        $("#histSelect").val(keys_tests[0]).trigger("change")
 
         // changing barplot when option is changed
         $("#histSelect").on("select2:select", function(e) {
@@ -364,8 +364,6 @@ d3.csv("output_all.csv", function(data) {
 //TODO
 // scatter plots with axis
 d3.csv("output_all.csv", function(data) {
-        x_eg = "regr:rel_error";
-        y_eg = "regr:abs_error";
 
     function axis(data, x_var, y_var) {
         var margin = { top: 30, right: 30, bottom: 30, left: 60 };
@@ -461,9 +459,7 @@ d3.csv("output_all.csv", function(data) {
     function scatter(ax, data, x_var, y_var){
 
         var xValue = function(d){
-           console.log("AAA", x_var, d, d[x_var])
-            if(d[x_var] == undefined){console.log("BBB", x_var, d, d[x_var])}
-            else if(d[x_var].split("_").length == 2) {return +d[x_var].split("_")[1]}
+            if(d[x_var].split("_").length == 2) {return +d[x_var].split("_")[1]}
             else if(d[x_var].length > 0 && isFinite(+d[x_var])) {return +d[x_var]}
             else {return null}
             }
@@ -487,6 +483,7 @@ d3.csv("output_all.csv", function(data) {
         else if(y_min == y_max && y_min == 0.){y_min = -0.1; y_max = 0.1}
 
 
+        // TODO: probably should change if values are integers
         // set domain again in case data changed bounds
         ax.xScale.domain([x_min, 1.2*x_max]);
         ax.yScale.domain([y_min, 1.1*y_max]);
@@ -571,20 +568,27 @@ d3.csv("output_all.csv", function(data) {
 //          .remove(".dot");
     }
 
-    ax = axis(data, x_eg, y_eg);
-    scatter(ax, data, x_eg, y_eg);
-
-    var x_cur = x_eg;
-    var y_cur = y_eg;
-
-
+    // starting from first regression test vs env name
+    var x0 = "env"
     var keys_all = Object.keys(data[0]);
+    var keys_regr = [];
+    keys_all.forEach(function(d,i){if(d.startsWith("regr")){keys_regr.push(d)}})
+    var y0 = keys_regr[0]
+
+    ax = axis(data, x0, y0);
+    scatter(ax, data, x0, y0);
 
     // give select2 all the possible options
     $("#xSelect").select2({data: keys_all})
+    $("#ySelect").select2({data: keys_all})
 
-    //initialize the value
-    $("#xSelect").val(x_eg).trigger("change")
+    //initialize the values
+    $("#xSelect").val(x0).trigger("change")
+    $("#ySelect").val(y0).trigger("change")
+
+    // starting from x0,y0, but changing with values from select
+    var x_cur = x0;
+    var y_cur = y0;
 
     // changing barplot when option is changed
     $("#xSelect").on("select2:select", function(e) {
@@ -593,13 +597,6 @@ d3.csv("output_all.csv", function(data) {
      scatter(ax, data, x_cur, y_cur)
     })
 
-    // give select2 all the possible options
-    $("#ySelect").select2({data: keys_all})
-
-    //initialize the value
-    $("#ySelect").val(y_eg).trigger("change")
-
-    // changing barplot when option is changed
     $("#ySelect").on("select2:select", function(e) {
      y_cur = e.params.data.id;
      console.log('changes in ySelect', x_cur, y_cur);
