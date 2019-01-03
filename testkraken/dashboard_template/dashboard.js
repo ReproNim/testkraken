@@ -333,7 +333,7 @@ d3.csv("output_all.csv", function(data) {
 
             // TODO: try moving to style
             document.getElementById("left").style.marginLeft = "50px";
-             document.getElementById("right").style.marginLeft = "50px";
+             document.getElementById("right").style.marginLeft = "10px";
         };
 
         barplots(data, testname_eg);
@@ -368,9 +368,9 @@ d3.csv("output_all.csv", function(data) {
         y_eg = "regr:abs_error";
 
     function axis(data, x_var, y_var) {
-        var margin = { top: 20, right: 20, bottom: 30, left: 160 };
-        var width = 500 - margin.left - margin.right;
-        var height = 300 - margin.top - margin.bottom;
+        var margin = { top: 30, right: 30, bottom: 30, left: 60 };
+        var width = 430 - margin.left - margin.right;
+        var height = 330 - margin.top - margin.bottom;
 
 
 
@@ -396,12 +396,18 @@ d3.csv("output_all.csv", function(data) {
         var y_max = d3.max(data, yValue)
 
         var xScale = d3.scale.linear()
-        .domain([x_min, x_max])
+        .domain([x_min, 1.2*x_max])
         .range([0,width]);
 
         var yScale = d3.scale.linear()
-        .domain([y_min, y_max])
+        .domain([y_min, 1.1*y_max])
         .range([height,0]);
+
+        // TODO: adding more colors
+        var colorScale = d3.scaleOrdinal()
+        .range(["#1ac6cf", "#e35dd4", "#66cc00", "#1a1aff", "#FF7F50", "#8B008B",
+                "#00BFFF", "#FFD700", "#808080", "#008000", "#FFC0CB", "#8B4513"]);
+
 
         var chart = d3.select(".chart")
                       .attr("width",width + margin.left + margin.right+30)
@@ -446,6 +452,7 @@ d3.csv("output_all.csv", function(data) {
             svg: chart,
             xScale: xScale,
             yScale: yScale,
+            colorScale: colorScale,
             xAxis: xAxis,
             yAxis: yAxis
           };
@@ -454,8 +461,9 @@ d3.csv("output_all.csv", function(data) {
     function scatter(ax, data, x_var, y_var){
 
         var xValue = function(d){
-           console.log("AAA", d[x_var])
-            if(d[x_var].split("_").length == 2) {return +d[x_var].split("_")[1]}
+           console.log("AAA", x_var, d, d[x_var])
+            if(d[x_var] == undefined){console.log("BBB", x_var, d, d[x_var])}
+            else if(d[x_var].split("_").length == 2) {return +d[x_var].split("_")[1]}
             else if(d[x_var].length > 0 && isFinite(+d[x_var])) {return +d[x_var]}
             else {return null}
             }
@@ -480,8 +488,15 @@ d3.csv("output_all.csv", function(data) {
 
 
         // set domain again in case data changed bounds
-        ax.xScale.domain([x_min, x_max]);
-        ax.yScale.domain([y_min, y_max]);
+        ax.xScale.domain([x_min, 1.2*x_max]);
+        ax.yScale.domain([y_min, 1.1*y_max]);
+
+
+        // colors
+        var colorValue = function(d){return +d["env"].split("_")[1]}
+        color_max = d3.max(data, colorValue)
+        color_range = Array.from(Array(color_max+1).keys())
+        console.log("COLOR", color_range)
 
         //redraw axis
         ax.svg.selectAll(".x.axis").call(ax.xAxis).selectAll(".label").text(x_var);
@@ -506,8 +521,34 @@ d3.csv("output_all.csv", function(data) {
           })
           .attr("cy", function(d) {
             //console.log("yValue", y_var, yValue(d), ax.yScale(yValue(d)))
-            return ax.yScale(yValue(d));
-          });
+            return ax.yScale(yValue(d))})
+          .style("fill", function(d){
+          console.log("COLOR, ", colorValue(d),ax.colorScale(colorValue(d)) )
+          return ax.colorScale(colorValue(d))});
+
+
+        // adding legend with colors (probably should be in axis)
+        var legend = ax.svg.selectAll(".legend")
+                           .data(color_range)
+                           .enter().append("g")
+                           .attr("class", "legend")
+                           .attr("transform", function(d, i) { return "translate(10," + i * 15 + ")"; });
+
+        legend.append("circle")
+              .attr("class", "dot_legend")
+              .attr("x", 400)
+              .attr("transform", "translate(330, 10)")
+              .style("fill", function(d){return ax.colorScale(d)});
+
+        // draw legend text
+        legend.append("text")
+              .attr("x", 370)
+              .attr("transform", "translate(20, 0)")
+              .attr("y", 9)
+              .attr("dy", ".35em")
+              .style("text-anchor", "end")
+              .text(function(d) {return "env_"+d;})
+              //.style("color", "DarkBlue") //TODO
 
 
         // try adding events here (mouseover to black)

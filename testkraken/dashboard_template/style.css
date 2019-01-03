@@ -102,7 +102,7 @@ clear: both;
 }
 
 .bar {
-  background: steelblue;
+  background: MediumPurple;
   opacity: 0.6;
   height: 20px;
   margin: 2px;
@@ -122,6 +122,11 @@ clear: both;
   stroke: #313E50; /*circle border*/
   fill: steelblue; /*circle color*/
   r: 7; /*circle radius*/
+}
+
+.dot_legend {
+  stroke: #313E50; /*circle border*/
+  r: 4; /*circle radius*/
 }
 
 .axis path,
