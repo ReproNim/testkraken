@@ -19,7 +19,7 @@ jobs:
             conda update -n base -yq conda
             conda update -yq --all
 
-            pip install --no-cache-dir -e /home/circleci/regtests[test]
+            pip install --no-cache-dir -e /home/circleci/regtests[dev]
 
       - run:
           name: Run tests
