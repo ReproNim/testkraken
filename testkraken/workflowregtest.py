@@ -6,10 +6,12 @@ import os, shutil
 import subprocess
 import tempfile
 from copy import deepcopy
+import pdb
+
 import matplotlib
 matplotlib.use('agg')
+import pandas as pd
 import ruamel.yaml
-import pdb
 
 import testkraken.container_generator as cg
 import testkraken.cwl_generator as cwlg
