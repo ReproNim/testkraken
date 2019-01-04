@@ -1,6 +1,10 @@
 *~
+._*
 .DS_Store
 *.pyc
 __pycache__
 .ipynb_checkpoints
 *.ipynb
+
+*.egg-info
+Dockerfile.*

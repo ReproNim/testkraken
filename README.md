@@ -1,4 +1,20 @@
-# Regression tests
+# Testkraken
+
+Use _Testkraken_ to test workflows in a matrix of parametrized environments.
+
+## Installation
+
+_Testkraken_ can be installed with `pip`:
+
+```bash
+$ pip install .
+```
+
+Developers should use the development installation:
+
+```bash
+$ pip install -e .[dev]
+```
 
 ## Preparing workflow for testing
 
@@ -6,44 +22,35 @@
 * the workflow with command line interface should be in the `workflow` subdirectory
 * all input data needed to run the workflow should be under the `data_input` subdirectory
 * all reference results should be saved in the `data_ref` subdirectory
-* each workflow should have `parameters.json` to describe environment, input data, script and command to run the workflow, and chosen tests for the workflow outputs, e.g.
+* each workflow should have `parameters.yaml` to describe environment, input data, script and command to run the workflow, and chosen tests for the workflow outputs.
 
-```json
-{
-    "command": "python",
-    "env": {
-        "base": [
-            "debian:stretch",
-            "ubuntu:17.04"
-        ],
-        "conda_env_yml": [
-            "environment_py2.yml",
-            "environment_py3.yml"
-        ],
-        "fsl": [
-            "5.0.9",
-            "5.0.10"
-        ]
-    },
-    "inputs": [
-        [
-            "string",
-            "--key",
-            "11an55u9t2TAf0EV2pHN0vOd8Ww2Gie-tHp9xGULh_dA"
-        ],
-        [
-            "int",
-            "-n",
-            "1"
-        ]
-    ],
-    "script": "run_demo_workflow.py",
-    "tests": [
-        {
-        "file": "output/metaflow/AnnArbor_sub16960/save_json/segstats.json", 
-        "script": "check_output.py", 
-        "name": "test"
-        }
-    ]
-}
+```yaml
+command: python
+env:
+  base:
+  - {image: ubuntu:16.04, pkg-manager: apt}
+  - {image: centos:7, pkg-manager: apt}
+  fsl:
+  - {version: 5.0.9}
+  - {version: 5.0.10}
+  miniconda:
+  - {conda_install: [python=3.5, nipype, pandas, requests]}
+inputs:
+- [string, --key, 11an55u9t2TAf0EV2pHN0vOd8Ww2Gie-tHp9xGULh_dA]
+- [int, -n, '3']
+plots:
+- function: scatter_all
+  var_list: []
+- function: scatter_2var
+  var_list:
+  - [reg:rel_error:white, reg:rel_error:gray]
+  - [reg:rel_error:Right-Hippocampus, reg:rel_error:Right-Amygdala]
+- function: barplot_all_rel_error
+  var_list: []
+script: run_demo_workflow.py
+tests:
+- file: [output/AnnArbor_sub16960/segstats.json, output/AnnArbor_sub20317/segstats.json,
+    output/AnnArbor_sub38614/segstats.json]
+  name: reg
+  script: check_output.py
 ```

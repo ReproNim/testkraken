@@ -1,3 +1,4 @@
 * annex.backend=MD5E
 * annex.largefiles=(not(mimetype=text/*))
 data*/* annex.largefiles=anything
+testkraken/_version.py export-subst
