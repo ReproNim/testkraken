@@ -281,6 +281,8 @@ d3.csv("output_all.csv", function(data) {
         // plotting only variable that starts with "regr" and "stat"
         keys_all.forEach(function(d,i){if(d.startsWith("regr") || d.startsWith("stat")){keys_tests.push(d)}})
         console.log("keys_tests: ", keys_tests)
+        var data_nonan = [];
+        data.forEach(function(d,i){if(d.env!="N/A"){data_nonan.push(d)}})
 
         function barplots(data, testname) {
             values_test = []
@@ -341,7 +343,7 @@ d3.csv("output_all.csv", function(data) {
         };
 
         // starting from the first element of keys_tests
-        barplots(data, keys_tests[0]);
+        barplots(data_nonan, keys_tests[0]);
 
         // select options (wasn't able to use from Anisha examples, so using similar to previous)
 
@@ -354,7 +356,7 @@ d3.csv("output_all.csv", function(data) {
         // changing barplot when option is changed
         $("#histSelect").on("select2:select", function(e) {
         console.log('changes in histSelect', e.params.data.id);
-         barplots(data, e.params.data.id);
+         barplots(data_nonan, e.params.data.id);
         })
 })
 
@@ -367,6 +369,9 @@ d3.csv("output_all.csv", function(data) {
         var margin = { top: 30, right: 30, bottom: 30, left: 60 };
         var width = 430 - margin.left - margin.right;
         var height = 330 - margin.top - margin.bottom;
+        var data_nonan = [];
+        data.forEach(function(d,i){if(d.env!="N/A"){data_nonan.push(d)}})
+
 
     function axis(data, x_var, y_var) {
         // just random numbers to start, will update in scatter plot
@@ -587,21 +592,22 @@ d3.csv("output_all.csv", function(data) {
     }
 
     // starting from first regression test vs env name
+    console.log("DATA NONAN", data_nonan)
     var x0 = "env"
-    var keys_all = Object.keys(data[0]);
+    var keys_all = Object.keys(data_nonan[0]);
     var keys_all_plot = [];
     for (var i=0; i<keys_all.length; i+=1){
         key = keys_all[i]
         var not_na = []
-        data.forEach(function(d,i){if(d[key] != "N/A"){not_na.push(d)}})
+        data_nonan.forEach(function(d,i){if(d[key] != "N/A"){not_na.push(d)}})
         if(not_na.length > 0) {keys_all_plot.push(key)}
     }
     var keys_regr = [];
     keys_all_plot.forEach(function(d,i){if(d.startsWith("regr")){keys_regr.push(d)}})
     var y0 = keys_regr[0]
 
-    ax = axis(data, x0, y0);
-    scatter(ax, data, x0, y0);
+    ax = axis(data_nonan, x0, y0);
+    scatter(ax, data_nonan, x0, y0);
 
     // give select2 all the possible options
     $("#xSelect").select2({data: keys_all_plot})
@@ -619,13 +625,13 @@ d3.csv("output_all.csv", function(data) {
     $("#xSelect").on("select2:select", function(e) {
      x_cur = e.params.data.id;
      console.log('changes in xSelect', x_cur, y_cur);
-     scatter(ax, data, x_cur, y_cur)
+     scatter(ax, data_nonan, x_cur, y_cur)
     })
 
     $("#ySelect").on("select2:select", function(e) {
      y_cur = e.params.data.id;
      console.log('changes in ySelect', x_cur, y_cur);
-     scatter(ax, data, x_cur, y_cur)
+     scatter(ax, data_nonan, x_cur, y_cur)
     })
 
 })
