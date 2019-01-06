@@ -109,6 +109,8 @@ d3.csv("output_all.csv", function(data) {
       .append("th")
 
 //    table.selectAll("th")
+
+    table.selectAll('thead').selectAll("tr").selectAll("th")
         .text(function(d, i){
 
           return d
@@ -117,7 +119,6 @@ d3.csv("output_all.csv", function(data) {
 		 .style('color', 'black')
 		 .style("border", "2px solid #5c1cab")
 		 .style("padding", "6px");
-
 
     table.selectAll('thead').selectAll("tr").selectAll("th")
         .data(columns_new)
@@ -161,6 +162,8 @@ d3.csv("output_all.csv", function(data) {
 		      return {column: column, value: row[column]};
 		    });
 		  })
+		  .style("border", "2px solid #5c1cab")
+		  .style("padding", "6px")
 		  .enter()
 		  .append('td')
 
