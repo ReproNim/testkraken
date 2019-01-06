@@ -56,17 +56,17 @@ def check_output(file_out, file_ref=None, name=None, **kwargs):
                  "Right-Hippocampus_voxels", "Right-Amygdala_voxels", "Right-Caudate_voxels"]
     out["index_name"] = list(df_exp.index)
     for key in keys_test:
-        out["rel_error:{}".format(key.replace("_voxels", ""))] = []
+        out["re_{}".format(key.replace("_voxels", "").replace("Right-", "R-"))] = []
 
     for subj in df_exp.index:
         for key in keys_test:
             if df_exp.loc[subj, key] != 0.:
-                out["rel_error:{}".format(key.replace("_voxels", ""))].append(round(
+                out["re_{}".format(key.replace("_voxels", "").replace("Right-", "R-"))].append(round(
                     1. * abs(df_exp.loc[subj, key] - df_out.loc[subj, key]) / df_exp.loc[subj, key], 5))
             elif df_out.loc[subj, key] != 0.:
-                out["rel_error:{}".format(key.replace("_voxels", ""))].append(1.)
+                out["re_{}".format(key.replace("_voxels", "").replace("Right-", "R-"))].append(1.)
             else:
-                out["rel_error:{}".format(key.replace("_voxels", ""))].append(0.)
+                out["re_{}".format(key.replace("_voxels", "").replace("Right-", "R-"))].append(0.)
 
     out["regr"] = []
     for i, subj in enumerate(out["index_name"]):
