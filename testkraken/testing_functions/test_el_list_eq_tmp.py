@@ -32,8 +32,8 @@ def test_el_list_eq(file_out, file_ref=None, name=None, **kwargs):
     print("TEST", report_filename)
     out = {}
     out["index_name"] = ["group1", "group2"]
-    out["mean"] = [round(sum(obj_out[:5])/len((obj_out[:5])), 1),
-                   round(sum(obj_out[5:])/len((obj_out[5:])), 1)]
+    out["mean"] = [round(sum(obj_out[:5])/len((obj_out[:2])), 1),
+                   round(sum(obj_out[5:])/len((obj_out[2:])), 1)]
 
         
     #diff = [val for k, val in out.items()]
