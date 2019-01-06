@@ -364,44 +364,20 @@ d3.csv("output_all.csv", function(data) {
 //TODO
 // scatter plots with axis
 d3.csv("output_all.csv", function(data) {
-
-    function axis(data, x_var, y_var) {
         var margin = { top: 30, right: 30, bottom: 30, left: 60 };
         var width = 430 - margin.left - margin.right;
         var height = 330 - margin.top - margin.bottom;
 
-
-
-        var xValue = function(d){
-            if(d[x_var].startsWith("env") || d[x_var].startsWith("vers")) {return +d[x_var].split("_")[1]}
-            else if(d[x_var].length > 0) {return +d[x_var]}
-            else {return null}
-            }
-
-        var yValue = function(d){
-            if(d[y_var].startsWith("env") || d[y_var].startsWith("vers")) {return +d[y_var].split("_")[1]}
-            if(d[y_var].length > 0) {return +d[y_var]}
-            else {return null}
-            }
-
-
-        console.log("X MIN", d3.max(data, xValue))
-        console.log("Y MIN", d3.max(data, yValue))
-
-        var x_min = d3.min(data, xValue)
-        var x_max = d3.max(data, xValue)
-        var y_min = d3.min(data, yValue)
-        var y_max = d3.max(data, yValue)
-
+    function axis(data, x_var, y_var) {
+        // just random numbers to start, will update in scatter plot
         var xScale = d3.scale.linear()
-        .domain([x_min, 1.2*x_max])
+        .domain([0, 1])
         .range([0,width]);
 
         var yScale = d3.scale.linear()
-        .domain([y_min, 1.1*y_max])
+        .domain([0, 1])
         .range([height,0]);
 
-        // TODO: adding more colors
         var colorScale = d3.scaleOrdinal()
         .range(["#1ac6cf", "#e35dd4", "#66cc00", "#1a1aff", "#FF7F50", "#8B008B",
                 "#00BFFF", "#FFD700", "#808080", "#008000", "#FFC0CB", "#8B4513"]);
@@ -457,36 +433,78 @@ d3.csv("output_all.csv", function(data) {
     };
 
     function scatter(ax, data, x_var, y_var){
+        // TODO: check if any starts with pass/fail
+        if(data[0][x_var] == "PASSED" || data[0][x_var] == "FAILED"){
+            var xValue = function(d){
+                // checks if starts with "vers"
+                if(d[x_var] == "PASSED" || d[x_var] == "FAILED" || d[x_var] == "N/A") {return d[x_var]}
+                else {return null}
+                }
+            var xScale = d3.scalePoint()
+            xScale.domain(["N/A", "PASSED", "FAILED", ""]).range([0,  width])
+            var xAxis = d3.svg.axis()
+                .scale(xScale)
+                .orient("bottom")
+        }
+        else{
+            var xValue = function(d){
+                // checks if starts with "vers"
+                if(d[x_var].split("_").length == 2) {return +d[x_var].split("_")[1]}
+                else if(d[x_var].length > 0 && isFinite(+d[x_var])) {return +d[x_var]}
+                else {return null}
+                }
 
-        var xValue = function(d){
-            if(d[x_var].split("_").length == 2) {return +d[x_var].split("_")[1]}
-            else if(d[x_var].length > 0 && isFinite(+d[x_var])) {return +d[x_var]}
-            else {return null}
+            var x_min = d3.min(data, xValue)
+            var x_max = d3.max(data, xValue)
+            // if min and max are the same is hard call Scale.domain
+            if(x_min == x_max && x_min != 0.){x_min = 0.9 * x_min; x_max = 1.1 * x_max}
+            else if(x_min == x_max && x_min == 0.){x_min = -0.1; x_max = 0.1}
+
+            // TODO: probably should change if values are integers
+            // set domain again in case data changed bounds
+            var xScale = d3.scale.linear()
+                .domain([x_min, 1.2*x_max])
+                .range([0,width]);
+            var xAxis = d3.svg.axis()
+                .scale(xScale)
+                .orient("bottom")
             }
 
-        var yValue = function(d){
-            if(d[y_var].split("_").length == 2) {return +d[y_var].split("_")[1]}
-            else if(d[y_var].length > 0 && isFinite(+d[y_var])) {return +d[y_var]}
-            else {return null}
+        // yScale/yAxis
+        if(data[0][y_var] == "PASSED" || data[0][y_var] == "FAILED"){
+            var yValue = function(d){
+                // checks if starts with "vers"
+                if(d[y_var] == "PASSED" || d[y_var] == "FAILED" || d[y_var] == "N/A") {return d[y_var]}
+                else {return null}
+                }
+            yScale = d3.scalePoint()
+            yScale.domain(["N/A", "PASSED", "FAILED", ""]).range([height, 0])
+            var yAxis = d3.svg.axis()
+                .scale(yScale)
+                .orient("left")
+        }
+
+        else{
+            var yValue = function(d){
+                if(d[y_var].split("_").length == 2) {return +d[y_var].split("_")[1]}
+                else if(d[y_var].length > 0 && isFinite(+d[y_var])) {return +d[y_var]}
+                else {return null}
+                }
+
+            var y_min = d3.min(data, yValue)
+            var y_max = d3.max(data, yValue)
+            // if min and max are the same is hard call Scale.domain
+            if(y_min == y_max && y_min != 0.){y_min = 0.9 * y_min; y_max = 1.1 * y_max}
+            else if(y_min == y_max && y_min == 0.){y_min = -0.1; y_max = 0.1}
+
+            // TODO: probably should change if values are integers
+            // setting domain
+            var yScale = d3.scale.linear()
+                .domain([y_min, 1.1*y_max])
+                .range([height,0]);
+            var yAxis = d3.svg.axis().scale(yScale).orient("left")
             }
 
-        var x_min = d3.min(data, xValue)
-        var x_max = d3.max(data, xValue)
-        var y_min = d3.min(data, yValue)
-        var y_max = d3.max(data, yValue)
-
-
-        // if min and max are the same is hard call Scale.domain
-        if(x_min == x_max && x_min != 0.){x_min = 0.9 * x_min; x_max = 1.1 * x_max}
-        else if(x_min == x_max && x_min == 0.){x_min = -0.1; x_max = 0.1}
-        if(y_min == y_max && y_min != 0.){y_min = 0.9 * y_min; y_max = 1.1 * y_max}
-        else if(y_min == y_max && y_min == 0.){y_min = -0.1; y_max = 0.1}
-
-
-        // TODO: probably should change if values are integers
-        // set domain again in case data changed bounds
-        ax.xScale.domain([x_min, 1.2*x_max]);
-        ax.yScale.domain([y_min, 1.1*y_max]);
 
 
         // colors
@@ -496,8 +514,8 @@ d3.csv("output_all.csv", function(data) {
         console.log("COLOR", color_range)
 
         //redraw axis
-        ax.svg.selectAll(".x.axis").call(ax.xAxis).selectAll(".label").text(x_var);
-        ax.svg.selectAll(".y.axis").call(ax.yAxis).selectAll(".label").text(y_var);
+        ax.svg.selectAll(".x.axis").call(xAxis).selectAll(".label").text(x_var);
+        ax.svg.selectAll(".y.axis").call(yAxis).selectAll(".label").text(y_var);
 
         //add data
         ax.svg
@@ -513,12 +531,12 @@ d3.csv("output_all.csv", function(data) {
           .transition()
           .duration(2000)
           .attr("cx", function(d) {
-            //console.log("xValue", x_var, xValue(d), ax.xScale(xValue(d)))
-            return ax.xScale(xValue(d));
+            console.log("xValue", x_var, xValue(d), xScale(xValue(d)))
+            return xScale(xValue(d));
           })
           .attr("cy", function(d) {
-            //console.log("yValue", y_var, yValue(d), ax.yScale(yValue(d)))
-            return ax.yScale(yValue(d))})
+            console.log("yValue", y_var, yValue(d), yScale(yValue(d)))
+            return yScale(yValue(d))})
           .style("fill", function(d){
           console.log("COLOR, ", colorValue(d),ax.colorScale(colorValue(d)) )
           return ax.colorScale(colorValue(d))});
@@ -571,16 +589,23 @@ d3.csv("output_all.csv", function(data) {
     // starting from first regression test vs env name
     var x0 = "env"
     var keys_all = Object.keys(data[0]);
+    var keys_all_plot = [];
+    for (var i=0; i<keys_all.length; i+=1){
+        key = keys_all[i]
+        var not_na = []
+        data.forEach(function(d,i){if(d[key] != "N/A"){not_na.push(d)}})
+        if(not_na.length > 0) {keys_all_plot.push(key)}
+    }
     var keys_regr = [];
-    keys_all.forEach(function(d,i){if(d.startsWith("regr")){keys_regr.push(d)}})
+    keys_all_plot.forEach(function(d,i){if(d.startsWith("regr")){keys_regr.push(d)}})
     var y0 = keys_regr[0]
 
     ax = axis(data, x0, y0);
     scatter(ax, data, x0, y0);
 
     // give select2 all the possible options
-    $("#xSelect").select2({data: keys_all})
-    $("#ySelect").select2({data: keys_all})
+    $("#xSelect").select2({data: keys_all_plot})
+    $("#ySelect").select2({data: keys_all_plot})
 
     //initialize the values
     $("#xSelect").val(x0).trigger("change")

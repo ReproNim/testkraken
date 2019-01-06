@@ -62,30 +62,29 @@
           <div id="envs"></div>
       </div>
 
-      <p></p>
+      <!--<div id="js_plots" class="top-buffer">-->
+          <!--<h2>Plots</h2>-->
 
-      <!--<svg class="chart"></svg>-->
-      <svg id="scatterArea"></svg>
+          <!-- additional plots -->
+          <div class="main top-buffer">
+              <h2>Plots</h2>
+              <div id="left">
+                  <h4>JS barplot</h4>
+                  <select id="histSelect"></select>
+                  <br><br/>
+                  <div id="barplot"></div>
+              </div>
 
-      <!-- additional plots -->
-      <div class="main top-buffer">
-          <div id="left">
-              <h2>JS barplot</h2>
-              <select id="histSelect"></select>
-              <br><br/>
-              <div id="barplot"></div>
+              <div id="right">
+                  <h4>Scatter plot of: </h4><select id="ySelect"></select> vs  <select id="xSelect"></select>
+                  <!--<div id="scatterplot"></div>-->
+                  <svg class="chart"></svg>
+              </div>
           </div>
-
-          <div id="right">
-              <h2>Scatter plot of: </h2><select id="ySelect"></select> vs  <select id="xSelect"></select>
-              <!--<div id="scatterplot"></div>-->
-              <svg class="chart"></svg>
-          </div>
-      </div>
-
-      <div id="plots_altair" class="top-buffer">
-          <h2>Plots</h2>
-      </div>
+      <!--</div>-->
+      <!--<div id="plots_altair" class="top-buffer">-->
+          <!--<h2>Plots</h2>-->
+      <!--</div>-->
 
       <script src="dashboard.js"></script>
 
