@@ -314,19 +314,35 @@ d3.csv("output_all.csv", function(data) {
             });
 
             // update data
-            d3.select("#barplot")
-              .selectAll(".bar")
-              .data(values_test)
-              .transition()
-              .duration(1000)
-              .style("width", function(d) {
-              // TODO should calculated max
-              if (d>0) {return d / val_max * 250 +"px"} else {return "1px"}
-              })
-              .text(function(d) {
-                //TODO 100 should be probably removed
-                return d});//(100*d).toFixed(1)});
+            if(values_test[0] == "PASSED" || values_test[0] == "FAILED"){
+                d3.select("#barplot")
+                  .selectAll(".bar")
+                  .data(values_test)
+                  .style("background", function(d){if(d == "PASSED") {return "LightGreen"}
+                                                   else if(d == "FAILED") {return "LightCoral"}})
+                  .transition()
+                  .duration(1000)
+                  .style("width", "100px")
+                  .text(function(d) {
+                    //TODO 100 should be probably removed
+                    return d});//(100*d).toFixed(1)});
+            }
 
+            else {
+                d3.select("#barplot")
+                  .selectAll(".bar")
+                  .data(values_test)
+                  .style("background", "MediumPurple")
+                  .transition()
+                  .duration(1000)
+                  .style("width", function(d) {
+                  // TODO should calculated max
+                  if (d>0) {return d / val_max * 250 +"px"} else {return "1px"}
+                  })
+                  .text(function(d) {
+                    //TODO 100 should be probably removed
+                    return d});//(100*d).toFixed(1)});
+            }
 
             // this is so things look nice
             //  d3.select("#barplot").selectAll(".bar").each(function(d) {
