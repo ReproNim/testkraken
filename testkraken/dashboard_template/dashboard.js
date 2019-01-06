@@ -461,14 +461,15 @@ d3.csv("output_all.csv", function(data) {
 
             var x_min = d3.min(data, xValue)
             var x_max = d3.max(data, xValue)
-            // if min and max are the same is hard call Scale.domain
-            if(x_min == x_max && x_min != 0.){x_min = 0.9 * x_min; x_max = 1.1 * x_max}
-            else if(x_min == x_max && x_min == 0.){x_min = -0.1; x_max = 0.1}
+            // setting range for axis
+            var x_del = x_max - x_min
+            if(x_del != 0) {x_min = x_min - 0.1*x_del; x_max = x_max + 0.1*x_del}
+            else {x_min = x_min - 0.1; x_max = x_max + 0.1}
 
             // TODO: probably should change if values are integers
             // set domain again in case data changed bounds
             var xScale = d3.scale.linear()
-                .domain([x_min, 1.2*x_max])
+                .domain([x_min, x_max])
                 .range([0,width]);
             var xAxis = d3.svg.axis()
                 .scale(xScale)
@@ -498,14 +499,15 @@ d3.csv("output_all.csv", function(data) {
 
             var y_min = d3.min(data, yValue)
             var y_max = d3.max(data, yValue)
-            // if min and max are the same is hard call Scale.domain
-            if(y_min == y_max && y_min != 0.){y_min = 0.9 * y_min; y_max = 1.1 * y_max}
-            else if(y_min == y_max && y_min == 0.){y_min = -0.1; y_max = 0.1}
+            // setting range for axis
+            var y_del = y_max - y_min
+            if(y_del != 0.){y_min = y_min - 0.1*y_del; y_max = y_max + 0.1*y_del}
+            else {y_min = y_min - 0.1; y_max = y_max + 0.1}
 
             // TODO: probably should change if values are integers
             // setting domain
             var yScale = d3.scale.linear()
-                .domain([y_min, 1.1*y_max])
+                .domain([y_min, y_max])
                 .range([height,0]);
             var yAxis = d3.svg.axis().scale(yScale).orient("left")
             }
