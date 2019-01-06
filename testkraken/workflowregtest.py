@@ -160,8 +160,8 @@ class WorkflowRegtest(object):
         for (key, key_versions) in self.soft_vers_spec.items():
             _versions_per_key = []
             for jj, version in enumerate(key_versions):
-                _versions_per_key.append("{}: version_{}".format(key, jj))
-                self.string_softspec_dict["{}: version_{}".format(key, jj)] = version
+                _versions_per_key.append("version_{}".format(jj))
+                self.string_softspec_dict["version_{}".format(jj)] = version
             self.soft_vers_string[key] = _versions_per_key
 
         # creating products from dictionary
@@ -175,10 +175,10 @@ class WorkflowRegtest(object):
                 # checking if the software already in self.softspec_string_dict
                 if fixed_env[key] in self.soft_vers_spec[key]:
                     ind = self.soft_vers_spec[key].index(fixed_env[key])
-                    _envs_versions[key] = "{}: version_{}".format(key, ind)
+                    _envs_versions[key] = "version_{}".format(ind)
                 else:
                     # creating a new version
-                    _vers_str = "{}: version_{}".format(key, len(self.soft_vers_spec[key]))
+                    _vers_str = "version_{}".format(len(self.soft_vers_spec[key]))
                     self.soft_vers_spec[key].append(fixed_env[key])
                     _envs_versions[key] = _vers_str
             self.env_sring_dict_matrix.append(_envs_versions)
@@ -284,5 +284,5 @@ class WorkflowRegtest(object):
         for js_template in ["dashboard.js", "index.html", "style.css"]:
             shutil.copy2(os.path.join(js_dir, js_template), self.working_dir)
         # adding altair plots #TODO: move to js?
-        ap = AltairPlots(self.working_dir, self.res_all_df, self.res_all_flat_df, self.plot_parameters)
-        ap.create_plots()
+        # ap = AltairPlots(self.working_dir, self.res_all_df, self.res_all_flat_df, self.plot_parameters)
+        # ap.create_plots()
