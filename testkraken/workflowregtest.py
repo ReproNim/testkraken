@@ -3,6 +3,7 @@
 import itertools
 import json
 import os, shutil
+from pathlib import Path
 import subprocess
 import tempfile
 from copy import deepcopy
@@ -19,30 +20,38 @@ from testkraken.altair_plots import AltairPlots
 
 
 class WorkflowRegtest(object):
-    def __init__(self, workflow_path, base_dir=None):
-        if base_dir:
-            self.base_dir = base_dir
-        else:
-            self.base_dir = os.getcwd()
-        self.workflow_path = workflow_path
-        self.working_dir = os.path.join(self.base_dir, os.path.basename(self.workflow_path) + "_cwl")
-        os.makedirs(self.working_dir, exist_ok=True)
-        with open(os.path.join(self.workflow_path, "parameters.yaml")) as param_yml:
-            self.parameters = ruamel.yaml.safe_load(param_yml)
-        self.env_parameters = self.parameters["env"]
-        self.fixed_env_parameters = self.parameters.get("fixed_env", {})
-        try:
-            self.plot_parameters = self.parameters["plots"]
-        except KeyError:
-            self.plot_parameters = []
-        self.script = os.path.join(self.workflow_path, "workflow",
-                                   self.parameters["script"])
-        self.command = self.parameters["command"] # TODO: adding arg
-        self.tests = self.parameters["tests"] # should be a tuple (output_name, test_name)
-        self.inputs = self.parameters["inputs"]
-        self.tmpdir = tempfile.TemporaryDirectory(
-            prefix="tmp-workflowregtest-", dir=os.getcwd()
-        )
+    """"""
+
+    def __init__(self, workflow_path, working_dir=None):
+        self.workflow_path = Path(workflow_path)
+        self.working_dir = Path(working_dir)
+
+        if self.working_dir is None:
+            self.working_dir = tempfile.TemporaryDirectory(
+            prefix='testkraken-{}'.format(self.workflow_path.name))
+
+        params_file = self.workflow_path / 'parameters.yaml'
+        if not params_file.is_file():
+            raise FileNotFoundError(
+                "parameters.yaml file must be present in the workflow directory.")
+
+        with params_file.open() as f:
+            self.parameters = ruamel.yaml.safe_load(f)
+
+        _validate_parameters(self.parameters)
+
+        self.env_parameters = self.parameters['env']
+        self.command = self.parameters['command'] # TODO: adding arg
+        self.script = self.workflow_path / 'workflow' / self.parameters['script']
+        if not self.script.is_file():
+            raise FileNotFoundError(
+                "Script in specification does not exist: {}".format(self.script))
+        self.tests = self.parameters['tests'] # should be a tuple (output_name, test_name)
+
+        self.fixed_env_parameters = self.parameters.get('fixed_env', {})
+        self.inputs = self.parameters['inputs']
+        self.plot_parameters = self.parameters.get('plots', [])
+
         self.docker_status = []
 
         self._create_matrix_of_envs()
@@ -51,7 +60,7 @@ class WorkflowRegtest(object):
         self._create_matrix_of_string_envs()
 
          # generating a simple name for envs (gave up on including env info)
-        self.env_names = ["env_{}".format(ii) for ii in range(len(self.matrix_of_envs))]
+        self.env_names = ['env_{}'.format(ii) for ii, _ in enumerate(self.matrix_of_envs)]
 
 
     def _create_matrix_of_envs(self):
@@ -60,34 +69,23 @@ class WorkflowRegtest(object):
         """
         self.keys_envs = []
         # lists of full specification (all versions for each software/key)
-        self.soft_vers_spec = {}
-        for key, val in self.env_parameters.items():
+        self._soft_vers_spec = {}
+        for key, val in self.parameters['env'].items():
             self.keys_envs.append(key)
             # val should be dictionary with options, list of dictionaries, or dictionary with "common" and "shared"
-            if type(val) is list:
-                self.soft_vers_spec[key] = val
-            elif (type(val) is dict) and (["common", "varied"] == sorted(list(val.keys()))):
-                # common part should be a single dictionary, varied should be a list
-                if type(val["common"]) is not dict:
-                    raise Exception("common part of {} should be a dictionary".format(key))
-                elif type(val["varied"]) is not list:
-                    raise Exception("varied part of {} should be a list".format(key))
-                # checking if common and varied have the same key
-                elif any([bool(set(val["common"].keys()) & set(var_dict.keys())) for var_dict in val["varied"]]):
-                    # TODO: I should probably accept when conda_install and pip_install and just merge two strings
-                    raise Exception("common and varied parts for {} have the same key".format(key))
-                else:
+            if isinstance(val, list):
+                self._soft_vers_spec[key] = val
+            elif isinstance(val, dict):
+                if {'common', 'varied'} == set(val.keys()):
                     for var_dict in val["varied"]:
                         var_dict.update(val["common"])
-                    self.soft_vers_spec[key] = val["varied"]
-            elif type(val) is dict:
-                self.soft_vers_spec[key] = [val]
+                    self._soft_vers_spec[key] = val["varied"]
+                else:
+                    self._soft_vers_spec[key] = [val]
             else:
-                raise Exception("value for {} has to be either list or dictionary".format(key))
+                raise SpecificationError("value for {} has to be either list or dictionary".format(key))
 
-        self.matrix_of_envs = list(itertools.product(*self.soft_vers_spec.values()))
-
-
+        self.matrix_of_envs = list(itertools.product(*self._soft_vers_spec.values()))
 
     def _adding_fixed_envs(self):
         """Adding fixed env to the environments,
@@ -97,7 +95,7 @@ class WorkflowRegtest(object):
             self.fixed_env_parameters = [self.fixed_env_parameters]
 
         for fixed_env in self.fixed_env_parameters:
-            if sorted(self.keys_envs) != sorted(list(fixed_env.keys())):
+            if set(self.keys_envs) != set(fixed_env.keys()):
                 raise Exception("fixed env should have the same keys as env")
             else:
                 fixed_env_spec = []
@@ -157,11 +155,11 @@ class WorkflowRegtest(object):
         # TODO: should depend o the key? e.g. image name for base, version for fsl, for python more complicated
         self.string_softspec_dict = {}
         self.soft_vers_string = {}
-        for (key, key_versions) in self.soft_vers_spec.items():
+        for (key, key_versions) in self._soft_vers_spec.items():
             _versions_per_key = []
             for jj, version in enumerate(key_versions):
-                _versions_per_key.append("version_{}".format(jj))
-                self.string_softspec_dict["version_{}".format(jj)] = version
+                _versions_per_key.append("{}: version_{}".format(key, jj))
+                self.string_softspec_dict["{}: version_{}".format(key, jj)] = version
             self.soft_vers_string[key] = _versions_per_key
 
         # creating products from dictionary
@@ -173,13 +171,13 @@ class WorkflowRegtest(object):
             _envs_versions = {}
             for key in self.keys_envs:
                 # checking if the software already in self.softspec_string_dict
-                if fixed_env[key] in self.soft_vers_spec[key]:
-                    ind = self.soft_vers_spec[key].index(fixed_env[key])
-                    _envs_versions[key] = "version_{}".format(ind)
+                if fixed_env[key] in self._soft_vers_spec[key]:
+                    ind = self._soft_vers_spec[key].index(fixed_env[key])
+                    _envs_versions[key] = "{}: version_{}".format(key, ind)
                 else:
                     # creating a new version
-                    _vers_str = "version_{}".format(len(self.soft_vers_spec[key]))
-                    self.soft_vers_spec[key].append(fixed_env[key])
+                    _vers_str = "{}: version_{}".format(key, len(self._soft_vers_spec[key]))
+                    self._soft_vers_spec[key].append(fixed_env[key])
                     _envs_versions[key] = _vers_str
             self.env_sring_dict_matrix.append(_envs_versions)
 
@@ -208,7 +206,7 @@ class WorkflowRegtest(object):
 
         # saving detailed describtion about the environment
         soft_vers_description = {}
-        for key, val in self.soft_vers_spec.items():
+        for key, val in self._soft_vers_spec.items():
             soft_vers_description[key] = [{"version": "version_{}".format(i), "description": str(spec)}
                                           for (i, spec) in enumerate(val)]
         with open(os.path.join(self.working_dir, "envs_descr.json"), "w") as f:
@@ -284,5 +282,64 @@ class WorkflowRegtest(object):
         for js_template in ["dashboard.js", "index.html", "style.css"]:
             shutil.copy2(os.path.join(js_dir, js_template), self.working_dir)
         # adding altair plots #TODO: move to js?
-        # ap = AltairPlots(self.working_dir, self.res_all_df, self.res_all_flat_df, self.plot_parameters)
-        # ap.create_plots()
+        ap = AltairPlots(self.working_dir, self.res_all_df, self.res_all_flat_df, self.plot_parameters)
+        ap.create_plots()
+
+
+def _validate_parameters(params):
+    """Validate parameters according to the testkraken specification."""
+    required = {'command', 'env', 'script', 'tests'}
+    optional = {'fixed_env', 'inputs', 'plots'}
+
+    not_found = required - set(params.keys())
+    if not_found:
+        raise SpecificationError(
+            "Required key(s) not found in parameters: {}"
+            .format(', '.join(not_found)))
+
+    # Validate required parameters.
+    if not isinstance(params['command'], str):
+        raise SpecificationError("Value of key 'command' must be a string.")
+    if not isinstance(params['env'], dict):
+        raise SpecificationError("Value of key 'env' must be a dictionary.")
+    else:
+        if any(not isinstance(j, (dict, list)) for j in params['env']):
+            raise SpecificationError("Every item in 'tests' must be a dictionary or list.")
+        for k, v in params['env'].items():
+            if isinstance(k, dict) and {'common', 'varied'} == set(val.keys()):
+                if not isinstance(v['common'], dict):
+                    raise SpecificationError("common part of {} should be a dictionary".format(key))
+                elif not isinstance(v['varied'], (list, tuple)):
+                    raise SpecificationError("varied part of {} should be a list or tuple".format(key))
+                # checking if common and varied have the same key
+                elif any(set(v['common'].keys()).intersection(vd) for vd in v['varied']):
+                    # TODO: I should probably accept when conda_install and pip_install and just merge two strings
+                    raise SpecificationError("common and varied parts for {} have the same key".format(k))
+    if not isinstance(params['script'], str):
+        raise SpecificationError("Value of key 'script' must be a string.")
+    if not isinstance(params['tests'], (list, tuple)):
+        raise SpecificationError("Value of key 'tests' must be an iterable of dictionaries")
+    else:
+        if any(not isinstance(j, dict) for j in params['tests']):
+            raise SpecificationError("Every item in 'tests' must be a dictionary.")
+
+    # Validate optional parameters.
+    if params.get('fixed_env', False):
+        if not isinstance(params['fixed_env'], dict):
+            raise SpecificationError("Value of key 'fixed_env' must be a dictionary.")
+    if params.get('inputs', False):
+        if not isinstance(params['inputs'], list):
+            raise SpecificationError("Value of key 'inputs' must be a list.")
+    if params.get('plots', False):
+        if not isinstance(params['plots'], (list, tuple)):
+            raise SpecificationError("Value of key 'fixed_env' must be a dictionary.")
+        else:
+            if any(not isinstance(j, dict) for j in params['plots']):
+                raise SpecificationError("Every item in 'plots' must be a dictionary.")
+
+    return True
+
+
+class SpecificationError(Exception):
+    """Error in specification."""
+    pass
