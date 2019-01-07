@@ -8,10 +8,11 @@ env:
   - {version: 5.0.10}
   miniconda:
   - {conda_install: [python=3.5, nipype, pandas, requests]}
-fixed_env:
-  base: {image: centos:7, pkg-manager: apt}
-  fsl: {version: 5.0.10}
-  miniconda: {conda_install: [python=2.7, nipype, pandas, requests, bz2file]}
+# TODO, test it!
+#fixed_env:
+#  base: {image: centos:7, pkg-manager: apt}
+#  fsl: {version: 5.0.10}
+#  miniconda: {conda_install: [python=2.7, nipype, pandas, requests, bz2file]}
 inputs:
 - [string, --key, 11an55u9t2TAf0EV2pHN0vOd8Ww2Gie-tHp9xGULh_dA]
 - [int, -n, '3']
