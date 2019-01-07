@@ -1,13 +1,18 @@
 body, .bg-parcoords {
     background: white;
     font-family: "Avenir" !important;
-    margin: 10px}
+    margin: 25px}
+}
+
+div {
+    display: block;
+    clear: both;
 }
 
 li, p, text {
   color: rgb(197,202,211);
 }
-h1, h2, h3 {
+h1, h2, h3, h4 {
 color: #2c48a8
 }
 .padding-0 { padding-left: 0; padding-right: 0; }
@@ -46,9 +51,6 @@ color: #2c48a8
   padding-top: 50px;
 }
 
-#pager {
-    height: 5vh;
-}
 
 #grid {
    position: relative;
@@ -77,3 +79,64 @@ color: #2c48a8
     background-color: #bea4dd33;
     margin: 15px;
 }
+
+.main {
+  /*display: block;*/
+  width: 100%;
+  /*margin-left: 30px;*/
+}
+
+#left {
+  float: left;
+  width: 40%;
+}
+
+#right {
+  float: right;
+  width: 50%;
+}
+
+#plots_altair {
+display: block;
+clear: both;
+}
+
+.bar {
+  background: MediumPurple;
+  opacity: 0.6;
+  height: 20px;
+  margin: 2px;
+  color: DarkBlue;
+  text-align: right;
+  padding-top: 1px;
+  display: inline-block;
+}
+
+.barText {
+  display: inline-block;
+  width: 120px; /* might need to change, if the description is longer */
+  color: black;
+}
+
+.dot {
+  stroke: #313E50; /*circle border*/
+  fill: steelblue; /*circle color*/
+  r: 7; /*circle radius*/
+}
+
+.dot_legend {
+  stroke: #313E50; /*circle border*/
+  r: 4; /*circle radius*/
+}
+
+.axis path,
+.axis line {
+    fill: none;
+    stroke: black;
+    shape-rendering: crispEdges;
+}
+
+.axis text {
+    font-family: sans-serif;
+    font-size: 11px;
+
