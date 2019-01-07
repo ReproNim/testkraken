@@ -17,8 +17,9 @@ import testkraken.container_generator as cg
 import testkraken.cwl_generator as cwlg
 
 
-class WorkflowRegtest(object):
-    """
+class WorkflowRegtest:
+    """Object to test a workflow in many environments.
+
     Parameters
     ----------
     workflow_path: Path-like, directory of workflow.
@@ -44,6 +45,7 @@ class WorkflowRegtest(object):
             prefix='testkraken-{}'.format(self.workflow_path.name))).absolute()
         else:
             self.working_dir = Path(working_dir).absolute()
+            self.working_dir.mkdir(parents=True, exist_ok=True)
 
         _validate_workflow_path(self.workflow_path)
 
