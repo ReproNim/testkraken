@@ -11,7 +11,7 @@ env:
 fixed_env:
   base: {image: centos:7, pkg-manager: apt}
   fsl: {version: 5.0.10}
-  miniconda: {conda_install: [python=3.7, nipype, pandas, requests]}
+  miniconda: {conda_install: [python=3.6, nipype, pandas, requests]}
 inputs:
 - [string, --key, 11an55u9t2TAf0EV2pHN0vOd8Ww2Gie-tHp9xGULh_dA]
 - [int, -n, '3']
