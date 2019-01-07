@@ -1,4 +1,4 @@
-# Testkraken
+# TestKraken
 
 Use _Testkraken_ to test workflows in a matrix of parametrized environments.
 
