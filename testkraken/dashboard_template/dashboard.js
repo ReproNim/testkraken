@@ -275,9 +275,6 @@ d3.json("envs_descr.json", function(data) {
 });
 
 //for barplots
-// TODO:
-//1. odseparowac testy dla grupy i pojedynczych elementow(?)
-//6.(?) polaczyc scatter plot z barplot
 d3.csv("output_all.csv", function(data) {
         var keys_all = Object.keys(data[0]);
         keys_tests = [];
@@ -290,7 +287,8 @@ d3.csv("output_all.csv", function(data) {
         function barplots(data, testname) {
             values_test = []
             data.forEach(function(d,i){
-                if(d[testname].length > 0) {values_test.push(d[testname])}
+                if(d[testname] == "PASSED" || d[testname] == "FAILED" || d[testname] == "N/A") {values_test.push(d[testname])}
+                else if(d[testname].length > 0) {values_test.push(+d[testname])}
                 else {values_test.push(NaN)}
             })
             console.log("values_test", values_test)
