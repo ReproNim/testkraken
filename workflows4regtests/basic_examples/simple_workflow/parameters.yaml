@@ -1,15 +1,14 @@
 command: python
-#env:
-#  base:
-#  - {image: ubuntu:16.04, pkg-manager: apt}
-#  - {image: centos:7, pkg-manager: apt}
-#  fsl:
-#  - {version: 5.0.9}
-#  - {version: 5.0.10}
-#  miniconda:
-#  - {conda_install: [python=3.5, nipype, pandas, requests]}
-# TODO, test it!
 env:
+  base:
+  - {image: ubuntu:16.04, pkg-manager: apt}
+  - {image: centos:7, pkg-manager: apt}
+  fsl:
+  - {version: 5.0.9}
+  - {version: 5.0.10}
+  miniconda:
+  - {conda_install: [python=3.5, nipype, pandas, requests]}
+fixed_env:
   base: {image: centos:7, pkg-manager: apt}
   fsl: {version: 5.0.10}
   miniconda: {conda_install: [python=2.7, nipype, pandas, requests, bz2file]}
