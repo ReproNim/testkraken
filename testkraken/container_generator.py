@@ -151,5 +151,5 @@ def build_image(filepath, build_context=None, tag=None, build_opts=None):
 def docker_main(workflow_path, neurodocker_dict, sha1):
     filepath = os.path.join(workflow_path, 'Dockerfile.{}'.format(sha1))
     write_dockerfile(neurodocker_dict=neurodocker_dict, filepath=filepath)
-    tag = "repronim/regtests:{}".format(sha1)
+    tag = "repronim/testkraken:{}".format(sha1)
     build_image(filepath, build_context=workflow_path, tag=tag)
