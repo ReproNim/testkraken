@@ -136,16 +136,18 @@ def build_image(filepath, build_context=None, tag=None, build_opts=None):
 
     cmd_base = "docker build {tag} {build_opts}"
     cmd = cmd_base.format(tag=tag, build_opts=build_opts)
+    filepath = os.path.abspath(filepath)
 
     if build_context is not None:
         build_context = os.path.abspath(build_context)
-        filepath = os.path.abspath(filepath)
         cmd += " -f {} {}".format(filepath, build_context)
+        input = None
     else:
-        filepath = os.path.abspath(filepath)
-        cmd += " - < {}".format(filepath)
+        with open(filepath) as f:
+            input = f.read()
+        cmd += " -"
 
-    subprocess.run(cmd, shell=True, check=True)
+    subprocess.run(cmd.split(), check=True, input=input)
 
 
 def docker_main(workflow_path, neurodocker_dict, sha1):
