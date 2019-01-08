@@ -54,7 +54,7 @@ class WorkflowRegtest:
 
         _validate_parameters(self._parameters, self.workflow_path)
 
-        self._parameters.setdefault('fixed_env', [{}])
+        self._parameters.setdefault('fixed_env', [])
         if isinstance(self._parameters['fixed_env'], dict):
             self._parameters['fixed_env'] = [self._parameters['fixed_env']]
         self._parameters.setdefault('inputs', [])
@@ -264,7 +264,7 @@ def _check_dict(d, test_name):
         for key, val in d.items():
             if key == 'index_name':
                 continue
-            if len(value) != len_ind:
+            if len(val) != len_ind:
                 raise Exception ("the length for '{}' should be {}".format(key, len_ind))
             d["{}:{}".format(test_name, key)] = d.pop(key)
     else:
