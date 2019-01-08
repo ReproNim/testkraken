@@ -123,7 +123,7 @@ class WorkflowRegtest:
                 self.docker_status.append("docker ok")
             except Exception as e:
                 self.docker_status.append(
-                    "failed to build image with SHA1 {}".format(sha1))
+                    "failed to build image with SHA1 {}: {}".format(sha1, e))
 
     def _run_workflow_in_matrix_of_envs(self):
         """Run workflow for all env combination, testing for all tests.
@@ -173,7 +173,7 @@ class WorkflowRegtest:
 
         # creating products from dictionary
         all_keys, all_values = zip(*self.soft_vers_string.items())
-        self.env_sring_dict_matrix = [dict(zip(all_keys, values)) for values in itertools.product(*all_values)]
+        self.env_string_dict_matrix = [dict(zip(all_keys, values)) for values in itertools.product(*all_values)]
 
         # including info from th fixed envs
         for fixed_env in self._parameters['fixed_env']:
@@ -188,18 +188,20 @@ class WorkflowRegtest:
                     _vers_str = "{}: version_{}".format(key, len(self._soft_vers_spec[key]))
                     self._soft_vers_spec[key].append(fixed_env[key])
                     _envs_versions[key] = _vers_str
-            self.env_sring_dict_matrix.append(_envs_versions)
+            self.env_string_dict_matrix.append(_envs_versions)
 
-    def merging_all_output(self):
+    def merge_outputs(self):
         df_el_l = []
         df_el_flat_l = []
-        for ii, soft_d in enumerate(self.env_sring_dict_matrix):
+        for ii, soft_d in enumerate(self.env_string_dict_matrix):
             #self.res_all.append(deepcopy(soft_d))
             el_dict = deepcopy(soft_d)
             el_dict["env"] = self.env_names[ii]
             if self.docker_status[ii] == "docker ok":
                 # merging results from tests and updating self.res_all, self.res_all_flat
-                df_el, df_el_flat = self._merging_test_output(el_dict, ii)
+                df_el, df_el_flat = self._merge_test_output(
+                    dict_env=el_dict,
+                    env_dir=self.working_dir / self.env_names[ii])
                 df_el_l.append(df_el)
                 df_el_flat_l.append(df_el_flat)
             else:
@@ -220,70 +222,70 @@ class WorkflowRegtest:
         with (self.working_dir / 'envs_descr.json').open(mode='w') as f:
             json.dump(soft_vers_description, f)
 
-    def _merging_test_output(self, dict_env, ii):
-        """merging all test outputs"""
-        for (iir, test) in enumerate(self._parameters['tests']):
-            file_name = self.working_dir / self.env_names[ii] / 'report_{}.json'.format(test['name'])
-            with file_name.open() as f:
-                f_dict = json.load(f)
-            self._checking_dict(f_dict, test["name"])
+    def _merge_test_output(self, dict_env, env_dir):
+        """Merge test outputs."""
+        for iir, test in enumerate(self._parameters['tests']):
+            with (env_dir / 'report_{}.json'.format(test['name'])).open() as f:
+                report = json.load(f)
+            _check_dict(report, test["name"])
             # for some plots it's easier to use "flat" test structure
-            f_dict_flat = self._flatten_dict_test(f_dict)
+            report_flat = _flatten_dict_test(report)
             if iir == 0:
                 try:
-                    df_el = pd.DataFrame(f_dict)
+                    df = pd.DataFrame(report)
                 except ValueError: # if results are not list
-                    df_el = pd.DataFrame(f_dict, index=[0])
-                df_el_flat = pd.DataFrame(f_dict_flat, index=[0])
+                    df = pd.DataFrame(report, index=[0])
+                df_flat = pd.DataFrame(report_flat, index=[0])
             else:
                 try:
-                    df_el = df_el.merge(pd.DataFrame(f_dict), how="outer")
+                    df = df.merge(pd.DataFrame(report), how="outer")
                 except ValueError: # if results are not list
-                    df_el = df_el.merge(pd.DataFrame(f_dict, index=[0]), how="outer")
-                df_el_flat = pd.concat([df_el_flat, pd.DataFrame(f_dict_flat, index=[0])], axis=1)
+                    df = df.merge(pd.DataFrame(report, index=[0]), how="outer")
+                df_flat = pd.concat([df_flat, pd.DataFrame(report_flat, index=[0])], axis=1)
 
         df_env = pd.DataFrame(dict_env, index=[0])
-        df_el_flat = pd.concat([df_env, df_el_flat], axis=1)
+        df_flat = pd.concat([df_env, df_flat], axis=1)
 
-        df_env = pd.concat([df_env] * len(df_el)).reset_index(drop=True)
-        df_el = pd.concat([df_env, df_el], axis=1)
+        df_env = pd.concat([df_env] * len(df)).reset_index(drop=True)
+        df = pd.concat([df_env, df], axis=1)
 
-        return df_el, df_el_flat
-
-    def _checking_dict(self, dict, test_name):
-        if "index_name" in dict.keys():
-            len_ind = len(dict["index_name"])
-            keys_test = list(dict.keys())
-            keys_test.remove("index_name")
-            for key in keys_test:
-                if len(dict[key]) != len_ind:
-                    raise Exception ("the length for {} should be {}".format(key, len_ind))
-                dict["{}:{}".format(test_name, key)] = dict.pop(key)
-        else:
-            keys_test = list(dict.keys())
-            for key in keys_test:
-                if type(dict[key]) is list:
-                    raise Exception("index_name key is required if results are lists")
-                else:
-                    dict["{}:{}".format(test_name, key)] = dict.pop(key)
-            dict["index_name"] = "N/A"
-
-    def _flatten_dict_test(self, dict):
-        """flattening the dictionary"""
-        if dict["index_name"] == "N/A":
-            return dict
-        else:
-            dict_flat = {}
-            for key in set(dict.keys()) - {"index_name"}:
-                for (i, el) in enumerate(dict[key]):
-                    dict_flat["{}:{}".format(key, dict["index_name"][i])] = el
-            return dict_flat
+        return df, df_flat
 
     def dashboard_workflow(self):
         # copy html/js/css templates to the workflow specific directory
         js_dir = Path(__file__).absolute().parent / 'dashboard_template'
         for js_template in ["dashboard.js", "index.html", "style.css"]:
             shutil.copy2(js_dir / js_template, self.working_dir)
+
+
+def _check_dict(d, test_name):
+    if "index_name" in d.keys():
+        len_ind = len(d["index_name"])
+        for key, val in d.items():
+            if key == 'index_name':
+                continue
+            if len(value) != len_ind:
+                raise Exception ("the length for '{}' should be {}".format(key, len_ind))
+            d["{}:{}".format(test_name, key)] = d.pop(key)
+    else:
+        for key, val in d.items():
+            if isinstance(val, list):
+                raise Exception("index_name key is required if results are lists")
+            else:
+                d["{}:{}".format(test_name, key)] = d.pop(key)
+        d["index_name"] = "N/A"
+
+
+def _flatten_dict_test(d):
+    """Flatten dictionary of test report."""
+    if d["index_name"] == "N/A":
+        return d
+    else:
+        d_flat = {}
+        for key in set(d.keys()) - {"index_name"}:
+            for (i, el) in enumerate(d[key]):
+                d_flat["{}:{}".format(key, d["index_name"][i])] = el
+        return d_flat
 
 
 def _validate_workflow_path(workflow_path):
