@@ -8,5 +8,5 @@ def runner(workflow_dir):
     print("Workflow Name: {}".format(os.path.basename(workflow_dir)))
     wf = WorkflowRegtest(workflow_dir)
     wf.run()
-    wf.merging_all_output()
+    wf.merge_outputs()
     wf.dashboard_workflow()
