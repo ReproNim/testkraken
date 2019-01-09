@@ -294,9 +294,6 @@ def _validate_workflow_path(workflow_path):
     missing = []
     if not (p / 'parameters.yaml').is_file():
         missing.append(('parameters.yaml', 'file'))
-    # QUESTION: not required?
-    # if not (p / 'data_input').is_dir():
-    #     missing.append(('data_input', 'directory'))
     if not (p / 'data_ref').is_dir():
         missing.append(('data_ref', 'directory'))
     if not (p / 'workflow').is_dir():
