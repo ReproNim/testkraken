@@ -1,0 +1,38 @@
+env:
+  base:
+    - image: 'ubuntu:16.04'
+      pkg-manager: apt
+  fsl:
+    - version: 5.0.9
+  miniconda:
+    - conda_install:
+        - python=3.6
+        - bz2file
+        - nibabel
+      pip_install:
+        - https://github.com/nipy/quickshear/archive/v1.1.0.tar.gz
+    - conda_install:
+        - python=2.7
+        - bz2file
+        - nibabel
+      pip_install:
+        - https://github.com/nipy/quickshear/archive/v1.1.0.tar.gz
+
+# The command to run the script.
+command: bash
+# The workflow script. The script must be useable on the command-line.
+script: deface.sh
+
+# Inputs to the workflow script. The first item is always the CWLType of the
+# argument. See https://www.commonwl.org/v1.0/CommandLineTool.html#CWLType for
+# all available types.
+inputs:
+  - [File, '-i', T1.nii.gz]
+
+# Tests to compare the output of the script to reference data.
+tests:
+  - file: T1_defaced.nii.gz
+    # A descriptive name for the test.
+    name: regr
+    # These scripts are available under `testkraken/testing_functions`.
+    script: test_obj_eq.py
