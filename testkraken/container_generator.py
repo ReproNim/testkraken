@@ -8,7 +8,7 @@ import subprocess
 from collections import OrderedDict
 import pdb
 
-NEURODOCKER_IMAGE = 'kaczmarj/neurodocker@sha256:9490c8bd4cfbadfad3b531f406b4c09f9135150148b89fa0cceb6db82a3e2967'
+NEURODOCKER_IMAGE = 'kaczmarj/neurodocker:testkraken@sha256:8979fc47673a30826f4bf1c11cfb87d78b919ba16bf11ad6cb2d0b653c57832c'
 
 
 def _instructions_to_neurodocker_specs(keys, env_spec):
