@@ -24,6 +24,8 @@ class WorkflowRegtest:
     ----------
     workflow_path: Path-like, directory of workflow.
     working_dir: Path-like, working directory, temporary directory by default.
+    tmp_working_dir: Boolean value, if working_dir not provided,
+        a temporary directory will be created if True
 
     Attributes
     ----------
@@ -38,15 +40,21 @@ class WorkflowRegtest:
     nenv: int, number of environments.
     """
 
-    def __init__(self, workflow_path, working_dir=None):
+    def __init__(self, workflow_path, working_dir=None, tmp_working_dir=False):
         self.workflow_path = Path(workflow_path).absolute()
-        if working_dir is None:
+        if working_dir and tmp_working_dir:
+            raise Exception("please provide working_dir OR set tmp_working_dir=True, "
+                            "do not change both arguments")
+        elif tmp_working_dir:
             self.working_dir = Path(tempfile.mkdtemp(
             prefix='testkraken-{}'.format(self.workflow_path.name))).absolute()
-        else:
+        elif working_dir:
             self.working_dir = Path(working_dir).absolute()
             self.working_dir.mkdir(parents=True, exist_ok=True)
-
+        else:
+            # if working_dir is None and tmp_working_dir == False
+            self.working_dir = (Path.cwd() / (self.workflow_path.name + "_cwl")).absolute()
+            self.working_dir.mkdir(exist_ok=True)
         _validate_workflow_path(self.workflow_path)
 
         with (self.workflow_path / 'parameters.yaml').open() as f:
