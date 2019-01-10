@@ -2,9 +2,15 @@
 
 import click
 
-@click.command(help="Run the workflow in PATH.")
-@click.argument('path', type=click.Path(exists=True))
-def main(path):
-    print("Not implemented yet. In the future, will run from {}".format(path))
+from testkraken.workflowregtest import WorkflowRegtest
 
-# QUESTION(kaczmarj): what commands should be available?
+
+@click.command()
+@click.argument('path', type=click.Path(exists=True))
+@click.option('-w', '--working-dir', type=click.Path(), help="Working directory of workflow. Default is a temporary directory.")
+def main(path, working_dir=None):
+    """This script runs the workflow in PATH."""
+    wf = WorkflowRegtest(path, working_dir=working_dir)
+    wf.run()
+    wf.merge_outputs()
+    wf.dashboard_workflow()

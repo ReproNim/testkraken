@@ -1,7 +1,7 @@
 import os, pdb
 import pytest
 
-from ..testrunner import runner
+from testkraken.testrunner import runner
 
 Workflows_main_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                 "../../workflows4regtests", "basic_examples",)
