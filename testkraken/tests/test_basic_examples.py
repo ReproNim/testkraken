@@ -1,7 +1,7 @@
 import os, pdb
 import pytest
 
-from testkraken.workflowregtest import WorkflowRegtest
+from testkraken.testrunner import runner
 
 Workflows_main_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                 "../../workflows4regtests", "basic_examples",)
@@ -11,10 +11,7 @@ workflows_list = [os.path.join(Workflows_main_dir, workf) for workf in next(os.w
 def test_basic_examples(workflow_dir):
     print(workflow_dir)
     try:
-        wf = WorkflowRegtest(workflow_dir)
-        wf.run()
-        wf.merge_outputs()
-        wf.dashboard_workflow()
+        runner(workflow_dir)
     except Exception as e:
         print(e)
         assert False
