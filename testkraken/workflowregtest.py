@@ -235,7 +235,7 @@ class WorkflowRegtest:
         for iir, test in enumerate(self._parameters['tests']):
             with (env_dir / 'report_{}.json'.format(test['name'])).open() as f:
                 report = json.load(f)
-            _check_dict(report, test["name"])
+            report = _check_dict(report, test["name"])
             # for some plots it's easier to use "flat" test structure
             report_flat = _flatten_dict_test(report)
             if iir == 0:
@@ -250,7 +250,6 @@ class WorkflowRegtest:
                 except ValueError: # if results are not list
                     df = df.merge(pd.DataFrame(report, index=[0]), how="outer")
                 df_flat = pd.concat([df_flat, pd.DataFrame(report_flat, index=[0])], axis=1)
-
         df_env = pd.DataFrame(dict_env, index=[0])
         df_flat = pd.concat([df_env, df_flat], axis=1)
 
@@ -267,21 +266,23 @@ class WorkflowRegtest:
 
 
 def _check_dict(d, test_name):
-    if "index_name" in d.keys():
+    d_nm = deepcopy(d)
+    if "index_name" in d_nm.keys():
         len_ind = len(d["index_name"])
         for key, val in d.items():
             if key == 'index_name':
                 continue
             if len(val) != len_ind:
                 raise Exception ("the length for '{}' should be {}".format(key, len_ind))
-            d["{}:{}".format(test_name, key)] = d.pop(key)
+            d_nm["{}:{}".format(test_name, key)] = d_nm.pop(key)
     else:
         for key, val in d.items():
             if isinstance(val, list):
                 raise Exception("index_name key is required if results are lists")
             else:
-                d["{}:{}".format(test_name, key)] = d.pop(key)
-        d["index_name"] = "N/A"
+                d_nm["{}:{}".format(test_name, key)] = d_nm.pop(key)
+        d_nm["index_name"] = "N/A"
+    return d_nm
 
 
 def _flatten_dict_test(d):
