@@ -1,0 +1,15 @@
+command: <....which command do you use to run the workflow>
+env:
+  base:
+  - {image: debian:stretch, pkg-manager: apt}
+  - {image: <....another image, e.g. centos:7>, pkg-manager: <...>}
+  <term form neurodocker to install python......>:
+  - {conda_install: ['python=3.5']}
+  - <....let's install python2.7>
+inputs:
+- [File, -f, data.json]
+script: <.....what is the name of the script with workflow>
+tests:
+- file: [<....what is the name of the output file that we want to compare with the reference output>]
+  name: regr
+  script: test_js_el_list_eq.py
