@@ -1,4 +1,6 @@
-# TestKraken
+# TestKraken  
+
+<img style="float: right;" src="testkraken/dashboard_template/images/TestKraken_final.png" width="250">
 
 Use _Testkraken_ to test workflows in a matrix of parametrized environments.
 
@@ -105,3 +107,6 @@ tests:
     # These scripts are available under `testkraken/testing_functions`.
     script: check_output.py
 ```
+
+## Thanks
+Huge thanks to Puck Reeders for creating the logo and Anisha Keshavan for help with the dashboard.
