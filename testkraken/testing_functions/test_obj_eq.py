@@ -1,27 +1,40 @@
 """Checking if lists from two json files are equal"""
 from __future__ import division
-import os, json, pdb
-import inspect
+import json, pandas, pdb
+
 
 def test_obj_eq(file_out, file_ref=None, name=None, **kwargs):
 
     with open(file_out) as f:
         try:
             obj_out = json.load(f)
+            type = "json"
         except:
-            obj_out = f.read().strip()
+            try:
+                obj_out = pandas.read_csv(file_out)
+                type = "csv"
+            except:
+                type = "txt"
+                obj_out = f.read().strip()
 
     with open(file_ref) as f:
         try:
             obj_ref = json.load(f)
         except:
-            obj_ref = f.read().strip()
+            try:
+                obj_ref = pandas.read_csv(file_ref)
+            except:
+                obj_ref = f.read().strip()
 
     report_filename = "report_{}.json".format(name)
     print("TEST", report_filename)
     out = {}
     try:
-        assert obj_out == obj_ref
+        if type in ["json", "txt"]:
+            assert obj_out == obj_ref
+        elif type == "csv":
+            assert obj_out.equals(obj_ref)
+
         out["regr"] = "PASSED"
     except(AssertionError):
         out["regr"] = "FAILED"
