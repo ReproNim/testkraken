@@ -4,7 +4,7 @@ from copy import deepcopy
 import itertools
 import json
 import logging
-import os, pdb
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -67,7 +67,6 @@ class WorkflowRegtest:
             self._parameters['fixed_env'] = [self._parameters['fixed_env']]
         self._parameters.setdefault('inputs', [])
         self._parameters.setdefault('plots', [])
-        self._parameters.setdefault('env_add', [])
 
         self.docker_status = []
 
@@ -95,7 +94,6 @@ class WorkflowRegtest:
         self._soft_vers_spec = {}
         for key, val in self._parameters['env'].items():
             # val should be dictionary with options, list of dictionaries, or dictionary with "common" and "shared"
-            #pdb.set_trace()
             if isinstance(val, list):
                 self._soft_vers_spec[key] = val
             elif isinstance(val, dict):
@@ -108,7 +106,6 @@ class WorkflowRegtest:
             else:
                 raise SpecificationError(
                     "value for {} has to be either list or dictionary".format(key))
-        pdb.set_trace()
         matrix = list(itertools.product(*self._soft_vers_spec.values()))
 
         # Add fixed environments.
@@ -121,9 +118,8 @@ class WorkflowRegtest:
         self._matrix_of_envs = matrix
 
     def _create_neurodocker_specs(self):
-        pdb.set_trace()
         self.neurodocker_specs = cg.get_dict_of_neurodocker_dicts(
-            self._parameters['env'].keys(), self._matrix_of_envs, self._parameters["env_add"])
+            self._parameters['env'].keys(), self._matrix_of_envs)
 
     def _build_docker_images(self):
         """Build all Docker images."""
@@ -132,7 +128,6 @@ class WorkflowRegtest:
             try:
                 print("++ building image: {}".format(neurodocker_dict))
                 cg.docker_main(self.workflow_path, neurodocker_dict, sha1)
-                pdb.set_trace()
                 self.docker_status.append("docker ok")
             except Exception as e:
                 self.docker_status.append(

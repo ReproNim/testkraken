@@ -11,7 +11,7 @@ import pdb
 NEURODOCKER_IMAGE = 'kaczmarj/neurodocker:testkraken@sha256:8979fc47673a30826f4bf1c11cfb87d78b919ba16bf11ad6cb2d0b653c57832c'
 
 
-def _instructions_to_neurodocker_specs(keys, env_spec, env_add):
+def _instructions_to_neurodocker_specs(keys, env_spec):
     """Return dictionary compatible with Neurodocker given a list of
     instructions.
 
@@ -31,7 +31,6 @@ def _instructions_to_neurodocker_specs(keys, env_spec, env_add):
         raise ValueError("base image has to be provided")
 
     for ii, key in enumerate(keys):
-        # pdb.set_trace()
         if key == "base":
             base_image = env_spec[ii].get('image', None)
             if base_image is None:
@@ -54,18 +53,9 @@ def _instructions_to_neurodocker_specs(keys, env_spec, env_add):
             this_instruction = (key, env_spec[ii])
         elif key in ["fsl", "afni"]:
             this_instruction = (key, env_spec[ii])
-        elif key == "copy":
-            pdb.set_trace()
-            this_instruction = (key, env_spec[ii])
         else:
             raise Exception("key has to be base, miniconda or fsl")
         instructions.append(this_instruction)
-    if env_add:
-        for key, val in env_add.items():
-            if key == "copy":
-                this_instruction = (key, val)
-            instructions.append(this_instruction)
-    pdb.set_trace()
     return {
         "pkg_manager": pkg_manager,
         "instructions": tuple(instructions),
@@ -79,7 +69,7 @@ def _get_dictionary_hash(d):
     return hashlib.sha1(json.dumps(d, sort_keys=True).encode()).hexdigest()
 
 
-def get_dict_of_neurodocker_dicts(env_keys, env_matrix, env_add=None):
+def get_dict_of_neurodocker_dicts(env_keys, env_matrix):
     """Return dictionary of Neurodocker specifications.
 
     Parameters
@@ -96,10 +86,9 @@ def get_dict_of_neurodocker_dicts(env_keys, env_matrix, env_add=None):
     """
     d = []
     for ii, params in enumerate(env_matrix):
-        neurodocker_dict = _instructions_to_neurodocker_specs(env_keys, params, env_add)
+        neurodocker_dict = _instructions_to_neurodocker_specs(env_keys, params)
         this_hash = _get_dictionary_hash(neurodocker_dict['instructions'])
         d.append((this_hash, neurodocker_dict))
-    pdb.set_trace()
     return OrderedDict(d)
 
 
@@ -109,15 +98,11 @@ def generate_dockerfile(neurodocker_dict):
     """
     cmd = "docker run --rm -i -a stdin -a stdout {image} generate docker -"
     cmd = cmd.format(image=NEURODOCKER_IMAGE)
-    pdb.set_trace()
-    neurodcoker dict wyglada dla mnie dobrze, ale nie dziala
-    moze powinnam przejsc najpierw do najnowszego neurodockera
     output = subprocess.run(
         cmd.split(),
         input=json.dumps(neurodocker_dict).encode(),
         check=True,
         stdout=subprocess.PIPE).stdout.decode()
-    pdb.set_trace()
     return output
 
 
@@ -154,7 +139,7 @@ def build_image(filepath, build_context=None, tag=None, build_opts=None):
     filepath = os.path.abspath(filepath)
 
     if build_context is not None:
-        build_context = os.path.abspath("build_context)
+        build_context = os.path.abspath(build_context)
         cmd += " -f {} {}".format(filepath, build_context)
         input = None
     else:
@@ -167,8 +152,6 @@ def build_image(filepath, build_context=None, tag=None, build_opts=None):
 
 def docker_main(workflow_path, neurodocker_dict, sha1):
     filepath = os.path.join(workflow_path, 'Dockerfile.{}'.format(sha1))
-    pdb.set_trace()
     write_dockerfile(neurodocker_dict=neurodocker_dict, filepath=filepath)
-    pdb.set_trace()
     tag = "repronim/testkraken:{}".format(sha1)
     build_image(filepath, build_context=workflow_path, tag=tag)
