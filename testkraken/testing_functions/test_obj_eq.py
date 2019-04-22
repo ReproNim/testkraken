@@ -4,7 +4,7 @@ import os, json, pdb
 import inspect
 
 def test_obj_eq(file_out, file_ref=None, name=None, **kwargs):
-
+    print("FILE OUT", file_out)
     with open(file_out) as f:
         try:
             obj_out = json.load(f)
