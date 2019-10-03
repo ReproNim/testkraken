@@ -1,9 +1,10 @@
 """Checking if lists from two json files are equal"""
 from __future__ import division
-import json, pandas, pdb
+import json, pandas
+from pathlib import Path
 
 
-def test_obj_eq(file_out, file_ref=None, name=None, **kwargs):
+def test_obj_eq(file_out, file_ref=None, name=None):
 
     with open(file_out) as f:
         try:
@@ -26,8 +27,7 @@ def test_obj_eq(file_out, file_ref=None, name=None, **kwargs):
             except:
                 obj_ref = f.read().strip()
 
-    report_filename = "report_{}.json".format(name)
-    print("TEST", report_filename)
+    report_filename = Path(file_out).absolute().parent / f"report_{name}.json"
     out = {}
     try:
         if type in ["json", "txt"]:
@@ -39,7 +39,7 @@ def test_obj_eq(file_out, file_ref=None, name=None, **kwargs):
     except(AssertionError):
         out["regr"] = "FAILED"
 
-    with open(report_filename, "w") as f:
+    with report_filename.open("w") as f:
         json.dump(out, f)
 
 

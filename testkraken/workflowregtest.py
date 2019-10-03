@@ -3,18 +3,15 @@
 from copy import deepcopy
 import itertools
 import json
-import logging
-import os
 from pathlib import Path
 import shutil
-import subprocess
 import tempfile
 
 import pandas as pd
 import ruamel.yaml
 
 import testkraken.container_generator as cg
-import testkraken.cwl_generator as cwlg
+import pydra
 
 
 class WorkflowRegtest:
@@ -50,13 +47,13 @@ class WorkflowRegtest:
             prefix='testkraken-{}'.format(self.workflow_path.name))).absolute()
         elif working_dir:
             self.working_dir = Path(working_dir).absolute()
-            self.working_dir.mkdir(parents=True, exist_ok=True)
+            self.working_dir.mkdir(exist_ok=True)
         else:
             # if working_dir is None and tmp_working_dir == False
-            self.working_dir = (Path.cwd() / (self.workflow_path.name + "_cwl")).absolute()
-            self.working_dir.mkdir(exist_ok=True)
+            self.working_dir = (Path.cwd() / "outputs" / self.workflow_path.name).absolute()
+            self.working_dir.mkdir(parents=True, exist_ok=True)
         _validate_workflow_path(self.workflow_path)
-
+        self.tests_dir = Path(__file__).parent / "testing_functions"
         with (self.workflow_path / 'parameters.yaml').open() as f:
             self._parameters = ruamel.yaml.safe_load(f)
 
@@ -140,23 +137,83 @@ class WorkflowRegtest:
         for name, status, sha in zip(self.env_names, self.docker_status, self.neurodocker_specs.keys()):
             if status == "docker ok":
                 image = "repronim/testkraken:{}".format(sha)
-                self._run_cwl(image=image, soft_ver_str=name)
+                self._run_pydra(image=image, soft_ver_str=name)
 
-    def _run_cwl(self, image, soft_ver_str):
-        """Running workflow with CWL"""
-        try:
-            cwd = os.getcwd()
-            working_dir_env = self.working_dir / soft_ver_str
-            working_dir_env.mkdir(exist_ok=True)
-            os.chdir(working_dir_env)
-            # TODO(kaczmarj): add a directory option to CwlGenerator so we don't have to chdir.
-            cwl_gen = cwlg.CwlGenerator(image, soft_ver_str, self.workflow_path, self._parameters)
-            cwl_gen.create_cwl()
-            subprocess.call('cwl-runner --no-match-user cwl.cwl input.yml'.split())
-        except Exception:
-            raise
-        finally:
-            os.chdir(cwd)
+
+    def _run_pydra(self, image, soft_ver_str):
+        wf = pydra.Workflow(name="wf", input_spec=["image"])
+        Path(self.working_dir / soft_ver_str).mkdir(exist_ok=True)
+        wf.inputs.image = image
+        cmd = [self.parameters["command"], f"/workflow_dir/workflow/{self.parameters['script']}",
+               "-o", "/output_dir"]
+        for (tp, flag, inp) in self.parameters["inputs"]:
+            if tp == "File":
+                inp = f"/workflow_dir/data_input/{inp}"
+            cmd += [flag, inp]
+        bindings = [
+            (str(self.workflow_path), "/workflow_dir", "ro", False),
+            (str(self.working_dir / soft_ver_str), "/output_dir", None, False),
+        ]
+        output_files = []
+        for el in self.parameters["tests"]:
+            file_path = self.working_dir / soft_ver_str / el["file"]
+            output_files.append((f"file_{el['name']}", pydra.specs.File, file_path))
+
+
+
+        kraken_output_spec = pydra.specs.SpecInfo(
+            name="Output",
+            fields=output_files,
+            bases=(pydra.specs.ShellOutSpec,),
+        )
+
+
+        task_script = pydra.DockerTask(name="script", executable=cmd, image=wf.lzin.image,
+                                       output_spec=kraken_output_spec, bindings=bindings)
+        wf.add(task_script)
+
+
+        @pydra.mark.task
+        @pydra.mark.annotate({"return": {"outfiles": list}})
+        def results_parse(res):
+            out_f = []
+            for el in self.parameters["tests"]:
+                out_f.append(res[f"file_{el['name']}"])
+            return out_f
+
+
+        wf.add(results_parse(name="res_parse", res=wf.script.lzout.all_))
+
+        cmd_test_all = []
+        for i, el in enumerate(self.parameters["tests"]):
+            cmdt = ("python", str(self.tests_dir / el['script']), "-name", el["name"],
+                    "-ref", str(self.workflow_path / "data_ref" / el["file"]), "-out")
+            cmd_test_all.append(cmdt)
+
+
+        # testnames_l = [el["name"] for el in self.parameters["tests"]]
+        # filenames_l = [el["file"] for el in self.parameters["tests"]]
+        # testscripts_l = [el["script"] for el in self.parameters["tests"]]
+
+
+
+        task_test = pydra.ShellCommandTask(name="test", executable=cmd_test_all,
+                                           args=wf.res_parse.lzout.outfiles). \
+            split(splitter=("executable", "args"))
+        wf.add(task_test)
+
+
+        wf.set_output([("out", wf.script.lzout.stdout),
+                       ("file_regr1", wf.script.lzout.file_regr1),
+                       ("res", wf.res_parse.lzout.outfiles),
+                       ("std", wf.test.lzout.stdout)
+                       ])
+
+
+        with pydra.Submitter(plugin="cf") as sub:
+            sub(wf)
+
+
 
     def run(self):
         """The main method that runs generate all docker files, build images
