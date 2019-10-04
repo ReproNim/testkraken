@@ -2,6 +2,7 @@
 
 import numpy as np
 import json
+from pathlib import Path
 
 def test_arr_eq(file_out, file_ref=None, name=None, **kwargs):
 
@@ -17,7 +18,9 @@ def test_arr_eq(file_out, file_ref=None, name=None, **kwargs):
     except(AssertionError):
         out["regr"] = "FAILED"
 
-    with open(report_filename, "w") as f:
+    report_filename = Path(file_out).absolute().parent / f"report_{name}.json"
+
+    with report_filename.open("w") as f:
         json.dump(out, f)
 
 
