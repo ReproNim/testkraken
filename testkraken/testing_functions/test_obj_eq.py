@@ -27,7 +27,7 @@ def test_obj_eq(file_out, file_ref=None, name=None):
             except:
                 obj_ref = f.read().strip()
 
-    report_filename = Path(file_out).absolute().parent / f"report_{name}.json"
+    report_filename = Path(f"report_{name}.json")
     out = {}
     try:
         if type in ["json", "txt"]:

@@ -1,5 +1,8 @@
 command: python
 env:
+# for testing
+#  base:
+#  - {image: 'repronim/testkraken:5144617172500c8088e0e481265125a5762e9b49', pkg-manager: apt}
   base:
   - {image: debian:stretch, pkg-manager: apt}
   - {image: ubuntu:16.04, pkg-manager: apt}
@@ -12,4 +15,4 @@ script: sorting.py
 tests:
 - {file: list_sorted.json, name: regr1, script: test_obj_eq.py}
 - {file: avg_list.json, name: regr2, script: test_obj_eq.py}
-- {file: list_sorted.json, name: stat, script: stat_list.py}
+#- {file: list_sorted.json, name: stat, script: stat_list.py}
