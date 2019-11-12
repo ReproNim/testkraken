@@ -1,21 +1,18 @@
 """testing the results for a specific seed"""
 from __future__ import division
-import os, json
-import inspect
-import random
-#import numpy as np
+import json
+from pathlib import Path
 
 
 def stat_list(file_out, file_ref=None, name=None, **kwargs):
     with open(file_out) as f:
         res_out = json.load(f)
 
-    report_filename = "report_{}.json".format(name)
-    print("STAT", report_filename)
+    report_filename = Path(file_out).absolute().parent / f"report_{name}.json"
     out = {}
     out["sum"] = sum(res_out)
     
-    with open(report_filename, "a") as f:
+    with open(report_filename, "w") as f:
         json.dump(out, f)
 
 

@@ -18,7 +18,7 @@ jobs:
             conda config --system --prepend channels conda-forge
             conda update -n base -yq conda
             conda update -yq --all
-
+            pip install git+https://github.com/nipype/pydra.git@master
             pip install --no-cache-dir -e /home/circleci/regtests[dev]
 
       - run:

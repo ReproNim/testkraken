@@ -1,20 +1,18 @@
 """Object to orchestrate worflow execution and output tests."""
 
 from copy import deepcopy
+import dataclasses as dc
 import itertools
 import json
-import logging
-import os
 from pathlib import Path
 import shutil
-import subprocess
 import tempfile
 
 import pandas as pd
 import ruamel.yaml
 
 import testkraken.container_generator as cg
-import testkraken.cwl_generator as cwlg
+import pydra
 
 
 class WorkflowRegtest:
@@ -50,13 +48,13 @@ class WorkflowRegtest:
             prefix='testkraken-{}'.format(self.workflow_path.name))).absolute()
         elif working_dir:
             self.working_dir = Path(working_dir).absolute()
-            self.working_dir.mkdir(parents=True, exist_ok=True)
+            self.working_dir.mkdir(exist_ok=True)
         else:
             # if working_dir is None and tmp_working_dir == False
-            self.working_dir = (Path.cwd() / (self.workflow_path.name + "_cwl")).absolute()
-            self.working_dir.mkdir(exist_ok=True)
+            self.working_dir = (Path.cwd() / "outputs" / self.workflow_path.name).absolute()
+            self.working_dir.mkdir(parents=True, exist_ok=True)
         _validate_workflow_path(self.workflow_path)
-
+        self.tests_dir = Path(__file__).parent / "testing_functions"
         with (self.workflow_path / 'parameters.yaml').open() as f:
             self._parameters = ruamel.yaml.safe_load(f)
 
@@ -76,6 +74,7 @@ class WorkflowRegtest:
 
          # generating a simple name for envs (gave up on including env info)
         self.env_names = ['env_{}'.format(ii) for ii, _ in enumerate(self._matrix_of_envs)]
+        self.reports = {}
 
     @property
     def nenv(self):
@@ -140,23 +139,149 @@ class WorkflowRegtest:
         for name, status, sha in zip(self.env_names, self.docker_status, self.neurodocker_specs.keys()):
             if status == "docker ok":
                 image = "repronim/testkraken:{}".format(sha)
-                self._run_cwl(image=image, soft_ver_str=name)
+                self._run_pydra(image=image, soft_ver_str=name)
 
-    def _run_cwl(self, image, soft_ver_str):
-        """Running workflow with CWL"""
-        try:
-            cwd = os.getcwd()
-            working_dir_env = self.working_dir / soft_ver_str
-            working_dir_env.mkdir(exist_ok=True)
-            os.chdir(working_dir_env)
-            # TODO(kaczmarj): add a directory option to CwlGenerator so we don't have to chdir.
-            cwl_gen = cwlg.CwlGenerator(image, soft_ver_str, self.workflow_path, self._parameters)
-            cwl_gen.create_cwl()
-            subprocess.call('cwl-runner --no-match-user cwl.cwl input.yml'.split())
-        except Exception:
-            raise
-        finally:
-            os.chdir(cwd)
+
+    def _run_pydra(self, image, soft_ver_str):
+        wf = pydra.Workflow(name="wf", input_spec=["image"])
+        wf.inputs.image = image
+
+        cmd_run = [self.parameters["command"]]
+        script_run = self.workflow_path.joinpath("workflow", self.parameters["script"])
+
+        inp_fields_run = [("script", pydra.specs.File, dc.field(
+            metadata={"position": 1, "help_string": "script file", "mandatory": True,}
+                ))]
+        inp_val_run = {}
+        inp_val_run[f"script"] = script_run
+        for ind, (tp, flag, inp) in enumerate(self.parameters["inputs"]):
+            if tp == "File":
+                tp = pydra.specs.File
+            field = (f"inp_{ind}", tp,
+                     dc.field(
+                         metadata={
+                             "position": ind + 2,
+                             "help_string": f"inp_{ind}",
+                             "argstr": flag,
+                             "mandatory": True
+                         }
+                     )
+                     )
+            inp_fields_run.append(field)
+            inp_val_run[f"inp_{ind}"] = self.workflow_path.joinpath("data_input", inp)
+
+        input_spec_run = pydra.specs.SpecInfo(name="Input",fields=inp_fields_run,
+                                              bases=(pydra.specs.DockerSpec,))
+
+
+        out_fields_run = []
+        for el in self.parameters["tests"]:
+            out_fields_run.append((f"file_{el['name']}", pydra.specs.File, el["file"]))
+
+
+        output_spec_run = pydra.specs.SpecInfo(name="Output", fields=out_fields_run,
+                                               bases=(pydra.specs.ShellOutSpec,))
+
+        task_run = pydra.DockerTask(name="run", executable=cmd_run, image=wf.lzin.image,
+                                    input_spec=input_spec_run, output_spec=output_spec_run,
+                                    **inp_val_run)
+        wf.add(task_run)
+
+        @pydra.mark.task
+        @pydra.mark.annotate({"return": {"outfiles": list}})
+        def outfiles_list(res):
+            out_f = []
+            for el in self.parameters["tests"]:
+                out_f.append(res[f"file_{el['name']}"])
+            return out_f
+
+        wf.add(outfiles_list(name="outfiles", res=wf.run.lzout.all_))
+
+
+        input_spec_test = pydra.specs.SpecInfo(
+            name="Input",
+            fields=[
+                ("script_test", pydra.specs.File,
+                 dc.field(
+                     metadata={
+                         "position": 1,
+                         "help_string": "test file",
+                         "mandatory": True,
+                     }
+                 )
+                 ),
+                ("file_out", pydra.specs.File,
+                 dc.field(
+                     metadata={
+                         "position": 2,
+                         "help_string": "out file",
+                         "argstr": "-out",
+                         "mandatory": True,
+                     }
+                 )
+                 ),
+                ("file_ref", pydra.specs.File,
+                 dc.field(
+                     metadata={
+                         "position": 3,
+                         "argstr": "-ref",
+                         "help_string": "out file",
+                         "mandatory": True,
+                     }
+                 )
+                 ),
+                 ("name_test", str,
+                 dc.field(
+                     metadata={
+                         "position": 4,
+                         "argstr": "-name",
+                         "help_string": "test name",
+                         "mandatory": True,
+                     }
+                 )
+                 ),
+            ],
+            bases=(pydra.specs.DockerSpec,),
+        )
+
+        output_spec_test = pydra.specs.SpecInfo(
+            name="Output",
+            fields=[("reports", pydra.specs.File, "report_*.json")],
+            bases=(pydra.specs.ShellOutSpec,),
+        )
+
+        inp_val_test = {}
+        inp_val_test["name_test"] = [el["name"] for el in self.parameters["tests"]]
+        inp_val_test["script_test"] = [self.tests_dir.joinpath(el["script"])
+                                       for el in self.parameters["tests"]]
+        inp_val_test["file_ref"] = [self.workflow_path.joinpath("data_ref", el["file"])
+                                    for el in self.parameters["tests"]]
+
+        task_test = pydra.ShellCommandTask(name="test", executable="python",
+                                     input_spec=input_spec_test, output_spec=output_spec_test,
+                                     file_out=wf.outfiles.lzout.outfiles,
+                                     **inp_val_test).\
+            split((("script_test", "name_test"), ("file_out", "file_ref")))
+
+        wf.add(task_test)
+
+        wf.set_output([("out", wf.run.lzout.stdout),
+                       ("avg", wf.run.lzout.file_regr1),
+                       ("sorted", wf.run.lzout.file_regr2),
+                       ("outfiles", wf.outfiles.lzout.outfiles),
+                       ("test_out", wf.test.lzout.stdout),
+                       ("reports", wf.test.lzout.reports)
+                       ])
+
+        with pydra.Submitter(plugin="cf") as sub:
+            sub(wf)
+
+        res = wf.result()
+        # for el in res.output.reports:
+        #     assert el.exists()
+        self.reports[soft_ver_str] = res.output.reports
+
+
 
     def run(self):
         """The main method that runs generate all docker files, build images
@@ -209,7 +334,7 @@ class WorkflowRegtest:
                 # merging results from tests and updating self.res_all, self.res_all_flat
                 df_el, df_el_flat = self._merge_test_output(
                     dict_env=el_dict,
-                    env_dir=self.working_dir / self.env_names[ii])
+                    env_name=self.env_names[ii])
                 df_el_l.append(df_el)
                 df_el_flat_l.append(df_el_flat)
             else:
@@ -230,10 +355,10 @@ class WorkflowRegtest:
         with (self.working_dir / 'envs_descr.json').open(mode='w') as f:
             json.dump(soft_vers_description, f)
 
-    def _merge_test_output(self, dict_env, env_dir):
+    def _merge_test_output(self, dict_env, env_name):
         """Merge test outputs."""
         for iir, test in enumerate(self._parameters['tests']):
-            with (env_dir / 'report_{}.json'.format(test['name'])).open() as f:
+            with self.reports[env_name][iir].open() as f:
                 report = json.load(f)
             report = _check_dict(report, test["name"])
             # for some plots it's easier to use "flat" test structure
