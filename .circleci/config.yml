@@ -26,6 +26,6 @@ jobs:
           no_output_timeout: 60m
           command: |
             source ~/.bashrc
-            pytest -vs testkraken/tests/test_basic_examples.py
+            pytest -vs testkraken/tests/test_basic_examples.py testkraken/tests/test_afni.py
       - store_artifacts:
           path: /home/circleci/regtests

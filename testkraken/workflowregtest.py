@@ -143,17 +143,18 @@ class WorkflowRegtest:
 
 
     def _run_pydra(self, image, soft_ver_str):
-        wf = pydra.Workflow(name="wf", input_spec=["image"])
+        wf = pydra.Workflow(name="wf", input_spec=["image"])#, cache_dir="/Users/dorota/testkraken/ala")
         wf.inputs.image = image
 
         cmd_run = [self.parameters["command"]]
-        script_run = self.workflow_path.joinpath("workflow", self.parameters["script"])
-
-        inp_fields_run = [("script", pydra.specs.File, dc.field(
-            metadata={"position": 1, "help_string": "script file", "mandatory": True,}
-                ))]
+        inp_fields_run = []
         inp_val_run = {}
-        inp_val_run[f"script"] = script_run
+        if self.parameters["script"]:
+            script_run = self.workflow_path.joinpath("workflow", self.parameters["script"])
+            inp_fields_run.append(("script", pydra.specs.File, dc.field(
+                metadata={"position": 1, "help_string": "script file", "mandatory": True,}
+                    )))
+            inp_val_run[f"script"] = script_run
         for ind, (tp, flag, inp) in enumerate(self.parameters["inputs"]):
             if tp == "File":
                 tp = pydra.specs.File
@@ -168,8 +169,10 @@ class WorkflowRegtest:
                      )
                      )
             inp_fields_run.append(field)
-            inp_val_run[f"inp_{ind}"] = self.workflow_path.joinpath("data_input", inp)
-
+            if tp is pydra.specs.File:
+                inp_val_run[f"inp_{ind}"] = self.workflow_path.joinpath("data_input", inp)
+            else:
+                inp_val_run[f"inp_{ind}"] = inp
         input_spec_run = pydra.specs.SpecInfo(name="Input",fields=inp_fields_run,
                                               bases=(pydra.specs.DockerSpec,))
 
@@ -265,17 +268,10 @@ class WorkflowRegtest:
 
         wf.add(task_test)
 
-        wf.set_output([("out", wf.run.lzout.stdout),
-                       ("avg", wf.run.lzout.file_regr1),
-                       ("sorted", wf.run.lzout.file_regr2),
-                       ("outfiles", wf.outfiles.lzout.outfiles),
-                       ("test_out", wf.test.lzout.stdout),
-                       ("reports", wf.test.lzout.reports)
-                       ])
+        wf.set_output([("reports", wf.test.lzout.reports)])
 
         with pydra.Submitter(plugin="cf") as sub:
             sub(wf)
-
         res = wf.result()
         # for el in res.output.reports:
         #     assert el.exists()
@@ -471,10 +467,11 @@ def _validate_parameters(params, workflow_path):
                     raise SpecificationError("common and varied parts for {} have the same key".format(k))
     if not isinstance(params['script'], str):
         raise SpecificationError("Value of key 'script' must be a string.")
-    script = workflow_path / 'workflow' / params['script']
-    if not script.is_file():
-        raise FileNotFoundError(
-            "Script in specification does not exist: {}".format(script))
+    if params['script']:
+        script = workflow_path / 'workflow' / params['script']
+        if not script.is_file():
+            raise FileNotFoundError(
+                "Script in specification does not exist: {}".format(script))
     if not isinstance(params['tests'], (list, tuple)):
         raise SpecificationError("Value of key 'tests' must be an iterable of dictionaries")
     else:
