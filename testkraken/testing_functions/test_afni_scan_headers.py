@@ -17,7 +17,6 @@ def test_afni_scan_header(file_out, file_ref=None, name=None):
         out["regr"] = "PASSED"
     except(AssertionError):
         out["regr"] = "FAILED"
-
     with report_filename.open("w") as f:
         json.dump(out, f)
 

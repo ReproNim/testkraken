@@ -63,8 +63,8 @@ class WorkflowRegtest:
         self._parameters.setdefault('fixed_env', [])
         if isinstance(self._parameters['fixed_env'], dict):
             self._parameters['fixed_env'] = [self._parameters['fixed_env']]
-        self._parameters.setdefault('inputs', [])
-        self._parameters.setdefault('plots', [])
+        # self._parameters.setdefault('inputs', [])
+        # self._parameters.setdefault('plots', [])
 
         self.docker_status = []
 
@@ -139,23 +139,28 @@ class WorkflowRegtest:
         for name, status, sha in zip(self.env_names, self.docker_status, self.neurodocker_specs.keys()):
             if status == "docker ok":
                 image = "repronim/testkraken:{}".format(sha)
-                self._run_pydra(image=image, soft_ver_str=name)
+                self._run_all_workflows(image=image, soft_ver_str=name)
 
 
-    def _run_pydra(self, image, soft_ver_str):
-        wf = pydra.Workflow(name="wf", input_spec=["image"])#, cache_dir="/Users/dorota/testkraken/ala")
+    def _run_all_workflows(self, image, soft_ver_str):
+        self.reports[soft_ver_str] = {}
+        for name, params in self.parameters["workflows"].items():
+            self._run_workflow(wf_params=params, wf_name=name,
+                               image=image, soft_ver_str=soft_ver_str)
+
+    def _run_workflow(self, wf_params, wf_name, image, soft_ver_str):
+        wf = pydra.Workflow(name=wf_name, input_spec=["image"])#, cache_dir="/Users/dorota/testkraken/ala")
         wf.inputs.image = image
-
-        cmd_run = [self.parameters["command"]]
+        cmd_run = [wf_params["command"]]
         inp_fields_run = []
         inp_val_run = {}
-        if self.parameters["script"]:
-            script_run = self.workflow_path.joinpath("workflow", self.parameters["script"])
+        if wf_params["script"]:
+            script_run = self.workflow_path.joinpath("workflow", wf_params["script"])
             inp_fields_run.append(("script", pydra.specs.File, dc.field(
                 metadata={"position": 1, "help_string": "script file", "mandatory": True,}
                     )))
             inp_val_run[f"script"] = script_run
-        for ind, (tp, flag, inp) in enumerate(self.parameters["inputs"]):
+        for ind, (tp, flag, inp) in enumerate(wf_params["inputs"]):
             if tp == "File":
                 tp = pydra.specs.File
             field = (f"inp_{ind}", tp,
@@ -178,7 +183,7 @@ class WorkflowRegtest:
 
 
         out_fields_run = []
-        for el in self.parameters["tests"]:
+        for el in wf_params["tests"]:
             out_fields_run.append((f"file_{el['name']}", pydra.specs.File, el["file"]))
 
 
@@ -187,6 +192,7 @@ class WorkflowRegtest:
 
         task_run = pydra.DockerTask(name="run", executable=cmd_run, image=wf.lzin.image,
                                     input_spec=input_spec_run, output_spec=output_spec_run,
+                                    bindings=[(str(self.workflow_path.joinpath("data_input")), "/pydra_inp")],
                                     **inp_val_run)
         wf.add(task_run)
 
@@ -194,7 +200,7 @@ class WorkflowRegtest:
         @pydra.mark.annotate({"return": {"outfiles": list}})
         def outfiles_list(res):
             out_f = []
-            for el in self.parameters["tests"]:
+            for el in wf_params["tests"]:
                 out_f.append(res[f"file_{el['name']}"])
             return out_f
 
@@ -254,11 +260,11 @@ class WorkflowRegtest:
         )
 
         inp_val_test = {}
-        inp_val_test["name_test"] = [el["name"] for el in self.parameters["tests"]]
+        inp_val_test["name_test"] = [f"{wf_name}:{el['name']}" for el in wf_params["tests"]]
         inp_val_test["script_test"] = [self.tests_dir.joinpath(el["script"])
-                                       for el in self.parameters["tests"]]
+                                       for el in wf_params["tests"]]
         inp_val_test["file_ref"] = [self.workflow_path.joinpath("data_ref", el["file"])
-                                    for el in self.parameters["tests"]]
+                                    for el in wf_params["tests"]]
 
         task_test = pydra.ShellCommandTask(name="test", executable="python",
                                      input_spec=input_spec_test, output_spec=output_spec_test,
@@ -275,7 +281,7 @@ class WorkflowRegtest:
         res = wf.result()
         # for el in res.output.reports:
         #     assert el.exists()
-        self.reports[soft_ver_str] = res.output.reports
+        self.reports[soft_ver_str][wf_name] = res.output.reports
 
 
 
@@ -353,24 +359,27 @@ class WorkflowRegtest:
 
     def _merge_test_output(self, dict_env, env_name):
         """Merge test outputs."""
-        for iir, test in enumerate(self._parameters['tests']):
-            with self.reports[env_name][iir].open() as f:
-                report = json.load(f)
-            report = _check_dict(report, test["name"])
-            # for some plots it's easier to use "flat" test structure
-            report_flat = _flatten_dict_test(report)
-            if iir == 0:
-                try:
-                    df = pd.DataFrame(report)
-                except ValueError: # if results are not list
-                    df = pd.DataFrame(report, index=[0])
-                df_flat = pd.DataFrame(report_flat, index=[0])
-            else:
-                try:
-                    df = df.merge(pd.DataFrame(report), how="outer")
-                except ValueError: # if results are not list
-                    df = df.merge(pd.DataFrame(report, index=[0]), how="outer")
-                df_flat = pd.concat([df_flat, pd.DataFrame(report_flat, index=[0])], axis=1)
+        ii = -1
+        for nm, wf_param in self._parameters['workflows'].items():
+            for iir, test in enumerate(wf_param['tests']):
+                ii += 1
+                with self.reports[env_name][nm][iir].open() as f:
+                    report = json.load(f)
+                report = _check_dict(report, test["name"])
+                # for some plots it's easier to use "flat" test structure
+                report_flat = _flatten_dict_test(report)
+                if ii == 0:
+                    try:
+                        df = pd.DataFrame(report)
+                    except ValueError: # if results are not list
+                        df = pd.DataFrame(report, index=[0])
+                    df_flat = pd.DataFrame(report_flat, index=[0])
+                else:
+                    try:
+                        df = df.merge(pd.DataFrame(report), how="outer")
+                    except ValueError: # if results are not list
+                        df = df.merge(pd.DataFrame(report, index=[0]), how="outer")
+                    df_flat = pd.concat([df_flat, pd.DataFrame(report_flat, index=[0])], axis=1)
         df_env = pd.DataFrame(dict_env, index=[0])
         df_flat = pd.concat([df_env, df_flat], axis=1)
 
@@ -438,8 +447,7 @@ def _validate_workflow_path(workflow_path):
 
 def _validate_parameters(params, workflow_path):
     """Validate parameters according to the testkraken specification."""
-    required = {'command', 'env', 'script', 'tests'}
-    optional = {'fixed_env', 'inputs', 'plots'}
+    required = {'workflows', 'env'}
 
     not_found = required - set(params.keys())
     if not_found:
@@ -448,8 +456,49 @@ def _validate_parameters(params, workflow_path):
             .format(', '.join(not_found)))
 
     # Validate required parameters.
-    if not isinstance(params['command'], str):
-        raise SpecificationError("Value of key 'command' must be a string.")
+    _validate_parameters_envs(params)
+    if not isinstance(params['workflows'], dict):
+        raise SpecificationError("Value of key 'workflows' must be a dictionary.")
+    _validate_parameters_workflows(params['workflows'], workflow_path)
+
+    # this probably should be removed or updated
+    if params.get('plots', False):
+        if not isinstance(params['plots'], (list, tuple)):
+            raise SpecificationError("Value of key 'fixed_env' must be a dictionary.")
+        else:
+            if any(not isinstance(j, dict) for j in params['plots']):
+                raise SpecificationError("Every item in 'plots' must be a dictionary.")
+
+    return True
+
+
+def _validate_parameters_workflows(params, workflow_path):
+    for name, workflow in params.items():
+        if not isinstance(workflow, dict):
+            raise SpecificationError(f"Workflow {name} must be a dictionary.")
+
+    for nm, wf_params in params.items():
+        if not isinstance(wf_params['command'], str):
+            raise SpecificationError("Value of key 'command' must be a string.")
+        if not isinstance(wf_params['script'], str):
+            raise SpecificationError("Value of key 'script' must be a string.")
+        if wf_params['script']:
+            script = workflow_path / 'workflow' / wf_params['script']
+            if not script.is_file():
+                raise FileNotFoundError(
+                    "Script in specification does not exist: {}".format(script))
+        if not isinstance(wf_params['tests'], (list, tuple)):
+            raise SpecificationError("Value of key 'tests' must be an iterable of dictionaries")
+        else:
+            if any(not isinstance(j, dict) for j in wf_params['tests']):
+                raise SpecificationError("Every item in 'tests' must be a dictionary.")
+
+        if wf_params.get('inputs', False):
+            if not isinstance(wf_params['inputs'], list):
+                raise SpecificationError("Value of key 'inputs' must be a list.")
+
+
+def _validate_parameters_envs(params):
     if not isinstance(params['env'], dict):
         raise SpecificationError("Value of key 'env' must be a dictionary.")
     else:
@@ -465,20 +514,7 @@ def _validate_parameters(params, workflow_path):
                 elif any(set(v['common'].keys()).intersection(vd) for vd in v['varied']):
                     # TODO: I should probably accept when conda_install and pip_install and just merge two strings
                     raise SpecificationError("common and varied parts for {} have the same key".format(k))
-    if not isinstance(params['script'], str):
-        raise SpecificationError("Value of key 'script' must be a string.")
-    if params['script']:
-        script = workflow_path / 'workflow' / params['script']
-        if not script.is_file():
-            raise FileNotFoundError(
-                "Script in specification does not exist: {}".format(script))
-    if not isinstance(params['tests'], (list, tuple)):
-        raise SpecificationError("Value of key 'tests' must be an iterable of dictionaries")
-    else:
-        if any(not isinstance(j, dict) for j in params['tests']):
-            raise SpecificationError("Every item in 'tests' must be a dictionary.")
 
-    # Validate optional parameters.
     if params.get('fixed_env', False):
         if not isinstance(params['fixed_env'], (dict, list)):
             raise SpecificationError("Value of key 'fixed_env' must be a dictionary or list.")
@@ -489,17 +525,6 @@ def _validate_parameters(params, workflow_path):
             elif isinstance(params['fixed_env'], list):
                 if any(set(f.keys()) != set(params['env'].keys()) for f in params['fixed_env']):
                     raise SpecificationError("Keys of 'fixed_env' must be same as keys of 'env'.")
-    if params.get('inputs', False):
-        if not isinstance(params['inputs'], list):
-            raise SpecificationError("Value of key 'inputs' must be a list.")
-    if params.get('plots', False):
-        if not isinstance(params['plots'], (list, tuple)):
-            raise SpecificationError("Value of key 'fixed_env' must be a dictionary.")
-        else:
-            if any(not isinstance(j, dict) for j in params['plots']):
-                raise SpecificationError("Every item in 'plots' must be a dictionary.")
-
-    return True
 
 
 class SpecificationError(Exception):

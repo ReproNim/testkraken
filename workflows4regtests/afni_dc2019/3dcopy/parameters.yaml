@@ -1,17 +1,25 @@
-command: 3dcopy
 env:
-# for testing
   base:
-  - {image: 'afni/afni', pkg-manager: apt}
-inputs:
-- [File, "", anat_3mm.nii.gz]
-- [str, "", "copied.nii.gz"]
-script: ""
-tests:
-- {file: "copied.nii.gz", name: regr1, script: test_obj_eq.py}
-- {file: "copied.nii.gz", name: header, script: test_afni_scan_headers.py}
-- {file: "copied.nii.gz", name: data, script: test_afni_scan_data.py}
-- {file: "copied.nii.gz", name: diff_fake, script: test_afni_scan_data_diff_fake.py}
+  - {image: 'afni/afni:latest', pkg-manager: apt}
+  - {image: 'afni/afni:418-23729f', pkg-manager: apt}
+workflows:
+  workflow_1:
+    command: 3dcopy
+    inputs:
+    - [File, "", anat_3mm.nii.gz]
+    - [str, "", "copied.nii.gz"]
+    script: ""
+    tests:
+    - {file: "copied.nii.gz", name: W1_regr, script: test_obj_eq.py}
+    - {file: "copied.nii.gz", name: W1_header, script: test_afni_scan_headers.py}
+    - {file: "copied.nii.gz", name: W1_data, script: test_afni_scan_data.py}
+    - {file: "copied.nii.gz", name: diff_fake, script: test_afni_scan_data_diff_fake.py}
 
-#- {file: avg_list.json, name: regr2, script: test_obj_eq.py}
-#- {file: list_sorted.json, name: stat, script: stat_list.py}
+  workflow_2:
+    command: 3dTstat
+    inputs:
+    - [str, "-prefix", "stat"]
+    - [File, "", epi_r1+orig.HEAD]
+    script: ""
+    tests:
+    - {file: "stat+orig.HEAD", name: W2_regr, script: test_obj_eq.py}
