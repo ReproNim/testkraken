@@ -1,8 +1,5 @@
 command: python
 env:
-# for testing
-#  base:
-#  - {image: 'repronim/testkraken:5144617172500c8088e0e481265125a5762e9b49', pkg-manager: apt}
   base:
   - {image: debian:stretch, pkg-manager: apt}
   - {image: ubuntu:16.04, pkg-manager: apt}
