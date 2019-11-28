@@ -126,7 +126,7 @@ class WorkflowRegtest:
         for sha1, neurodocker_dict in self.neurodocker_specs.items():
             try:
                 print("++ building image: {}".format(neurodocker_dict))
-                cg.docker_main(self.workflow_path, neurodocker_dict, sha1)
+                cg.docker_main(self.working_dir, neurodocker_dict, sha1)
                 self.docker_status.append("docker ok")
             except Exception as e:
                 self.docker_status.append(

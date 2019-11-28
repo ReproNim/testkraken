@@ -4,6 +4,7 @@ import copy
 import hashlib
 import json
 import os
+from pathlib import Path
 import subprocess
 from collections import OrderedDict
 from neurodocker.neurodocker import main as nrd_main
@@ -151,6 +152,7 @@ def docker_main(workflow_path, neurodocker_dict, sha1):
     jsonpath = os.path.join(workflow_path, f"nrd_spec_{sha1}.json")
     with open(jsonpath, 'w') as fj:
         json.dump(neurodocker_dict, fj)
-    write_dockerfile_sp(nrd_jsonfile=jsonpath, dockerfile=dockerfile)
+    if not Path(dockerfile).exists():
+        write_dockerfile_sp(nrd_jsonfile=jsonpath, dockerfile=dockerfile)
     tag = "repronim/testkraken:{}".format(sha1)
     build_image(dockerfile, build_context=workflow_path, tag=tag)
