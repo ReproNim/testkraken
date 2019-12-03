@@ -8,6 +8,15 @@ from pathlib import Path
 import subprocess
 from collections import OrderedDict
 from neurodocker.neurodocker import main as nrd_main
+import neurodocker as ndr
+
+# default setting for specific neurodocker keys,
+# this value will not have to be set in the parameters.yml, but can be overwritten
+DEFAULT_INSTRUCTIONS = {
+    "miniconda": {'create_env': 'testkraken', 'activate': True}
+}
+# all keys allowed by neurodocker for Docker
+VALID_DOCKER_KEYS = ndr.Dockerfile._implementations.keys()
 
 
 def _instructions_to_neurodocker_specs(keys, env_spec):
@@ -42,14 +51,13 @@ def _instructions_to_neurodocker_specs(keys, env_spec):
                         pkg_manager = 'yum'
             else:
                 pkg_manager = env_spec[ii]['pkg_manager']
-        elif key == "miniconda":
-            env_spec[ii].setdefault('create_env', 'testkraken')
-            env_spec[ii].setdefault('activate', True)
-            this_instruction = (key, env_spec[ii])
-        elif key in ["fsl", "afni"]:
-            this_instruction = (key, env_spec[ii])
+        elif key in VALID_DOCKER_KEYS:
+            key_spec = copy.deepcopy(DEFAULT_INSTRUCTIONS.get(key, {}))
+            key_spec.update(env_spec[ii])
+            this_instruction = (key, key_spec)
         else:
-            raise Exception("key has to be base, miniconda or fsl")
+            raise Exception(f"{key} is not a valid key, must be "
+                            f"from the list {VALID_DOCKER_KEYS}")
         instructions.append(this_instruction)
     return {
         "pkg_manager": pkg_manager,
