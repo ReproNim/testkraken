@@ -1,4 +1,3 @@
-command: python
 env:
   base:
   - {image: debian:stretch, pkg-manager: apt}
@@ -6,9 +5,11 @@ env:
   miniconda:
   - {conda_install: [python=3.5]}
   - {conda_install: [python=2.7]}
-inputs:
-- [File, -f, list2sort.json]
-script: sorting.py
+analysis:
+  inputs:
+  - [File, -f, list2sort.json]
+  command: python
+  script: sorting.py
 tests:
 - {file: list_sorted.json, name: regr1, script: test_obj_eq.py}
 - {file: avg_list.json, name: regr2, script: test_obj_eq.py}
