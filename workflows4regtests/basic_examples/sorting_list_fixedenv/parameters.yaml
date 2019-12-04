@@ -1,0 +1,22 @@
+env:
+  base:
+  - {image: debian:stretch, pkg-manager: apt}
+  - {image: ubuntu:16.04, pkg-manager: apt}
+  miniconda:
+  - {conda_install: [python=3.5]}
+  - {conda_install: [python=2.7]}
+
+fixed_env:
+  base: {image: debian:stretch, pkg-manager: apt}
+  miniconda: {conda_install: [python=3.7]}
+
+analysis:
+  inputs:
+  - [File, -f, list2sort.json]
+  command: python
+  script: sorting.py
+tests:
+- {file: list_sorted.json, name: regr1, script: test_obj_eq.py}
+- {file: list_sorted.json, name: regr1a, script: my_test_obj_eq.py}
+- {file: avg_list.json, name: regr2, script: test_obj_eq.py}
+

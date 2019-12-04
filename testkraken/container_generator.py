@@ -87,12 +87,15 @@ def get_dict_of_neurodocker_dicts(env_keys, env_matrix):
     sha1 values for the JSON-encoded dictionaries, and the values are the corresponding
     dictionaries.
     """
-    d = []
+    nrd_dict = []
     for ii, params in enumerate(env_matrix):
         neurodocker_dict = _instructions_to_neurodocker_specs(env_keys, params)
         this_hash = _get_dictionary_hash(neurodocker_dict['instructions'])
-        d.append((this_hash, neurodocker_dict))
-    return OrderedDict(d)
+        if (this_hash, neurodocker_dict) in nrd_dict:
+            raise Exception("two identical environment specifications are found, "
+                            "remove one parameters.yml file")
+        nrd_dict.append((this_hash, neurodocker_dict))
+    return OrderedDict(nrd_dict)
 
 
 def write_dockerfile(nrd_jsonfile, dockerfile):
