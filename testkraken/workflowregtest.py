@@ -58,7 +58,7 @@ class WorkflowRegtest:
         with (self.workflow_path / 'parameters.yaml').open() as f:
             self._parameters = ruamel.yaml.safe_load(f)
 
-        _validate_parameters(self._parameters, self.workflow_path)
+        _validate_parameters(self._parameters, self.workflow_path, self.tests_dir)
 
         self._parameters.setdefault('fixed_env', [])
         if isinstance(self._parameters['fixed_env'], dict):
@@ -252,8 +252,7 @@ class WorkflowRegtest:
 
         inp_val_test = {}
         inp_val_test["name_test"] = [el["name"] for el in self.parameters["tests"]]
-        inp_val_test["script_test"] = [self.tests_dir.joinpath(el["script"])
-                                       for el in self.parameters["tests"]]
+        inp_val_test["script_test"] = [el["script"] for el in self.parameters["tests"]]
         inp_val_test["file_ref"] = [self.workflow_path.joinpath("data", el["file"])
                                     for el in self.parameters["tests"]]
 
@@ -440,7 +439,7 @@ def _validate_workflow_path(workflow_path):
     return True
 
 
-def _validate_parameters(params, workflow_path):
+def _validate_parameters(params, workflow_path, tests_path):
     """Validate parameters according to the testkraken specification."""
     required = {'env', 'analysis', 'tests'}
     optional = {'fixed_env', 'plots'}
@@ -494,6 +493,17 @@ def _validate_parameters(params, workflow_path):
     else:
         if any(not isinstance(j, dict) for j in params['tests']):
             raise SpecificationError("Every item in 'tests' must be a dictionary.")
+    for el in params['tests']:
+        test_script = el.get("script", None)
+        if not test_script or not isinstance(test_script, str):
+            raise SpecificationError("'tests' have to have 'script' field and it has to be a str")
+        if (workflow_path / 'scripts' / test_script).is_file():
+            el["script"] = workflow_path / 'scripts' / test_script
+        elif (tests_path / el["script"]).is_file():
+            el["script"] = tests_path / el["script"]
+        else:
+            raise FileNotFoundError(
+                "Script from test does not exist: {}".format(test_script))
     #TODO: adding checks for each of the element of tests
 
     # Validate optional parameters.
