@@ -91,7 +91,8 @@ class WorkflowRegtest:
         # lists of full specification (all versions for each software/key)
         self._soft_vers_spec = {}
         for key, val in self._parameters['env'].items():
-            # val should be dictionary with options, list of dictionaries, or dictionary with "common" and "shared"
+            # val should be dictionary with options, list of dictionaries,
+            # or dictionary with "common" and "shared"
             if isinstance(val, list):
                 self._soft_vers_spec[key] = val
             elif isinstance(val, dict):
@@ -265,8 +266,6 @@ class WorkflowRegtest:
         wf.add(task_test)
 
         wf.set_output([("out", wf.run.lzout.stdout),
-                       ("avg", wf.run.lzout.file_regr1),
-                       ("sorted", wf.run.lzout.file_regr2),
                        ("outfiles", wf.outfiles.lzout.outfiles),
                        ("test_out", wf.test.lzout.stdout),
                        ("reports", wf.test.lzout.reports)
@@ -456,17 +455,16 @@ def _validate_parameters(params, workflow_path, tests_path):
     else:
         if any(not isinstance(j, (dict, list)) for j in params['env'].values()):
             raise SpecificationError("Every value in 'env' must be a dictionary or list.")
-        for k, v in params['env'].items():
-            # TODO: something is wrong...
-            if isinstance(k, dict) and {'common', 'varied'} == set(val.keys()):
-                if not isinstance(v['common'], dict):
+        for key, val in params['env'].items():
+            if isinstance(val, dict) and {'common', 'varied'} == set(val.keys()):
+                if not isinstance(val['common'], dict):
                     raise SpecificationError("common part of {} should be a dictionary".format(key))
-                elif not isinstance(v['varied'], (list, tuple)):
+                elif not isinstance(val['varied'], (list, tuple)):
                     raise SpecificationError("varied part of {} should be a list or tuple".format(key))
                 # checking if common and varied have the same key
-                elif any(set(v['common'].keys()).intersection(vd) for vd in v['varied']):
+                elif any(set(val['common'].keys()).intersection(vd) for vd in val['varied']):
                     # TODO: I should probably accept when conda_install and pip_install and just merge two strings
-                    raise SpecificationError("common and varied parts for {} have the same key".format(k))
+                    raise SpecificationError("common and varied parts for {} have the same key".format(key))
     # checking analysis
     if not isinstance(params['analysis'], dict):
         raise SpecificationError("Value of key 'analysis' must be a dictionaries")
