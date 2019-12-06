@@ -177,6 +177,7 @@ class WorkflowRegtest:
 
         out_fields_run = []
         for el in self.parameters["tests"]:
+            # this would have to be modified if we allow multiple files to one test
             out_fields_run.append((f"file_{el['name']}", pydra.specs.File, el["file"]))
 
 
@@ -273,10 +274,7 @@ class WorkflowRegtest:
 
         with pydra.Submitter(plugin="cf") as sub:
             sub(wf)
-
         res = wf.result()
-        # for el in res.output.reports:
-        #     assert el.exists()
         self.reports[soft_ver_str] = res.output.reports
 
 
