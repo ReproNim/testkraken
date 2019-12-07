@@ -1,4 +1,3 @@
-command: python
 env:
   base:
   - {image: debian:stretch, pkg-manager: apt}
@@ -8,8 +7,12 @@ env:
 fixed_env:
   base: {image: ubuntu:16.04, pkg-manager: apt}
   miniconda: {conda_install: [python=3.6]}
-inputs: []
-script: mean_random_numbers.py
+
+analysis:
+  command: python
+  inputs: []
+  script: mean_random_numbers.py
+
 tests:
 - {file: mean.json, name: regr_1, script: test_rand_almosteq.py}
 - {file: mean_2.json, name: regr_2, script: test_rand_almosteq.py}

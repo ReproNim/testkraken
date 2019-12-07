@@ -1,4 +1,3 @@
-command: python
 env:
   base:
   - {image: debian:stretch, pkg-manager: apt}
@@ -8,8 +7,12 @@ env:
     varied:
     - {conda_install: [python=3.5]}
     - {conda_install: [python=2.7]}
-inputs:
-- [File, -f, list2sort.json]
-script: sorting.py
+
+analysis:
+  command: python
+  inputs:
+  - [File, -f, list2sort.json]
+  script: sorting.py
+
 tests:
 - {file: array_sorted.npy, name: regr1, script: test_arr_eq.py}

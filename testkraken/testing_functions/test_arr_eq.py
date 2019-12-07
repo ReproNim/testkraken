@@ -4,13 +4,11 @@ import numpy as np
 import json
 from pathlib import Path
 
-def test_arr_eq(file_out, file_ref=None, name=None, **kwargs):
+def test_arr_eq(file_out, file_ref=None, name=None):
 
     arr_out = np.load(file_out)
     arr_ref = np.load(file_ref)
 
-    report_filename = "report_{}.json".format(name)
-    print("TEST", report_filename)
     out = {}
     try:
         assert (arr_out == arr_ref).all()
@@ -18,7 +16,7 @@ def test_arr_eq(file_out, file_ref=None, name=None, **kwargs):
     except(AssertionError):
         out["regr"] = "FAILED"
 
-    report_filename = Path(file_out).absolute().parent / f"report_{name}.json"
+    report_filename = Path(f"report_{name}.json")
 
     with report_filename.open("w") as f:
         json.dump(out, f)

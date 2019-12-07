@@ -58,12 +58,11 @@ class WorkflowRegtest:
         with (self.workflow_path / 'parameters.yaml').open() as f:
             self._parameters = ruamel.yaml.safe_load(f)
 
-        _validate_parameters(self._parameters, self.workflow_path)
+        _validate_parameters(self._parameters, self.workflow_path, self.tests_dir)
 
         self._parameters.setdefault('fixed_env', [])
         if isinstance(self._parameters['fixed_env'], dict):
             self._parameters['fixed_env'] = [self._parameters['fixed_env']]
-        self._parameters.setdefault('inputs', [])
         self._parameters.setdefault('plots', [])
 
         self.docker_status = []
@@ -92,7 +91,8 @@ class WorkflowRegtest:
         # lists of full specification (all versions for each software/key)
         self._soft_vers_spec = {}
         for key, val in self._parameters['env'].items():
-            # val should be dictionary with options, list of dictionaries, or dictionary with "common" and "shared"
+            # val should be dictionary with options, list of dictionaries,
+            # or dictionary with "common" and "shared"
             if isinstance(val, list):
                 self._soft_vers_spec[key] = val
             elif isinstance(val, dict):
@@ -126,7 +126,7 @@ class WorkflowRegtest:
         for sha1, neurodocker_dict in self.neurodocker_specs.items():
             try:
                 print("++ building image: {}".format(neurodocker_dict))
-                cg.docker_main(self.workflow_path, neurodocker_dict, sha1)
+                cg.docker_main(self.working_dir, neurodocker_dict, sha1)
                 self.docker_status.append("docker ok")
             except Exception as e:
                 self.docker_status.append(
@@ -146,15 +146,16 @@ class WorkflowRegtest:
         wf = pydra.Workflow(name="wf", input_spec=["image"])
         wf.inputs.image = image
 
-        cmd_run = [self.parameters["command"]]
-        script_run = self.workflow_path.joinpath("workflow", self.parameters["script"])
+        param_run = self.parameters["analysis"]
+        cmd_run = [param_run["command"]]
+        script_run = param_run["script"]
 
         inp_fields_run = [("script", pydra.specs.File, dc.field(
             metadata={"position": 1, "help_string": "script file", "mandatory": True,}
                 ))]
         inp_val_run = {}
         inp_val_run[f"script"] = script_run
-        for ind, (tp, flag, inp) in enumerate(self.parameters["inputs"]):
+        for ind, (tp, flag, inp) in enumerate(param_run["inputs"]):
             if tp == "File":
                 tp = pydra.specs.File
             field = (f"inp_{ind}", tp,
@@ -168,7 +169,7 @@ class WorkflowRegtest:
                      )
                      )
             inp_fields_run.append(field)
-            inp_val_run[f"inp_{ind}"] = self.workflow_path.joinpath("data_input", inp)
+            inp_val_run[f"inp_{ind}"] = self.workflow_path.joinpath("data", inp)
 
         input_spec_run = pydra.specs.SpecInfo(name="Input",fields=inp_fields_run,
                                               bases=(pydra.specs.DockerSpec,))
@@ -176,6 +177,7 @@ class WorkflowRegtest:
 
         out_fields_run = []
         for el in self.parameters["tests"]:
+            # this would have to be modified if we allow multiple files to one test
             out_fields_run.append((f"file_{el['name']}", pydra.specs.File, el["file"]))
 
 
@@ -252,9 +254,8 @@ class WorkflowRegtest:
 
         inp_val_test = {}
         inp_val_test["name_test"] = [el["name"] for el in self.parameters["tests"]]
-        inp_val_test["script_test"] = [self.tests_dir.joinpath(el["script"])
-                                       for el in self.parameters["tests"]]
-        inp_val_test["file_ref"] = [self.workflow_path.joinpath("data_ref", el["file"])
+        inp_val_test["script_test"] = [el["script"] for el in self.parameters["tests"]]
+        inp_val_test["file_ref"] = [self.workflow_path.joinpath("data", el["file"])
                                     for el in self.parameters["tests"]]
 
         task_test = pydra.ShellCommandTask(name="test", executable="python",
@@ -266,8 +267,6 @@ class WorkflowRegtest:
         wf.add(task_test)
 
         wf.set_output([("out", wf.run.lzout.stdout),
-                       ("avg", wf.run.lzout.file_regr1),
-                       ("sorted", wf.run.lzout.file_regr2),
                        ("outfiles", wf.outfiles.lzout.outfiles),
                        ("test_out", wf.test.lzout.stdout),
                        ("reports", wf.test.lzout.reports)
@@ -275,10 +274,7 @@ class WorkflowRegtest:
 
         with pydra.Submitter(plugin="cf") as sub:
             sub(wf)
-
         res = wf.result()
-        # for el in res.output.reports:
-        #     assert el.exists()
         self.reports[soft_ver_str] = res.output.reports
 
 
@@ -428,10 +424,10 @@ def _validate_workflow_path(workflow_path):
     missing = []
     if not (p / 'parameters.yaml').is_file():
         missing.append(('parameters.yaml', 'file'))
-    if not (p / 'data_ref').is_dir():
-        missing.append(('data_ref', 'directory'))
-    if not (p / 'workflow').is_dir():
-        missing.append(('workflow', 'directory'))
+    if not (p / 'data').is_dir():
+        missing.append(('data', 'directory'))
+    if not (p / 'scripts').is_dir():
+        missing.append(('scripts', 'directory'))
     if missing:
         m = ", ".join("{} ({})".format(*ii) for ii in missing)
         raise FileNotFoundError(
@@ -440,10 +436,10 @@ def _validate_workflow_path(workflow_path):
     return True
 
 
-def _validate_parameters(params, workflow_path):
+def _validate_parameters(params, workflow_path, tests_path):
     """Validate parameters according to the testkraken specification."""
-    required = {'command', 'env', 'script', 'tests'}
-    optional = {'fixed_env', 'inputs', 'plots'}
+    required = {'env', 'analysis', 'tests'}
+    optional = {'fixed_env', 'plots'}
 
     not_found = required - set(params.keys())
     if not_found:
@@ -452,34 +448,59 @@ def _validate_parameters(params, workflow_path):
             .format(', '.join(not_found)))
 
     # Validate required parameters.
-    if not isinstance(params['command'], str):
-        raise SpecificationError("Value of key 'command' must be a string.")
     if not isinstance(params['env'], dict):
         raise SpecificationError("Value of key 'env' must be a dictionary.")
     else:
         if any(not isinstance(j, (dict, list)) for j in params['env'].values()):
             raise SpecificationError("Every value in 'env' must be a dictionary or list.")
-        for k, v in params['env'].items():
-            if isinstance(k, dict) and {'common', 'varied'} == set(val.keys()):
-                if not isinstance(v['common'], dict):
+        for key, val in params['env'].items():
+            if isinstance(val, dict) and {'common', 'varied'} == set(val.keys()):
+                if not isinstance(val['common'], dict):
                     raise SpecificationError("common part of {} should be a dictionary".format(key))
-                elif not isinstance(v['varied'], (list, tuple)):
+                elif not isinstance(val['varied'], (list, tuple)):
                     raise SpecificationError("varied part of {} should be a list or tuple".format(key))
                 # checking if common and varied have the same key
-                elif any(set(v['common'].keys()).intersection(vd) for vd in v['varied']):
+                elif any(set(val['common'].keys()).intersection(vd) for vd in val['varied']):
                     # TODO: I should probably accept when conda_install and pip_install and just merge two strings
-                    raise SpecificationError("common and varied parts for {} have the same key".format(k))
-    if not isinstance(params['script'], str):
-        raise SpecificationError("Value of key 'script' must be a string.")
-    script = workflow_path / 'workflow' / params['script']
-    if not script.is_file():
-        raise FileNotFoundError(
-            "Script in specification does not exist: {}".format(script))
+                    raise SpecificationError("common and varied parts for {} have the same key".format(key))
+    # checking analysis
+    if not isinstance(params['analysis'], dict):
+        raise SpecificationError("Value of key 'analysis' must be a dictionaries")
+    else:
+        analysis_script = params['analysis'].get("script", None)
+        if not analysis_script or not isinstance(analysis_script, str):
+            raise SpecificationError("'analysis' has to have 'script' field and it has to be a str")
+        analysis_script = workflow_path / 'scripts' / analysis_script
+        if not analysis_script.is_file():
+            raise FileNotFoundError(
+                "Script from analysis  does not exist: {}".format(analysis_script))
+        else:
+            params['analysis']["script"] = analysis_script
+        analysis_command = params['analysis'].get("command", None)
+        if not analysis_command or not isinstance(analysis_command, str):
+            raise SpecificationError("'command' must be a string.")
+        if not params['analysis'].get("inputs", None):
+            params['analysis']["inputs"] = []
+        elif not isinstance(params["analysis"]['inputs'], list):
+            raise SpecificationError("Value of key 'inputs' must be a list.")
+    # checking tests
     if not isinstance(params['tests'], (list, tuple)):
         raise SpecificationError("Value of key 'tests' must be an iterable of dictionaries")
     else:
         if any(not isinstance(j, dict) for j in params['tests']):
             raise SpecificationError("Every item in 'tests' must be a dictionary.")
+    for el in params['tests']:
+        test_script = el.get("script", None)
+        if not test_script or not isinstance(test_script, str):
+            raise SpecificationError("'tests' have to have 'script' field and it has to be a str")
+        if (workflow_path / 'scripts' / test_script).is_file():
+            el["script"] = workflow_path / 'scripts' / test_script
+        elif (tests_path / el["script"]).is_file():
+            el["script"] = tests_path / el["script"]
+        else:
+            raise FileNotFoundError(
+                "Script from test does not exist: {}".format(test_script))
+    #TODO: adding checks for each of the element of tests
 
     # Validate optional parameters.
     if params.get('fixed_env', False):
@@ -492,9 +513,6 @@ def _validate_parameters(params, workflow_path):
             elif isinstance(params['fixed_env'], list):
                 if any(set(f.keys()) != set(params['env'].keys()) for f in params['fixed_env']):
                     raise SpecificationError("Keys of 'fixed_env' must be same as keys of 'env'.")
-    if params.get('inputs', False):
-        if not isinstance(params['inputs'], list):
-            raise SpecificationError("Value of key 'inputs' must be a list.")
     if params.get('plots', False):
         if not isinstance(params['plots'], (list, tuple)):
             raise SpecificationError("Value of key 'fixed_env' must be a dictionary.")

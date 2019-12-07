@@ -5,6 +5,11 @@ env:
   miniconda:
   - {conda_install: [python=3.5]}
   - {conda_install: [python=2.7]}
+
+fixed_env:
+  base: {image: debian:stretch, pkg-manager: apt}
+  miniconda: {conda_install: [python=3.7]}
+
 analysis:
   inputs:
   - [File, -f, list2sort.json]
@@ -14,4 +19,4 @@ tests:
 - {file: list_sorted.json, name: regr1, script: test_obj_eq.py}
 - {file: list_sorted.json, name: regr1a, script: my_test_obj_eq.py}
 - {file: avg_list.json, name: regr2, script: test_obj_eq.py}
-#- {file: list_sorted.json, name: stat, script: stat_list.py}
+

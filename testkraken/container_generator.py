@@ -4,11 +4,19 @@ import copy
 import hashlib
 import json
 import os
+from pathlib import Path
 import subprocess
 from collections import OrderedDict
-import pdb
+from neurodocker.neurodocker import main as nrd_main
+import neurodocker as ndr
 
-NEURODOCKER_IMAGE = 'kaczmarj/neurodocker:0.5.0'
+# default setting for specific neurodocker keys,
+# this value will not have to be set in the parameters.yml, but can be overwritten
+DEFAULT_INSTRUCTIONS = {
+    "miniconda": {'create_env': 'testkraken', 'activate': True}
+}
+# all keys allowed by neurodocker for Docker
+VALID_DOCKER_KEYS = ndr.Dockerfile._implementations.keys()
 
 
 def _instructions_to_neurodocker_specs(keys, env_spec):
@@ -43,18 +51,13 @@ def _instructions_to_neurodocker_specs(keys, env_spec):
                         pkg_manager = 'yum'
             else:
                 pkg_manager = env_spec[ii]['pkg_manager']
-        elif key == "miniconda":
-            # Copy yaml environment file into the container.
-            if 'yaml_file' in env_spec[ii].keys():
-                instructions.append(
-                    ('copy', (env_spec[ii]['yaml_file'], env_spec[ii]['yaml_file'])))
-            env_spec[ii].setdefault('create_env', 'testkraut')
-            env_spec[ii].setdefault('activate', True)
-            this_instruction = (key, env_spec[ii])
-        elif key in ["fsl", "afni"]:
-            this_instruction = (key, env_spec[ii])
+        elif key in VALID_DOCKER_KEYS:
+            key_spec = copy.deepcopy(DEFAULT_INSTRUCTIONS.get(key, {}))
+            key_spec.update(env_spec[ii])
+            this_instruction = (key, key_spec)
         else:
-            raise Exception("key has to be base, miniconda or fsl")
+            raise Exception(f"{key} is not a valid key, must be "
+                            f"from the list {VALID_DOCKER_KEYS}")
         instructions.append(this_instruction)
     return {
         "pkg_manager": pkg_manager,
@@ -84,44 +87,49 @@ def get_dict_of_neurodocker_dicts(env_keys, env_matrix):
     sha1 values for the JSON-encoded dictionaries, and the values are the corresponding
     dictionaries.
     """
-    d = []
+    nrd_dict = []
     for ii, params in enumerate(env_matrix):
         neurodocker_dict = _instructions_to_neurodocker_specs(env_keys, params)
         this_hash = _get_dictionary_hash(neurodocker_dict['instructions'])
-        d.append((this_hash, neurodocker_dict))
-    return OrderedDict(d)
+        if (this_hash, neurodocker_dict) in nrd_dict:
+            raise Exception("two identical environment specifications are found, "
+                            "remove one parameters.yml file")
+        nrd_dict.append((this_hash, neurodocker_dict))
+    return OrderedDict(nrd_dict)
 
 
-def generate_dockerfile(neurodocker_dict):
-    """Return string representation of Dockerfile, made with Neurodocker
-    Docker image.
+def write_dockerfile(nrd_jsonfile, dockerfile):
+    """ Generate and write Dockerfile to `dockerfile`, uses Neurodocker library
+        This doesn't work, since nrd_main changes nrd attributes,
+        using write_dockerfile_sp for now
     """
-    cmd = "docker run --rm -i -a stdin -a stdout {image} generate docker -"
-    cmd = cmd.format(image=NEURODOCKER_IMAGE)
-    output = subprocess.run(
-        cmd.split(),
-        input=json.dumps(neurodocker_dict).encode(),
-        check=True,
-        stdout=subprocess.PIPE).stdout.decode()
-    return output
+    nrd_args = ["generate", "docker", nrd_jsonfile, "-o", dockerfile,
+               "--no-print", "--json"]
+    # not sure if I need to use out_json anywhere, might remove "--json"
+    out_json = nrd_main(nrd_args)
 
 
-def write_dockerfile(neurodocker_dict, filepath):
-    """Generate and write Dockerfile to `filepath`."""
-    dockerfile = generate_dockerfile(neurodocker_dict)
+def write_dockerfile_sp(nrd_jsonfile, dockerfile):
+    """ Generate and write Dockerfile to `dockerfile`, uses Neurodocker cli
+        These is a tmp function, would prefer to use write_dockerfile
+    """
+    nrd_args = ["neurodocker", "generate", "docker", nrd_jsonfile,
+                "-o", dockerfile, "--no-print", "--json"]
+    # not sure if I need to use out_json anywhere, might remove "--json"
+    out_json = subprocess.run(
+                nrd_args,
+                check=True,
+                stdout=subprocess.PIPE).stdout.decode()
 
-    with open(filepath, 'w') as fp:
-        fp.write(dockerfile)
 
-
-def build_image(filepath, build_context=None, tag=None, build_opts=None):
+def build_image(dockerfile, build_context=None, tag=None, build_opts=None):
     """Build Docker image.
 
     Parameters
     ----------
-    filepath : path-like
+    dockerfile : path-like
         Path to Dockerfile. May be absolute or relative. If `build_context`
-        if provided, `filepath` is joined to `build_context`.
+        if provided, `dockerfile` is joined to `build_context`.
     build_context : path-like
         Path to build context. If None, Docker image is built without build
         context. Dockerfile instructions that require a context
@@ -136,14 +144,14 @@ def build_image(filepath, build_context=None, tag=None, build_opts=None):
 
     cmd_base = "docker build {tag} {build_opts}"
     cmd = cmd_base.format(tag=tag, build_opts=build_opts)
-    filepath = os.path.abspath(filepath)
+    dockerfile = os.path.abspath(dockerfile)
 
     if build_context is not None:
         build_context = os.path.abspath(build_context)
-        cmd += " -f {} {}".format(filepath, build_context)
+        cmd += " -f {} {}".format(dockerfile, build_context)
         input = None
     else:
-        with open(filepath) as f:
+        with open(dockerfile) as f:
             input = f.read()
         cmd += " -"
 
@@ -151,7 +159,11 @@ def build_image(filepath, build_context=None, tag=None, build_opts=None):
 
 
 def docker_main(workflow_path, neurodocker_dict, sha1):
-    filepath = os.path.join(workflow_path, 'Dockerfile.{}'.format(sha1))
-    write_dockerfile(neurodocker_dict=neurodocker_dict, filepath=filepath)
+    dockerfile = os.path.join(workflow_path, 'Dockerfile.{}'.format(sha1))
+    jsonpath = os.path.join(workflow_path, f"nrd_spec_{sha1}.json")
+    with open(jsonpath, 'w') as fj:
+        json.dump(neurodocker_dict, fj)
+    if not Path(dockerfile).exists():
+        write_dockerfile_sp(nrd_jsonfile=jsonpath, dockerfile=dockerfile)
     tag = "repronim/testkraken:{}".format(sha1)
-    build_image(filepath, build_context=workflow_path, tag=tag)
+    build_image(dockerfile, build_context=workflow_path, tag=tag)
