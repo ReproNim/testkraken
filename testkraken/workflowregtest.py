@@ -475,7 +475,7 @@ def _validate_parameters(params, workflow_path, tests_path):
             raise SpecificationError("'script' field has to be a string")
         if analysis_script:
             analysis_script = workflow_path / 'scripts' / analysis_script
-           if not analysis_script.is_file():
+            if not analysis_script.is_file():
                 raise FileNotFoundError(
                     "Script from analysis  does not exist: {}".format(analysis_script))
             else:
