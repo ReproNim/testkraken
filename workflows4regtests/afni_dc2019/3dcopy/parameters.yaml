@@ -1,0 +1,17 @@
+env:
+# for testing
+  base:
+  - {image: 'afni/afni', pkg-manager: apt}
+
+analysis:
+  command: 3dcopy
+  inputs:
+  - [File, "", anat_3mm.nii.gz]
+  - [str, "", "copied.nii.gz"]
+  script: ""
+
+tests:
+- {file: "copied.nii.gz", name: regr1, script: test_obj_eq.py}
+- {file: "copied.nii.gz", name: header, script: test_afni_scan_headers.py}
+- {file: "copied.nii.gz", name: data, script: test_afni_scan_data.py}
+- {file: "copied.nii.gz", name: diff_fake, script: test_afni_scan_data_diff_fake.py}

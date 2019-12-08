@@ -143,18 +143,19 @@ class WorkflowRegtest:
 
 
     def _run_pydra(self, image, soft_ver_str):
-        wf = pydra.Workflow(name="wf", input_spec=["image"])
+        wf = pydra.Workflow(name="wf", input_spec=["image"])#, cache_dir="/Users/dorota/testkraken/ala")
         wf.inputs.image = image
 
         param_run = self.parameters["analysis"]
         cmd_run = [param_run["command"]]
-        script_run = param_run["script"]
-
-        inp_fields_run = [("script", pydra.specs.File, dc.field(
-            metadata={"position": 1, "help_string": "script file", "mandatory": True,}
-                ))]
+        inp_fields_run = []
         inp_val_run = {}
-        inp_val_run[f"script"] = script_run
+
+        if param_run["script"]:
+            script_run = param_run["script"]
+            inp_fields_run.append(("script", pydra.specs.File, dc.field(
+                metadata={"position": 1, "help_string": "script file", "mandatory": True,})))
+            inp_val_run[f"script"] = script_run
         for ind, (tp, flag, inp) in enumerate(param_run["inputs"]):
             if tp == "File":
                 tp = pydra.specs.File
@@ -169,8 +170,10 @@ class WorkflowRegtest:
                      )
                      )
             inp_fields_run.append(field)
-            inp_val_run[f"inp_{ind}"] = self.workflow_path.joinpath("data", inp)
-
+            if tp is pydra.specs.File:
+                inp_val_run[f"inp_{ind}"] = self.workflow_path.joinpath("data", inp)
+            else:
+                inp_val_run[f"inp_{ind}"] = inp
         input_spec_run = pydra.specs.SpecInfo(name="Input",fields=inp_fields_run,
                                               bases=(pydra.specs.DockerSpec,))
 
@@ -467,15 +470,16 @@ def _validate_parameters(params, workflow_path, tests_path):
     if not isinstance(params['analysis'], dict):
         raise SpecificationError("Value of key 'analysis' must be a dictionaries")
     else:
-        analysis_script = params['analysis'].get("script", None)
-        if not analysis_script or not isinstance(analysis_script, str):
-            raise SpecificationError("'analysis' has to have 'script' field and it has to be a str")
-        analysis_script = workflow_path / 'scripts' / analysis_script
-        if not analysis_script.is_file():
-            raise FileNotFoundError(
-                "Script from analysis  does not exist: {}".format(analysis_script))
-        else:
-            params['analysis']["script"] = analysis_script
+        analysis_script = params['analysis'].get("script", "")
+        if not isinstance(analysis_script, str):
+            raise SpecificationError("'script' field has to be a string")
+        if analysis_script:
+            analysis_script = workflow_path / 'scripts' / analysis_script
+            if not analysis_script.is_file():
+                raise FileNotFoundError(
+                    "Script from analysis  does not exist: {}".format(analysis_script))
+            else:
+                params['analysis']["script"] = analysis_script
         analysis_command = params['analysis'].get("command", None)
         if not analysis_command or not isinstance(analysis_command, str):
             raise SpecificationError("'command' must be a string.")
