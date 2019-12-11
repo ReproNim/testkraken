@@ -13,5 +13,5 @@ def test_afni_examples(workflow_path):
     print(workflow_path)
     cwd = Path.cwd()
     working_dir = (cwd / "outputs" / Path(workflow_path).name).absolute()
-    runner(workflow_path=workflow_path, working_dir=working_dir, tmp_dir=False)
+    runner(workflow_path=workflow_path, working_dir=working_dir)
     os.chdir(cwd)

@@ -40,18 +40,13 @@ class WorkflowRegtest:
 
     def __init__(self, workflow_path, working_dir=None, tmp_working_dir=False):
         self.workflow_path = Path(workflow_path).absolute()
-        #breakpoint()
-        if working_dir and tmp_working_dir:
-            raise Exception("please provide working_dir OR set tmp_working_dir=True, "
-                            "do not change both arguments")
+        if working_dir:
+            self.working_dir = Path(working_dir).absolute()
         elif tmp_working_dir:
             self.working_dir = Path(tempfile.mkdtemp(
             prefix='testkraken-{}'.format(self.workflow_path.name))).absolute()
-        elif working_dir:
-            self.working_dir = Path(working_dir).absolute()
-            #self.working_dir.mkdir(exist_ok=True)
         else:
-            raise Exception("please provide working_dir OR set tmp_working_dir=Tru,"
+            raise Exception("please provide working_dir or set tmp_working_dir=Tru,"
                             "should this be implemented and use cwd??")
         self.working_dir.mkdir(parents=True, exist_ok=True)
         _validate_workflow_path(self.workflow_path)
