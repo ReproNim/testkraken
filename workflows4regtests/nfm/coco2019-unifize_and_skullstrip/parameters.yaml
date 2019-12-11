@@ -1,0 +1,20 @@
+env:
+  base:
+  - {image: debian:stretch, pkg-manager: apt}
+#  - {image: ubuntu:16.04, pkg-manager: apt}
+  fsl:
+  - {version: 5.0.10}
+  afni:
+  - {version: latest}
+  miniconda:
+  - {conda_install: [python=3.7, nipype]}
+#  - {conda_install: [python=2.7, nipype]}
+analysis:
+  inputs:
+   - {type: File, value: sub-01_ses-test_T1w.nii.gz}
+   - {type: str, name: out_name, value: sub-01_out.nii.gz, output_file: True}
+  command: niflow-coco2019-unifize_and_skullstrip
+  script: ""
+tests:
+- {file: out_name, name: regr1, script: /Users/dorota/testkraken/testkraken/testing_functions/test_obj_eq.py}
+framework: nfm

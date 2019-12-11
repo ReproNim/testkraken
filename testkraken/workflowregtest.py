@@ -3,7 +3,7 @@
 from copy import deepcopy
 import dataclasses as dc
 import itertools
-import json
+import json, os
 from pathlib import Path
 import shutil
 import tempfile
@@ -40,6 +40,7 @@ class WorkflowRegtest:
 
     def __init__(self, workflow_path, working_dir=None, tmp_working_dir=False):
         self.workflow_path = Path(workflow_path).absolute()
+        #breakpoint()
         if working_dir and tmp_working_dir:
             raise Exception("please provide working_dir OR set tmp_working_dir=True, "
                             "do not change both arguments")
@@ -48,23 +49,23 @@ class WorkflowRegtest:
             prefix='testkraken-{}'.format(self.workflow_path.name))).absolute()
         elif working_dir:
             self.working_dir = Path(working_dir).absolute()
-            self.working_dir.mkdir(exist_ok=True)
+            #self.working_dir.mkdir(exist_ok=True)
         else:
-            # if working_dir is None and tmp_working_dir == False
-            self.working_dir = (Path.cwd() / "outputs" / self.workflow_path.name).absolute()
-            self.working_dir.mkdir(parents=True, exist_ok=True)
+            raise Exception("please provide working_dir OR set tmp_working_dir=Tru,"
+                            "should this be implemented and use cwd??")
+        self.working_dir.mkdir(parents=True, exist_ok=True)
         _validate_workflow_path(self.workflow_path)
         self.tests_dir = Path(__file__).parent / "testing_functions"
+
         with (self.workflow_path / 'parameters.yaml').open() as f:
             self._parameters = ruamel.yaml.safe_load(f)
-
         _validate_parameters(self._parameters, self.workflow_path, self.tests_dir)
 
         self._parameters.setdefault('fixed_env', [])
         if isinstance(self._parameters['fixed_env'], dict):
             self._parameters['fixed_env'] = [self._parameters['fixed_env']]
         self._parameters.setdefault('plots', [])
-
+        self.framework = self._parameters.get("framework", None)
         self.docker_status = []
 
         self._create_matrix_of_envs()  # and _soft_vers_spec ...
@@ -74,6 +75,7 @@ class WorkflowRegtest:
          # generating a simple name for envs (gave up on including env info)
         self.env_names = ['env_{}'.format(ii) for ii, _ in enumerate(self._matrix_of_envs)]
         self.reports = {}
+
 
     @property
     def nenv(self):
@@ -118,7 +120,9 @@ class WorkflowRegtest:
 
     def _create_neurodocker_specs(self):
         self.neurodocker_specs = cg.get_dict_of_neurodocker_dicts(
-            self._parameters['env'].keys(), self._matrix_of_envs)
+            self._parameters['env'].keys(), self._matrix_of_envs,
+            self.framework
+        )
 
     def _build_docker_images(self):
         """Build all Docker images."""
@@ -126,11 +130,15 @@ class WorkflowRegtest:
         for sha1, neurodocker_dict in self.neurodocker_specs.items():
             try:
                 print("++ building image: {}".format(neurodocker_dict))
-                cg.docker_main(self.working_dir, neurodocker_dict, sha1)
+                if self.framework == "nfm":
+                    build_context = self.workflow_path
+                else:
+                    build_context = self.working_dir
+                cg.docker_main(self.working_dir, neurodocker_dict, sha1, build_context=build_context)
                 self.docker_status.append("docker ok")
             except Exception as e:
-                self.docker_status.append(
-                    "failed to build image with SHA1 {}: {}".format(sha1, e))
+               self.docker_status.append(
+                   "failed to build image with SHA1 {}: {}".format(sha1, e))
 
     def _run_workflow_in_matrix_of_envs(self):
         """Run workflow for all env combination, testing for all tests.
@@ -146,6 +154,7 @@ class WorkflowRegtest:
         wf = pydra.Workflow(name="wf", input_spec=["image"])#, cache_dir="/Users/dorota/testkraken/ala")
         wf.inputs.image = image
 
+        # 1st task - analysis
         param_run = self.parameters["analysis"]
         cmd_run = [param_run["command"]]
         inp_fields_run = []
@@ -156,33 +165,44 @@ class WorkflowRegtest:
             inp_fields_run.append(("script", pydra.specs.File, dc.field(
                 metadata={"position": 1, "help_string": "script file", "mandatory": True,})))
             inp_val_run[f"script"] = script_run
-        for ind, (tp, flag, inp) in enumerate(param_run["inputs"]):
+
+        output_file_dict = {}
+        for ind, inputs in enumerate(param_run["inputs"]):
+            inputs = deepcopy(inputs)
+            tp = inputs.pop("type")
             if tp == "File":
                 tp = pydra.specs.File
-            field = (f"inp_{ind}", tp,
-                     dc.field(
-                         metadata={
-                             "position": ind + 2,
-                             "help_string": f"inp_{ind}",
-                             "argstr": flag,
-                             "mandatory": True
-                         }
-                     )
-                     )
+            value = inputs.pop("value")
+            name = inputs.pop("name", f"inp_{ind}")
+            output_file = inputs.pop("output_file", False)
+            # default values for metadata
+            metadata = {"position": ind + 2,
+                        "help_string": f"inp_{ind}",
+                        "mandatory": True
+                        }
+            # updating metadata with values provided in parameters file
+            metadata.update(inputs)
+
+            field = (name, tp, dc.field(metadata=metadata))
             inp_fields_run.append(field)
+
             if tp is pydra.specs.File:
-                inp_val_run[f"inp_{ind}"] = self.workflow_path.joinpath("data", inp)
+                inp_val_run[name] = self.workflow_path.joinpath("data", value)
             else:
-                inp_val_run[f"inp_{ind}"] = inp
+                if output_file:
+                    output_file_dict[name] = value
+                    value = os.path.join("/output_pydra", value)
+                inp_val_run[name] = value
+
         input_spec_run = pydra.specs.SpecInfo(name="Input",fields=inp_fields_run,
                                               bases=(pydra.specs.DockerSpec,))
 
-
         out_fields_run = []
         for el in self.parameters["tests"]:
+            if el["file"] in output_file_dict:
+                el["file"] = output_file_dict[el["file"]]
             # this would have to be modified if we allow multiple files to one test
             out_fields_run.append((f"file_{el['name']}", pydra.specs.File, el["file"]))
-
 
         output_spec_run = pydra.specs.SpecInfo(name="Output", fields=out_fields_run,
                                                bases=(pydra.specs.ShellOutSpec,))
@@ -192,6 +212,7 @@ class WorkflowRegtest:
                                     **inp_val_run)
         wf.add(task_run)
 
+        # 2nd task - creating list from the 1st task output
         @pydra.mark.task
         @pydra.mark.annotate({"return": {"outfiles": list}})
         def outfiles_list(res):
@@ -202,7 +223,7 @@ class WorkflowRegtest:
 
         wf.add(outfiles_list(name="outfiles", res=wf.run.lzout.all_))
 
-
+        # 3rd task - tests
         input_spec_test = pydra.specs.SpecInfo(
             name="Input",
             fields=[
@@ -266,9 +287,9 @@ class WorkflowRegtest:
                                      file_out=wf.outfiles.lzout.outfiles,
                                      **inp_val_test).\
             split((("script_test", "name_test"), ("file_out", "file_ref")))
-
         wf.add(task_test)
 
+        # setting wf output
         wf.set_output([("out", wf.run.lzout.stdout),
                        ("outfiles", wf.outfiles.lzout.outfiles),
                        ("test_out", wf.test.lzout.stdout),
@@ -439,6 +460,18 @@ def _validate_workflow_path(workflow_path):
     return True
 
 
+def _validate_input_dict(input):
+    if isinstance(input, dict):
+        required = {"type", "value"}
+        not_found = required - set(input.keys())
+        if not_found:
+            raise SpecificationError(
+                "Required key(s) not found in input dictionary: {}"
+                    .format(', '.join(not_found)))
+    else:
+        raise Exception("input element has to be a dictionary")
+
+
 def _validate_parameters(params, workflow_path, tests_path):
     """Validate parameters according to the testkraken specification."""
     required = {'env', 'analysis', 'tests'}
@@ -487,6 +520,10 @@ def _validate_parameters(params, workflow_path, tests_path):
             params['analysis']["inputs"] = []
         elif not isinstance(params["analysis"]['inputs'], list):
             raise SpecificationError("Value of key 'inputs' must be a list.")
+        else:
+            for inp_el in params['analysis']["inputs"]:
+                _validate_input_dict(inp_el)
+
     # checking tests
     if not isinstance(params['tests'], (list, tuple)):
         raise SpecificationError("Value of key 'tests' must be an iterable of dictionaries")
@@ -507,7 +544,7 @@ def _validate_parameters(params, workflow_path, tests_path):
     #TODO: adding checks for each of the element of tests
 
     # Validate optional parameters.
-    if params.get('fixed_env', False):
+    if params.get('fixed_env', None):
         if not isinstance(params['fixed_env'], (dict, list)):
             raise SpecificationError("Value of key 'fixed_env' must be a dictionary or list.")
         else:
@@ -517,12 +554,18 @@ def _validate_parameters(params, workflow_path, tests_path):
             elif isinstance(params['fixed_env'], list):
                 if any(set(f.keys()) != set(params['env'].keys()) for f in params['fixed_env']):
                     raise SpecificationError("Keys of 'fixed_env' must be same as keys of 'env'.")
-    if params.get('plots', False):
+    if params.get('plots', None):
         if not isinstance(params['plots'], (list, tuple)):
             raise SpecificationError("Value of key 'fixed_env' must be a dictionary.")
         else:
             if any(not isinstance(j, dict) for j in params['plots']):
                 raise SpecificationError("Every item in 'plots' must be a dictionary.")
+
+    allowed_frameworks = ["nfm"]
+    if params.get('framework', None):
+        if not params["framework"] in allowed_frameworks:
+            raise Exception(f"framework has to be from the list {allowed_frameworks},"
+                            f"but {params['framework']} provided")
 
     return True
 

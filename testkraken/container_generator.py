@@ -72,7 +72,7 @@ def _get_dictionary_hash(d):
     return hashlib.sha1(json.dumps(d, sort_keys=True).encode()).hexdigest()
 
 
-def get_dict_of_neurodocker_dicts(env_keys, env_matrix):
+def get_dict_of_neurodocker_dicts(env_keys, env_matrix, framework=None):
     """Return dictionary of Neurodocker specifications.
 
     Parameters
@@ -80,6 +80,7 @@ def get_dict_of_neurodocker_dicts(env_keys, env_matrix):
     env_keys: list of keys in the environment. Must include 'base'.
     env_matrix: list of dictionary, where each dictionary specifies an environment.
         Each dictionary must contain the keys in `env_keys`.
+    framework: optional, can be nfm
 
     Returns
     -------
@@ -94,8 +95,28 @@ def get_dict_of_neurodocker_dicts(env_keys, env_matrix):
         if (this_hash, neurodocker_dict) in nrd_dict:
             raise Exception("two identical environment specifications are found, "
                             "remove one parameters.yml file")
+        # if framework provided the neurodocker_dict should be updated
+        if framework == "nfm":
+            neurodocker_dict = _nfm_framework(neurodocker_dict)
         nrd_dict.append((this_hash, neurodocker_dict))
     return OrderedDict(nrd_dict)
+
+
+def _nfm_framework(neurodocker_dict):
+    """ extra instructions for the nfm framework"""
+    instr_list = list(neurodocker_dict['instructions'])
+    env_nm = None
+    for i, el in enumerate(instr_list):
+        if el[0] == "miniconda":
+            env_nm = el[1]['create_env']
+    if env_nm:
+        instr_list.append(("miniconda", {"use_env": env_nm, "pip_install": ["niflow-manager"]}))
+    else:
+        instr_list.append(("miniconda", {"create_env": "testkraken", "pip_install": ["niflow-manager"]}))
+    instr_list.append(("copy", [".", "/nfm"]))
+    instr_list.append(("miniconda", {"use_env": env_nm, "pip_install": ["/nfm/package/"]}))
+    neurodocker_dict["instructions"] = tuple(instr_list)
+    return neurodocker_dict
 
 
 def write_dockerfile(nrd_jsonfile, dockerfile):
@@ -145,25 +166,29 @@ def build_image(dockerfile, build_context=None, tag=None, build_opts=None):
     cmd_base = "docker build {tag} {build_opts}"
     cmd = cmd_base.format(tag=tag, build_opts=build_opts)
     dockerfile = os.path.abspath(dockerfile)
-
     if build_context is not None:
         build_context = os.path.abspath(build_context)
-        cmd += " -f {} {}".format(dockerfile, build_context)
+        # changing build directory, needed for fnp
+        # was failing wit providing build_context to build command)
+        cwd = os.getcwd()
+        os.chdir(build_context)
+        cmd += " -f {} .".format(dockerfile)
         input = None
     else:
         with open(dockerfile) as f:
             input = f.read()
         cmd += " -"
-
     subprocess.run(cmd.split(), check=True, input=input)
+    if build_context is not None:
+        os.chdir(cwd)
 
 
-def docker_main(workflow_path, neurodocker_dict, sha1):
-    dockerfile = os.path.join(workflow_path, 'Dockerfile.{}'.format(sha1))
-    jsonpath = os.path.join(workflow_path, f"nrd_spec_{sha1}.json")
+def docker_main(workflow_dir, neurodocker_dict, sha1, build_context=None):
+    dockerfile = os.path.join(workflow_dir, 'Dockerfile.{}'.format(sha1))
+    jsonpath = os.path.join(workflow_dir, f"nrd_spec_{sha1}.json")
     with open(jsonpath, 'w') as fj:
         json.dump(neurodocker_dict, fj)
     if not Path(dockerfile).exists():
         write_dockerfile_sp(nrd_jsonfile=jsonpath, dockerfile=dockerfile)
     tag = "repronim/testkraken:{}".format(sha1)
-    build_image(dockerfile, build_context=workflow_path, tag=tag)
+    build_image(dockerfile, build_context=build_context, tag=tag)
