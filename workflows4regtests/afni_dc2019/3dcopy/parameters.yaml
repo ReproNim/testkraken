@@ -1,7 +1,9 @@
 env:
-# for testing
   base:
-  - {image: 'afni/afni', pkg-manager: apt}
+  - {image: debian:stretch, pkg-manager: apt}
+  - {image: ubuntu:16.04, pkg-manager: apt}
+  afni:
+  - {version: latest}
 
 analysis:
   command: 3dcopy
