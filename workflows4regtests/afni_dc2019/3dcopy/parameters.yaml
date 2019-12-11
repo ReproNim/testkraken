@@ -6,12 +6,13 @@ env:
 analysis:
   command: 3dcopy
   inputs:
-  - [File, "", anat_3mm.nii.gz]
-  - [str, "", "copied.nii.gz"]
+  - {type: File, value: anat_3mm.nii.gz}
+  - {type: str, name: copied_file, value: copied.nii.gz, output_file: True}
   script: ""
 
 tests:
-- {file: "copied.nii.gz", name: regr1, script: test_obj_eq.py}
-- {file: "copied.nii.gz", name: header, script: test_afni_scan_headers.py}
-- {file: "copied.nii.gz", name: data, script: test_afni_scan_data.py}
-- {file: "copied.nii.gz", name: diff_fake, script: test_afni_scan_data_diff_fake.py}
+  # two ways of asking for output file that name had to be provided in inputs
+- {file: copied.nii.gz, name: regr1, script: test_obj_eq.py}
+- {file: copied.nii.gz, name: header, script: test_afni_scan_headers.py}
+- {file: copied_file, name: data, script: test_afni_scan_data.py}
+- {file: copied_file, name: diff_fake, script: test_afni_scan_data_diff_fake.py}

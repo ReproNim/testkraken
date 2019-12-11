@@ -9,7 +9,7 @@ env:
 analysis:
   command: python
   inputs:
-  - [File, -f, list_orig.json]
+  - {type: File, argstr: -f, value: list_orig.json}
   script: div_list.py
 
 plots:
