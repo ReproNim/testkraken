@@ -16,5 +16,5 @@ analysis:
   command: niflow-coco2019-unifize_and_skullstrip
   script: ""
 tests:
-- {file: out_name, name: regr1, script: /Users/dorota/testkraken/testkraken/testing_functions/test_obj_eq.py}
+- {file: out_name, name: regr1, script: test_obj_eq.py}
 framework: nfm
