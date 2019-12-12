@@ -290,7 +290,8 @@ class WorkflowRegtest:
                        ("test_out", wf.test.lzout.stdout),
                        ("reports", wf.test.lzout.reports)
                        ])
-
+        print(f"\n running pydra workflow for {self.workflow_path} "
+              f"in working directory - {self.working_dir}")
         with pydra.Submitter(plugin="cf") as sub:
             sub(wf)
         res = wf.result()

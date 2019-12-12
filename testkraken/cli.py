@@ -13,6 +13,7 @@ def main(path, working_dir=None, tmp_working_dir=True):
     if working_dir:
         tmp_working_dir = False
     wf = WorkflowRegtest(workflow_path=path, working_dir=working_dir, tmp_working_dir=tmp_working_dir)
+    print(f"\n running testkraken for {path}; working directory - {working_dir}")
     wf.run()
     wf.merge_outputs()
     wf.dashboard_workflow()
