@@ -72,7 +72,7 @@ def _get_dictionary_hash(d):
     return hashlib.sha1(json.dumps(d, sort_keys=True).encode()).hexdigest()
 
 
-def get_dict_of_neurodocker_dicts(env_keys, env_matrix, framework=None):
+def get_dict_of_neurodocker_dicts(env_keys, env_matrix, post_build=None):
     """Return dictionary of Neurodocker specifications.
 
     Parameters
@@ -96,25 +96,29 @@ def get_dict_of_neurodocker_dicts(env_keys, env_matrix, framework=None):
             raise Exception("two identical environment specifications are found, "
                             "remove one parameters.yml file")
         # if framework provided the neurodocker_dict should be updated
-        if framework == "nfm":
-            neurodocker_dict = _nfm_framework(neurodocker_dict)
+        if post_build:
+            neurodocker_dict = _post_build(neurodocker_dict, post_build)
         nrd_dict.append((this_hash, neurodocker_dict))
     return OrderedDict(nrd_dict)
 
 
-def _nfm_framework(neurodocker_dict):
+def _post_build(neurodocker_dict, post_build):
     """ extra instructions for the nfm framework"""
     instr_list = list(neurodocker_dict['instructions'])
-    env_nm = None
-    for i, el in enumerate(instr_list):
-        if el[0] == "miniconda":
-            env_nm = el[1]['create_env']
-    if env_nm:
-        instr_list.append(("miniconda", {"use_env": env_nm, "pip_install": ["niflow-manager"]}))
-    else:
-        instr_list.append(("miniconda", {"create_env": "testkraken", "pip_install": ["niflow-manager"]}))
-    instr_list.append(("copy", [".", "/nfm"]))
-    instr_list.append(("miniconda", {"use_env": env_nm, "pip_install": ["/nfm/package/"]}))
+    for key, val in post_build.items():
+        if key == "miniconda":
+            env_nm = None
+            for i, el in enumerate(instr_list):
+                if el[0] == "miniconda":
+                    env_nm = el[1]['create_env']
+            if env_nm:
+                miniconda_dict = {"use_env": env_nm}
+            else:
+                miniconda_dict = {"use_env": "testkraken"}
+            miniconda_dict.update(val)
+            instr_list.append(("miniconda", miniconda_dict))
+        else:
+            instr_list.append((key, val))
     neurodocker_dict["instructions"] = tuple(instr_list)
     return neurodocker_dict
 

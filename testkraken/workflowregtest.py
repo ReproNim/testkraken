@@ -9,7 +9,7 @@ import shutil
 import tempfile
 
 import pandas as pd
-import ruamel.yaml
+import yaml
 
 import testkraken.container_generator as cg
 import pydra
@@ -51,16 +51,24 @@ class WorkflowRegtest:
         self.working_dir.mkdir(parents=True, exist_ok=True)
         _validate_workflow_path(self.workflow_path)
         self.tests_dir = Path(__file__).parent / "testing_functions"
+        self.build_context = self.working_dir
 
         with (self.workflow_path / 'parameters.yaml').open() as f:
-            self._parameters = ruamel.yaml.safe_load(f)
-        _validate_parameters(self._parameters, self.workflow_path, self.tests_dir)
+            self._parameters = yaml.safe_load(f)
+        _, new_context = _validate_parameters(self._parameters, self.workflow_path, self.tests_dir)
+        if new_context:
+            self.build_context = self.workflow_path
 
         self._parameters.setdefault('fixed_env', [])
         if isinstance(self._parameters['fixed_env'], dict):
             self._parameters['fixed_env'] = [self._parameters['fixed_env']]
+        if self._parameters.get("env", None):
+            self.env_keys = list(self._parameters['env'].keys())
+        else:
+            self.env_keys = list(self._parameters['fixed_env'][0].keys())
         self._parameters.setdefault('plots', [])
-        self.framework = self._parameters.get("framework", None)
+        self.post_build = self._parameters.get("post_build", None)
+        # self.framework = self._parameters.get("framework", None)
         self.docker_status = []
 
         self._create_matrix_of_envs()  # and _soft_vers_spec ...
@@ -84,7 +92,6 @@ class WorkflowRegtest:
         """Create matrix of all combinations of environment variables.
         Create a list of short descriptions of envs as single strings
         """
-        self.keys_envs = list(self._parameters['env'].keys())  # TODO: remove
         # lists of full specification (all versions for each software/key)
         self._soft_vers_spec = {}
         for key, val in self._parameters['env'].items():
@@ -110,13 +117,13 @@ class WorkflowRegtest:
             if isinstance(fixed_env, dict):
                 fixed_env = [fixed_env]
             for f in fixed_env:
-                matrix.append(tuple(f[k] for k in self._parameters['env'].keys()))
+                matrix.append(tuple(f[k] for k in self.env_keys))
         self._matrix_of_envs = matrix
 
     def _create_neurodocker_specs(self):
         self.neurodocker_specs = cg.get_dict_of_neurodocker_dicts(
-            self._parameters['env'].keys(), self._matrix_of_envs,
-            self.framework
+            self.env_keys, self._matrix_of_envs,
+            self.post_build
         )
 
     def _build_docker_images(self):
@@ -125,11 +132,7 @@ class WorkflowRegtest:
         for sha1, neurodocker_dict in self.neurodocker_specs.items():
             try:
                 print("++ building image: {}".format(neurodocker_dict))
-                if self.framework == "nfm":
-                    build_context = self.workflow_path
-                else:
-                    build_context = self.working_dir
-                cg.docker_main(self.working_dir, neurodocker_dict, sha1, build_context=build_context)
+                cg.docker_main(self.working_dir, neurodocker_dict, sha1, build_context=self.build_context)
                 self.docker_status.append("docker ok")
             except Exception as e:
                self.docker_status.append(
@@ -327,7 +330,7 @@ class WorkflowRegtest:
         # including info from th fixed envs
         for fixed_env in self._parameters['fixed_env']:
             _envs_versions = {}
-            for key in self.keys_envs:
+            for key in self.env_keys:
                 # checking if the software already in self.softspec_string_dict
                 if fixed_env[key] in self._soft_vers_spec[key]:
                     ind = self._soft_vers_spec[key].index(fixed_env[key])
@@ -468,33 +471,64 @@ def _validate_input_dict(input):
         raise Exception("input element has to be a dictionary")
 
 
+def _validate_envs(params):
+    params_env = params.get('env', None)
+    params_fixedenv = params.get('fixed_env', None)
+    if params_env:
+        if not isinstance(params_env, dict):
+            raise SpecificationError("Value of key 'env' must be a dictionary.")
+        else:
+            if any(not isinstance(j, (dict, list)) for j in params_env.values()):
+                raise SpecificationError("Every value in 'env' must be a dictionary or list.")
+            for key, val in params_env.items():
+                if isinstance(val, dict) and {'common', 'varied'} == set(val.keys()):
+                    if not isinstance(val['common'], dict):
+                        raise SpecificationError("common part of {} should be a dictionary".format(key))
+                    elif not isinstance(val['varied'], (list, tuple)):
+                        raise SpecificationError("varied part of {} should be a list or tuple".format(key))
+                    # checking if common and varied have the same key
+                    elif any(set(val['common'].keys()).intersection(vd) for vd in val['varied']):
+                        # TODO: I should probably accept when conda_install and pip_install and just merge two strings
+                        raise SpecificationError("common and varied parts for {} have the same key".format(key))
+
+    if params_fixedenv:
+        if not isinstance(params_fixedenv, (dict, list)):
+            raise SpecificationError("Value of key 'fixed_env' must be a dictionary or list.")
+        else:
+            if isinstance(params_fixedenv, dict) and params_env:
+                if set(params_fixedenv.keys()) != set(params_env.keys()):
+                    raise SpecificationError("Keys of 'fixed_env' must be same as keys of 'env'.")
+            elif isinstance(params['fixed_env'], list):
+                if params_env:
+                    if any(set(f.keys()) != set(params_env.keys()) for f in params_fixedenv):
+                        raise SpecificationError("Keys of 'fixed_env' must be same as keys of 'env'.")
+                else:
+                    if any(set(f.keys()) != set(params_fixedenv[0].keys()) for f in params_fixedenv[1:]):
+                        raise SpecificationError("Keys of all environments from 'fixed_env' must be same.")
+
+
+def _validate_post_build(params_postbuild):
+    new_context = False
+    if "copy" in params_postbuild:
+        new_context = True
+    # todo
+    return new_context
+
+
 def _validate_parameters(params, workflow_path, tests_path):
     """Validate parameters according to the testkraken specification."""
-    required = {'env', 'analysis', 'tests'}
-    optional = {'fixed_env', 'plots'}
-
+    required = {'analysis', 'tests'}
     not_found = required - set(params.keys())
+    if "env" not in params.keys() and "fixed_env" not in params.keys():
+        not_found.add("env or fixed_env")
     if not_found:
         raise SpecificationError(
             "Required key(s) not found in parameters: {}"
             .format(', '.join(not_found)))
 
     # Validate required parameters.
-    if not isinstance(params['env'], dict):
-        raise SpecificationError("Value of key 'env' must be a dictionary.")
-    else:
-        if any(not isinstance(j, (dict, list)) for j in params['env'].values()):
-            raise SpecificationError("Every value in 'env' must be a dictionary or list.")
-        for key, val in params['env'].items():
-            if isinstance(val, dict) and {'common', 'varied'} == set(val.keys()):
-                if not isinstance(val['common'], dict):
-                    raise SpecificationError("common part of {} should be a dictionary".format(key))
-                elif not isinstance(val['varied'], (list, tuple)):
-                    raise SpecificationError("varied part of {} should be a list or tuple".format(key))
-                # checking if common and varied have the same key
-                elif any(set(val['common'].keys()).intersection(vd) for vd in val['varied']):
-                    # TODO: I should probably accept when conda_install and pip_install and just merge two strings
-                    raise SpecificationError("common and varied parts for {} have the same key".format(key))
+    # env and fixed_env
+    _validate_envs(params)
     # checking analysis
     if not isinstance(params['analysis'], dict):
         raise SpecificationError("Value of key 'analysis' must be a dictionaries")
@@ -540,16 +574,10 @@ def _validate_parameters(params, workflow_path, tests_path):
     #TODO: adding checks for each of the element of tests
 
     # Validate optional parameters.
-    if params.get('fixed_env', None):
-        if not isinstance(params['fixed_env'], (dict, list)):
-            raise SpecificationError("Value of key 'fixed_env' must be a dictionary or list.")
-        else:
-            if isinstance(params['fixed_env'], dict):
-                if set(params['fixed_env'].keys()) != set(params['env'].keys()):
-                    raise SpecificationError("Keys of 'fixed_env' must be same as keys of 'env'.")
-            elif isinstance(params['fixed_env'], list):
-                if any(set(f.keys()) != set(params['env'].keys()) for f in params['fixed_env']):
-                    raise SpecificationError("Keys of 'fixed_env' must be same as keys of 'env'.")
+    new_context = None
+    if params.get('post_build', None):
+        new_context = _validate_post_build(params["post_build"])
+
     if params.get('plots', None):
         if not isinstance(params['plots'], (list, tuple)):
             raise SpecificationError("Value of key 'fixed_env' must be a dictionary.")
@@ -557,13 +585,9 @@ def _validate_parameters(params, workflow_path, tests_path):
             if any(not isinstance(j, dict) for j in params['plots']):
                 raise SpecificationError("Every item in 'plots' must be a dictionary.")
 
-    allowed_frameworks = ["nfm"]
-    if params.get('framework', None):
-        if not params["framework"] in allowed_frameworks:
-            raise Exception(f"framework has to be from the list {allowed_frameworks},"
-                            f"but {params['framework']} provided")
-
-    return True
+    # todo: the validation functions probably should be just members of the class,
+    # todo: so don't have to return new_context, etc.
+    return True, new_context
 
 
 class SpecificationError(Exception):
