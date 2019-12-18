@@ -1,3 +1,6 @@
+data:
+  type: workflow_path
+  location: data_1
 env:
   base:
   - {image: debian:stretch, pkg-manager: apt}

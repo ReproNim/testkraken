@@ -12,7 +12,7 @@ fixed_env:
 
 analysis:
   inputs:
-  - [File, -f, list2sort.json]
+  - {type: File, argstr: -f, value: list2sort.json}
   command: python
   script: sorting.py
 tests:

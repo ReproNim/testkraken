@@ -8,7 +8,7 @@ env:
 
 analysis:
   inputs:
-  - [File, -f, list2sort.json]
+  - {type: File, argstr: -f, value: list2sort.json}
   script: sorting.py
   command: python
 
