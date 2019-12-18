@@ -114,7 +114,7 @@ def _post_build(neurodocker_dict, post_build):
             if env_nm:
                 miniconda_dict = {"use_env": env_nm}
             else:
-                miniconda_dict = {"use_env": "testkraken"}
+                miniconda_dict = {"create_env": "testkraken"}
             miniconda_dict.update(val)
             instr_list.append(("miniconda", miniconda_dict))
         else:

@@ -58,6 +58,7 @@ class WorkflowRegtest:
         _, new_context = _validate_parameters(self._parameters, self.workflow_path, self.tests_dir)
         if new_context:
             self.build_context = self.workflow_path
+        self.data_path = self._parameters["data"]["location"]
 
         self._parameters.setdefault('fixed_env', [])
         if isinstance(self._parameters['fixed_env'], dict):
@@ -185,7 +186,7 @@ class WorkflowRegtest:
             inp_fields_run.append(field)
 
             if tp is pydra.specs.File:
-                inp_val_run[name] = self.workflow_path.joinpath("data", value)
+                inp_val_run[name] = self.data_path / value
             else:
                 if output_file:
                     output_file_dict[name] = value
@@ -277,7 +278,7 @@ class WorkflowRegtest:
         inp_val_test = {}
         inp_val_test["name_test"] = [el["name"] for el in self.parameters["tests"]]
         inp_val_test["script_test"] = [el["script"] for el in self.parameters["tests"]]
-        inp_val_test["file_ref"] = [self.workflow_path.joinpath("data", el["file"])
+        inp_val_test["file_ref"] = [self.data_path / el["file"]
                                     for el in self.parameters["tests"]]
 
         task_test = pydra.ShellCommandTask(name="test", executable="python",
@@ -447,8 +448,6 @@ def _validate_workflow_path(workflow_path):
     missing = []
     if not (p / 'parameters.yaml').is_file():
         missing.append(('parameters.yaml', 'file'))
-    if not (p / 'data').is_dir():
-        missing.append(('data', 'directory'))
     if not (p / 'scripts').is_dir():
         missing.append(('scripts', 'directory'))
     if missing:
@@ -514,6 +513,21 @@ def _validate_post_build(params_postbuild):
     # todo
     return new_context
 
+def _validate_data(params, workflow_path):
+    # TODO will be extended
+    valid_types = ["workflow_path", "local"]
+    if "location" not in params["data"]:
+        raise Exception(f"data has to have location")
+    if "type" not in params["data"] or params["data"]["type"] not in valid_types:
+        raise Exception(f"data has to have type from the list {valid_types}")
+    elif params["data"]["type"] == "workflow_path":
+        params["data"]["location"] = workflow_path / params["data"]["location"]
+    elif params["data"]["type"] == "local":
+        params["data"]["location"] = Path(params["data"]["location"]).absolute()
+
+    if not params["data"]["location"].exists():
+        raise Exception(f"{params['data']['location']} doesnt exist")
+
 
 def _validate_parameters(params, workflow_path, tests_path):
     """Validate parameters according to the testkraken specification."""
@@ -577,6 +591,12 @@ def _validate_parameters(params, workflow_path, tests_path):
     new_context = None
     if params.get('post_build', None):
         new_context = _validate_post_build(params["post_build"])
+    if "data" not in params:
+        params["data"] = {"type": "default", "location": workflow_path / "data"}
+        if not params["data"]["location"].exists():
+            raise Exception(f"{params['data']['location']} doesnt exist")
+    else:
+        _validate_data(params, workflow_path)
 
     if params.get('plots', None):
         if not isinstance(params['plots'], (list, tuple)):
