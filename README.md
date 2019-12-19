@@ -9,7 +9,7 @@ Use _Testkraken_ to test workflows in a matrix of parametrized environments.
 _Testkraken_ can be installed with `pip`:
 
 ```bash
-$ pip install .
+$ pip install testkraken
 ```
 
 Developers should use the development installation:
