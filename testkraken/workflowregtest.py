@@ -38,7 +38,14 @@ class WorkflowRegtest:
     nenv: int, number of environments.
     """
 
+    _etelemetry_version_data = None  # class variable to store etelemetry information
+
     def __init__(self, workflow_path, working_dir=None, tmp_working_dir=False):
+        from . import check_latest_version
+
+        if WorkflowRegtest._etelemetry_version_data is None:
+            WorkflowRegtest._etelemetry_version_data = check_latest_version()
+
         self.workflow_path = Path(workflow_path).absolute()
         if working_dir:
             self.working_dir = Path(working_dir).absolute()
