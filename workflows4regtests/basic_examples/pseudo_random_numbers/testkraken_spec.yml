@@ -1,6 +1,8 @@
 data:
   type: workflow_path
   location: data_1
+scripts:
+  scripts_subdir/scripts
 env:
   base:
   - {image: debian:stretch, pkg-manager: apt}

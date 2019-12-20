@@ -60,12 +60,13 @@ class WorkflowRegtest:
         self.tests_dir = Path(__file__).parent / "testing_functions"
         self.build_context = self.working_dir
 
-        with (self.workflow_path / 'parameters.yaml').open() as f:
+        with (self.workflow_path / 'testkraken_spec.yml').open() as f:
             self._parameters = yaml.safe_load(f)
         _, new_context = _validate_parameters(self._parameters, self.workflow_path, self.tests_dir)
         if new_context:
             self.build_context = self.workflow_path
         self.data_path = self._parameters["data"]["location"]
+        self.scripts_path = self._parameters["scripts"]
 
         self._parameters.setdefault('fixed_env', [])
         if isinstance(self._parameters['fixed_env'], dict):
@@ -453,10 +454,8 @@ def _validate_workflow_path(workflow_path):
     """Validate existence of files and directories in workflow path."""
     p = Path(workflow_path)
     missing = []
-    if not (p / 'parameters.yaml').is_file():
-        missing.append(('parameters.yaml', 'file'))
-    if not (p / 'scripts').is_dir():
-        missing.append(('scripts', 'directory'))
+    if not (p / 'testkraken_spec.yml').is_file():
+        missing.append(('testkraken_spec.yml', 'file'))
     if missing:
         m = ", ".join("{} ({})".format(*ii) for ii in missing)
         raise FileNotFoundError(
@@ -536,6 +535,12 @@ def _validate_data(params, workflow_path):
         raise Exception(f"{params['data']['location']} doesnt exist")
 
 
+def _validate_scripts(params, workflow_path):
+    params["scripts"] = Path(workflow_path) / params["scripts"]
+    if not params["scripts"].exists():
+        raise Exception(f"{params['scripts']} doesnt exist")
+
+
 def _validate_parameters(params, workflow_path, tests_path):
     """Validate parameters according to the testkraken specification."""
     required = {'analysis', 'tests'}
@@ -550,20 +555,33 @@ def _validate_parameters(params, workflow_path, tests_path):
     # Validate required parameters.
     # env and fixed_env
     _validate_envs(params)
+    # checking optional data and scripts
+    if "data" not in params:
+        params["data"] = {"type": "default", "location": workflow_path / "data"}
+        if not params["data"]["location"].exists():
+            raise Exception(f"{params['data']['location']} doesnt exist")
+    else:
+        _validate_data(params, workflow_path)
+    if "scripts" not in params:
+        params["scripts"] = workflow_path / "scripts"
+        if not params["scripts"].exists():
+            raise Exception(f"{params['scripts']} doesnt exist")
+    else:
+        _validate_scripts(params, workflow_path)
     # checking analysis
     if not isinstance(params['analysis'], dict):
         raise SpecificationError("Value of key 'analysis' must be a dictionaries")
     else:
         analysis_script = params['analysis'].get("script", "")
-        if not isinstance(analysis_script, str):
-            raise SpecificationError("'script' field has to be a string")
         if analysis_script:
-            analysis_script = workflow_path / 'scripts' / analysis_script
+            analysis_script = params["scripts"] / analysis_script
             if not analysis_script.is_file():
                 raise FileNotFoundError(
                     "Script from analysis  does not exist: {}".format(analysis_script))
             else:
                 params['analysis']["script"] = analysis_script
+        else:
+            params['analysis']["script"] = ""
         analysis_command = params['analysis'].get("command", None)
         if not analysis_command or not isinstance(analysis_command, str):
             raise SpecificationError("'command' must be a string.")
@@ -585,8 +603,8 @@ def _validate_parameters(params, workflow_path, tests_path):
         test_script = el.get("script", None)
         if not test_script or not isinstance(test_script, str):
             raise SpecificationError("'tests' have to have 'script' field and it has to be a str")
-        if (workflow_path / 'scripts' / test_script).is_file():
-            el["script"] = workflow_path / 'scripts' / test_script
+        if params["scripts"].is_file():
+            el["script"] = params['scripts'] / test_script
         elif (tests_path / el["script"]).is_file():
             el["script"] = tests_path / el["script"]
         else:
@@ -598,12 +616,6 @@ def _validate_parameters(params, workflow_path, tests_path):
     new_context = None
     if params.get('post_build', None):
         new_context = _validate_post_build(params["post_build"])
-    if "data" not in params:
-        params["data"] = {"type": "default", "location": workflow_path / "data"}
-        if not params["data"]["location"].exists():
-            raise Exception(f"{params['data']['location']} doesnt exist")
-    else:
-        _validate_data(params, workflow_path)
 
     if params.get('plots', None):
         if not isinstance(params['plots'], (list, tuple)):
