@@ -603,7 +603,7 @@ def _validate_parameters(params, workflow_path, tests_path):
         test_script = el.get("script", None)
         if not test_script or not isinstance(test_script, str):
             raise SpecificationError("'tests' have to have 'script' field and it has to be a str")
-        if params["scripts"].is_file():
+        if (params['scripts'] / test_script).is_file():
             el["script"] = params['scripts'] / test_script
         elif (tests_path / el["script"]).is_file():
             el["script"] = tests_path / el["script"]
