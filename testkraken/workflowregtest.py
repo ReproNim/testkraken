@@ -80,12 +80,12 @@ class WorkflowRegtest:
         # self.framework = self._parameters.get("framework", None)
         self.docker_status = []
 
-        self._create_matrix_of_envs()  # and _soft_vers_spec ...
-        self._create_neurodocker_specs()
-        self._create_matrix_of_string_envs()
+        self.create_matrix_of_envs()
+        self.neurodocker_specs = cg.get_dict_of_neurodocker_dicts(
+            self.matrix_of_envs, self.post_build
+        )
 
          # generating a simple name for envs (gave up on including env info)
-        self.env_names = ['env_{}'.format(ii) for ii, _ in enumerate(self._matrix_of_envs)]
         self.reports = {}
 
 
@@ -97,7 +97,7 @@ class WorkflowRegtest:
     def parameters(self):
         return self._parameters
 
-    def _create_matrix_of_envs(self):
+    def create_matrix_of_envs(self):
         """Create matrix of all combinations of environment variables.
         Create a list of short descriptions of envs as single strings
         """
@@ -118,22 +118,35 @@ class WorkflowRegtest:
             else:
                 raise SpecificationError(
                     "value for {} has to be either list or dictionary".format(key))
-        matrix = list(itertools.product(*self._soft_vers_spec.values()))
+
+        envs_list = list(itertools.product(*self._soft_vers_spec.values()))
+        self.matrix_of_envs = [dict(zip(self.env_keys, env)) for env in envs_list]
+
+        _soft_str_list = [[f"ver_{i}" for i in range(len(el))] for el in self._soft_vers_spec.values()]
+        self._soft_str = dict(zip(self.env_keys, _soft_str_list))
 
         # Add fixed environments.
         fixed_env = deepcopy(self._parameters['fixed_env'])
         if fixed_env:
             if isinstance(fixed_env, dict):
                 fixed_env = [fixed_env]
-            for f in fixed_env:
-                matrix.append(tuple(f[k] for k in self.env_keys))
-        self._matrix_of_envs = matrix
+            for env in fixed_env:
+                self.matrix_of_envs.append(env)
+                for key, val in env.items():
+                    if val not in self._soft_vers_spec[key]:
+                        self._soft_vers_spec[key].append(val)
+                        self._soft_str[key].append(f"ver_{len(self._soft_str[key])}")
 
-    def _create_neurodocker_specs(self):
-        self.neurodocker_specs = cg.get_dict_of_neurodocker_dicts(
-            self.env_keys, self._matrix_of_envs,
-            self.post_build
-        )
+        self.env_names = ['env_{}'.format(ii) for ii, _ in enumerate(self.matrix_of_envs)]
+
+
+    def run(self):
+        """The main method that runs generate all docker files, build images
+            and run a workflow in all environments.
+        """
+        self._build_docker_images()
+        self._run_workflow_in_matrix_of_envs()
+
 
     def _build_docker_images(self):
         """Build all Docker images."""
@@ -310,53 +323,11 @@ class WorkflowRegtest:
         self.reports[soft_ver_str] = res.output.reports
 
 
-
-    def run(self):
-        """The main method that runs generate all docker files, build images
-            and run a workflow in all environments.
-        """
-        self._build_docker_images()
-        self._run_workflow_in_matrix_of_envs()
-
-    def _create_matrix_of_string_envs(self):
-        """creating a short string representation of various versions of the software
-        that will be used on the dashboard.
-        """
-        # TODO: should depend o the key? e.g. image name for base, version for fsl, for python more complicated
-        self.string_softspec_dict = {}
-        self.soft_vers_string = {}
-        for (key, key_versions) in self._soft_vers_spec.items():
-            _versions_per_key = []
-            for jj, version in enumerate(key_versions):
-                _versions_per_key.append("{}: version_{}".format(key, jj))
-                self.string_softspec_dict["{}: version_{}".format(key, jj)] = version
-            self.soft_vers_string[key] = _versions_per_key
-
-        # creating products from dictionary
-        all_keys, all_values = zip(*self.soft_vers_string.items())
-        self.env_string_dict_matrix = [dict(zip(all_keys, values)) for values in itertools.product(*all_values)]
-
-        # including info from th fixed envs
-        for fixed_env in self._parameters['fixed_env']:
-            _envs_versions = {}
-            for key in self.env_keys:
-                # checking if the software already in self.softspec_string_dict
-                if fixed_env[key] in self._soft_vers_spec[key]:
-                    ind = self._soft_vers_spec[key].index(fixed_env[key])
-                    _envs_versions[key] = "{}: version_{}".format(key, ind)
-                else:
-                    # creating a new version
-                    _vers_str = "{}: version_{}".format(key, len(self._soft_vers_spec[key]))
-                    self._soft_vers_spec[key].append(fixed_env[key])
-                    _envs_versions[key] = _vers_str
-            self.env_string_dict_matrix.append(_envs_versions)
-
     def merge_outputs(self):
         df_el_l = []
         df_el_flat_l = []
-        for ii, soft_d in enumerate(self.env_string_dict_matrix):
-            #self.res_all.append(deepcopy(soft_d))
-            el_dict = deepcopy(soft_d)
+        for ii, soft_d in enumerate(self.matrix_of_envs):
+            el_dict = self._soft_to_str(soft_d)
             el_dict["env"] = self.env_names[ii]
             if self.docker_status[ii] == "docker ok":
                 # merging results from tests and updating self.res_all, self.res_all_flat
@@ -369,19 +340,24 @@ class WorkflowRegtest:
                 el_dict["env"] = "N/A"
                 df_el_l.append(pd.DataFrame(el_dict, index=[0]))
                 df_el_flat_l.append(pd.DataFrame(el_dict, index=[0]))
-
         # TODO: not sure if I need both
         self.res_all_df = pd.concat(df_el_l).reset_index(drop=True)
-        self.res_all_flat_df = pd.concat(df_el_flat_l).reset_index(drop=True)
         self.res_all_df.to_csv(self.working_dir / 'output_all.csv', index=False)
 
         # saving detailed describtion about the environment
         soft_vers_description = {}
         for key, val in self._soft_vers_spec.items():
-            soft_vers_description[key] = [{"version": "version_{}".format(i), "description": str(spec)}
+            soft_vers_description[key] = [{"version": "ver_{}".format(i), "description": str(spec)}
                                           for (i, spec) in enumerate(val)]
         with (self.working_dir / 'envs_descr.json').open(mode='w') as f:
             json.dump(soft_vers_description, f)
+
+    def _soft_to_str(self, soft_dict):
+        soft_dict = deepcopy(soft_dict)
+        str_dict = {}
+        for (key, val) in soft_dict.items():
+            str_dict[key] = f"ver_{self._soft_vers_spec[key].index(val)}"
+        return str_dict
 
     def _merge_test_output(self, dict_env, env_name):
         """Merge test outputs."""
