@@ -7,9 +7,9 @@ import json, os
 from pathlib import Path
 import shutil
 import tempfile
-
 import pandas as pd
 import yaml
+from . import check_latest_version
 
 import testkraken.container_generator as cg
 import pydra
@@ -29,7 +29,7 @@ class WorkflowRegtest:
     ----------
     workflow_path: Path-like, directory of workflow.
     working_dir: Path-like, working directory.
-    parameters: dictionary, testkraken parameters that define the workflow to
+    params: dictionary, testkraken parameters that define the workflow to
         test, the tests to use, and the environments in which to test.
     neurodocker_specs: dictionary, values are individual neurodocker
         specifications (dictionaries), and keys are the SHA-1 of the
@@ -40,28 +40,20 @@ class WorkflowRegtest:
     _etelemetry_version_data = None  # class variable to store etelemetry information
 
     def __init__(self, workflow_path, working_dir=None, tmp_working_dir=False):
-        from . import check_latest_version
-
         if WorkflowRegtest._etelemetry_version_data is None:
             WorkflowRegtest._etelemetry_version_data = check_latest_version()
 
         self.workflow_path = self.validate_workflow_path(workflow_path)
         self.working_dir = self.create_working_dir(working_dir, tmp_working_dir)
-        self.tests_path = Path(__file__).parent / "testing_functions"
 
         with (self.workflow_path / 'testkraken_spec.yml').open() as f:
             self.params = yaml.safe_load(f)
         self.validate_parameters()
         self.data_path = self.params["data"]["location"]
-        self.scripts_path = self.params["scripts"]
-        self.params.setdefault('plots', [])
-        self.post_build = self.params.get("post_build", None)
-        # self.framework = self._parameters.get("framework", None)
-        self.docker_status = []
 
         self.create_matrix_of_envs()
         self.neurodocker_specs = cg.get_dict_of_neurodocker_dicts(
-            self.matrix_of_envs, self.post_build
+            self.matrix_of_envs, self.params["post_build"]
         )
         self.reports = {}
 
@@ -120,6 +112,7 @@ class WorkflowRegtest:
     def _build_docker_images(self):
         """Build all Docker images."""
         print(f"+ building {len(self.neurodocker_specs)} Docker images")
+        self.docker_status = []
         for sha1, neurodocker_dict in self.neurodocker_specs.items():
             try:
                 print("++ building image: {}".format(neurodocker_dict))
@@ -293,6 +286,7 @@ class WorkflowRegtest:
 
 
     def merge_outputs(self):
+        """ Merging all tests outputs """
         df_el_l = []
         df_el_flat_l = []
         for ii, soft_d in enumerate(self.matrix_of_envs):
@@ -321,6 +315,7 @@ class WorkflowRegtest:
         with (self.working_dir / 'envs_descr.json').open(mode='w') as f:
             json.dump(soft_vers_description, f)
 
+
     def _soft_to_str(self, soft_dict):
         soft_dict = deepcopy(soft_dict)
         str_dict = {}
@@ -328,8 +323,9 @@ class WorkflowRegtest:
             str_dict[key] = f"ver_{self._soft_vers_spec[key].index(val)}"
         return str_dict
 
+
     def _merge_test_output(self, dict_env, env_name):
-        """Merge test outputs."""
+        """Merge test outputs for one specific environment"""
         for iir, test in enumerate(self.params['tests']):
             with self.reports[env_name][iir].open() as f:
                 report = json.load(f)
@@ -348,15 +344,16 @@ class WorkflowRegtest:
                 except ValueError: # if results are not list
                     df = df.merge(pd.DataFrame(report, index=[0]), how="outer")
                 df_flat = pd.concat([df_flat, pd.DataFrame(report_flat, index=[0])], axis=1)
+
         df_env = pd.DataFrame(dict_env, index=[0])
         df_flat = pd.concat([df_env, df_flat], axis=1)
-
         df_env = pd.concat([df_env] * len(df)).reset_index(drop=True)
         df = pd.concat([df_env, df], axis=1)
-
         return df, df_flat
 
+
     def dashboard_workflow(self):
+        """ Creating a simple dashboard for the results"""
         # copy html/js/css templates to the workflow specific directory
         js_dir = Path(__file__).absolute().parent / 'dashboard_template'
         for js_template in ["dashboard.js", "index.html", "style.css"]:
@@ -407,13 +404,15 @@ class WorkflowRegtest:
         # checking tests
         self._validate_tests()
 
+        self.params.setdefault("post_build", None)
         # if copy in post_build part that I'm changing the build_context
-        if self.params.get('post_build', None) and "copy" in self.params["post_build"]:
+        if self.params['post_build'] and "copy" in self.params["post_build"]:
             self.build_context = self.workflow_path
         else:
             self.build_context = self.working_dir
 
-        if self.params.get('plots', None):
+        self.params.setdefault('plots', [])
+        if self.params['plots']:
             if not isinstance(self.params['plots'], (list, tuple)):
                 raise SpecificationError("Value of key 'plots' must be a list or a tuple")
             else:
@@ -542,6 +541,7 @@ class WorkflowRegtest:
 
     def _validate_tests(self):
         """ validate the test part of the parameters"""
+        tests_path = Path(__file__).parent / "testing_functions"
         if not isinstance(self.params['tests'], (list, tuple)):
             raise SpecificationError("Value of key 'tests' must be an iterable of dictionaries")
         else:
@@ -553,8 +553,8 @@ class WorkflowRegtest:
                 raise SpecificationError("'tests' have to have 'script' field and it has to be a str")
             if (self.params['scripts'] / test_script).is_file():
                 el["script"] = self.params['scripts'] / test_script
-            elif (self.tests_path / el["script"]).is_file():
-                el["script"] = self.tests_path / el["script"]
+            elif (tests_path / el["script"]).is_file():
+                el["script"] = tests_path / el["script"]
             else:
                 raise FileNotFoundError(
                     "Script from test does not exist: {}".format(test_script))
