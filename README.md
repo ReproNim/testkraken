@@ -110,8 +110,7 @@ data:
 The `scripts` entry requires only the relative directory path to the workflow path. An example can look like this:
 
 ```yaml
-scripts:
-  my_scripts
+scripts: my_scripts
 ```
 Example that uses the concept can be found [here](https://github.com/ReproNim/testkraken/blob/master/workflows4regtests/basic_examples/pseudo_random_numbers/testkraken_spec.yml)
 
