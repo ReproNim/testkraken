@@ -129,7 +129,7 @@ analysis:
 ```
 
 ### Tests part
-The `tests` part contains all information regarding testing the analysis output. It is assumed that the output file is compared to the reference file that is available in the data directory (with the same name). There could be multiple entries for `tests`, but each element has to contain `file` with the name of the output file, `name` with the user defined name of the test, and `script` with the name of the script that should be used for running the test. The script can be saved in the script directory (checked first) or it can be from the `TestKraken` [testing_functions directories](https://github.com/ReproNim/testkraken/tree/master/testkraken/testing_functions) (the user provided tests have to follow the same template as the tests from `TestKraken` and define command line interface).
+The `tests` part contains all information regarding testing the analysis output. It is assumed that the output file is compared to the reference file that is available in the data directory (with the same name). There could be multiple entries for `tests`, but each element has to contain `file` with the name of the output file, `name` with the user defined name of the test, and `script` with the name of the script that should be used for running the test. The script can be saved in the script directory (checked first) or it can be an existing test from the `TestKraken` [testing_functions directory](https://github.com/ReproNim/testkraken/tree/master/testkraken/testing_functions). Any user provided tests have to follow the same template as the tests from `TestKraken` and define a command line interface.
 Example:
 
 ```yaml
