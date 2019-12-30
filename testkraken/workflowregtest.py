@@ -7,9 +7,9 @@ import json, os
 from pathlib import Path
 import shutil
 import tempfile
-
 import pandas as pd
 import yaml
+from . import check_latest_version
 
 import testkraken.container_generator as cg
 import pydra
@@ -29,81 +29,42 @@ class WorkflowRegtest:
     ----------
     workflow_path: Path-like, directory of workflow.
     working_dir: Path-like, working directory.
-    parameters: dictionary, testkraken parameters that define the workflow to
+    params: dictionary, testkraken parameters that define the workflow to
         test, the tests to use, and the environments in which to test.
     neurodocker_specs: dictionary, values are individual neurodocker
         specifications (dictionaries), and keys are the SHA-1 of the
         JSON-encoded neurodocker specifications. Tests will be run in the
         containers that are built from these neurodocker specifications.
-    nenv: int, number of environments.
     """
 
     _etelemetry_version_data = None  # class variable to store etelemetry information
 
     def __init__(self, workflow_path, working_dir=None, tmp_working_dir=False):
-        from . import check_latest_version
-
         if WorkflowRegtest._etelemetry_version_data is None:
             WorkflowRegtest._etelemetry_version_data = check_latest_version()
 
-        self.workflow_path = Path(workflow_path).absolute()
-        if working_dir:
-            self.working_dir = Path(working_dir).absolute()
-        elif tmp_working_dir:
-            self.working_dir = Path(tempfile.mkdtemp(
-            prefix='testkraken-{}'.format(self.workflow_path.name))).absolute()
-        else:
-            raise Exception("please provide working_dir or set tmp_working_dir=Tru,"
-                            "should this be implemented and use cwd??")
-        self.working_dir.mkdir(parents=True, exist_ok=True)
-        _validate_workflow_path(self.workflow_path)
-        self.tests_dir = Path(__file__).parent / "testing_functions"
-        self.build_context = self.working_dir
+        self.workflow_path = self.validate_workflow_path(workflow_path)
+        self.working_dir = self.create_working_dir(working_dir, tmp_working_dir)
 
         with (self.workflow_path / 'testkraken_spec.yml').open() as f:
-            self._parameters = yaml.safe_load(f)
-        _, new_context = _validate_parameters(self._parameters, self.workflow_path, self.tests_dir)
-        if new_context:
-            self.build_context = self.workflow_path
-        self.data_path = self._parameters["data"]["location"]
-        self.scripts_path = self._parameters["scripts"]
+            self.params = yaml.safe_load(f)
+        self.validate_parameters()
+        self.data_path = self.params["data"]["location"]
 
-        self._parameters.setdefault('fixed_env', [])
-        if isinstance(self._parameters['fixed_env'], dict):
-            self._parameters['fixed_env'] = [self._parameters['fixed_env']]
-        if self._parameters.get("env", None):
-            self.env_keys = list(self._parameters['env'].keys())
-        else:
-            self.env_keys = list(self._parameters['fixed_env'][0].keys())
-        self._parameters.setdefault('plots', [])
-        self.post_build = self._parameters.get("post_build", None)
-        # self.framework = self._parameters.get("framework", None)
-        self.docker_status = []
-
-        self._create_matrix_of_envs()  # and _soft_vers_spec ...
-        self._create_neurodocker_specs()
-        self._create_matrix_of_string_envs()
-
-         # generating a simple name for envs (gave up on including env info)
-        self.env_names = ['env_{}'.format(ii) for ii, _ in enumerate(self._matrix_of_envs)]
+        self.create_matrix_of_envs()
+        self.neurodocker_specs = cg.get_dict_of_neurodocker_dicts(
+            self.matrix_of_envs, self.params["post_build"]
+        )
         self.reports = {}
 
 
-    @property
-    def nenv(self):
-        return len(self.neurodocker_specs)
-
-    @property
-    def parameters(self):
-        return self._parameters
-
-    def _create_matrix_of_envs(self):
+    def create_matrix_of_envs(self):
         """Create matrix of all combinations of environment variables.
         Create a list of short descriptions of envs as single strings
         """
         # lists of full specification (all versions for each software/key)
         self._soft_vers_spec = {}
-        for key, val in self._parameters['env'].items():
+        for key, val in self.params['env'].items():
             # val should be dictionary with options, list of dictionaries,
             # or dictionary with "common" and "shared"
             if isinstance(val, list):
@@ -118,26 +79,40 @@ class WorkflowRegtest:
             else:
                 raise SpecificationError(
                     "value for {} has to be either list or dictionary".format(key))
-        matrix = list(itertools.product(*self._soft_vers_spec.values()))
+
+        envs_list = list(itertools.product(*self._soft_vers_spec.values()))
+        self.matrix_of_envs = [dict(zip(self.env_keys, env)) for env in envs_list]
+
+        _soft_str_list = [[f"ver_{i}" for i in range(len(el))] for el in self._soft_vers_spec.values()]
+        self._soft_str = dict(zip(self.env_keys, _soft_str_list))
 
         # Add fixed environments.
-        fixed_env = deepcopy(self._parameters['fixed_env'])
+        fixed_env = deepcopy(self.params['fixed_env'])
         if fixed_env:
             if isinstance(fixed_env, dict):
                 fixed_env = [fixed_env]
-            for f in fixed_env:
-                matrix.append(tuple(f[k] for k in self.env_keys))
-        self._matrix_of_envs = matrix
+            for env in fixed_env:
+                self.matrix_of_envs.append(env)
+                for key, val in env.items():
+                    if val not in self._soft_vers_spec[key]:
+                        self._soft_vers_spec[key].append(val)
+                        self._soft_str[key].append(f"ver_{len(self._soft_str[key])}")
 
-    def _create_neurodocker_specs(self):
-        self.neurodocker_specs = cg.get_dict_of_neurodocker_dicts(
-            self.env_keys, self._matrix_of_envs,
-            self.post_build
-        )
+        self.env_names = ['env_{}'.format(ii) for ii, _ in enumerate(self.matrix_of_envs)]
+
+
+    def run(self):
+        """The main method that runs generate all docker files, build images
+            and run a workflow in all environments.
+        """
+        self._build_docker_images()
+        self._run_workflow_in_matrix_of_envs()
+
 
     def _build_docker_images(self):
         """Build all Docker images."""
-        print("+ building {} Docker images".format(self.nenv))
+        print(f"+ building {len(self.neurodocker_specs)} Docker images")
+        self.docker_status = []
         for sha1, neurodocker_dict in self.neurodocker_specs.items():
             try:
                 print("++ building image: {}".format(neurodocker_dict))
@@ -162,7 +137,7 @@ class WorkflowRegtest:
         wf.inputs.image = image
 
         # 1st task - analysis
-        param_run = self.parameters["analysis"]
+        param_run = self.params["analysis"]
         cmd_run = [param_run["command"]]
         inp_fields_run = []
         inp_val_run = {}
@@ -205,7 +180,7 @@ class WorkflowRegtest:
                                               bases=(pydra.specs.DockerSpec,))
 
         out_fields_run = []
-        for el in self.parameters["tests"]:
+        for el in self.params["tests"]:
             if el["file"] in output_file_dict:
                 el["file"] = output_file_dict[el["file"]]
             # this would have to be modified if we allow multiple files to one test
@@ -224,7 +199,7 @@ class WorkflowRegtest:
         @pydra.mark.annotate({"return": {"outfiles": list}})
         def outfiles_list(res):
             out_f = []
-            for el in self.parameters["tests"]:
+            for el in self.params["tests"]:
                 out_f.append(res[f"file_{el['name']}"])
             return out_f
 
@@ -284,10 +259,10 @@ class WorkflowRegtest:
         )
 
         inp_val_test = {}
-        inp_val_test["name_test"] = [el["name"] for el in self.parameters["tests"]]
-        inp_val_test["script_test"] = [el["script"] for el in self.parameters["tests"]]
+        inp_val_test["name_test"] = [el["name"] for el in self.params["tests"]]
+        inp_val_test["script_test"] = [el["script"] for el in self.params["tests"]]
         inp_val_test["file_ref"] = [self.data_path / el["file"]
-                                    for el in self.parameters["tests"]]
+                                    for el in self.params["tests"]]
 
         task_test = pydra.ShellCommandTask(name="test", executable="python",
                                      input_spec=input_spec_test, output_spec=output_spec_test,
@@ -310,53 +285,12 @@ class WorkflowRegtest:
         self.reports[soft_ver_str] = res.output.reports
 
 
-
-    def run(self):
-        """The main method that runs generate all docker files, build images
-            and run a workflow in all environments.
-        """
-        self._build_docker_images()
-        self._run_workflow_in_matrix_of_envs()
-
-    def _create_matrix_of_string_envs(self):
-        """creating a short string representation of various versions of the software
-        that will be used on the dashboard.
-        """
-        # TODO: should depend o the key? e.g. image name for base, version for fsl, for python more complicated
-        self.string_softspec_dict = {}
-        self.soft_vers_string = {}
-        for (key, key_versions) in self._soft_vers_spec.items():
-            _versions_per_key = []
-            for jj, version in enumerate(key_versions):
-                _versions_per_key.append("{}: version_{}".format(key, jj))
-                self.string_softspec_dict["{}: version_{}".format(key, jj)] = version
-            self.soft_vers_string[key] = _versions_per_key
-
-        # creating products from dictionary
-        all_keys, all_values = zip(*self.soft_vers_string.items())
-        self.env_string_dict_matrix = [dict(zip(all_keys, values)) for values in itertools.product(*all_values)]
-
-        # including info from th fixed envs
-        for fixed_env in self._parameters['fixed_env']:
-            _envs_versions = {}
-            for key in self.env_keys:
-                # checking if the software already in self.softspec_string_dict
-                if fixed_env[key] in self._soft_vers_spec[key]:
-                    ind = self._soft_vers_spec[key].index(fixed_env[key])
-                    _envs_versions[key] = "{}: version_{}".format(key, ind)
-                else:
-                    # creating a new version
-                    _vers_str = "{}: version_{}".format(key, len(self._soft_vers_spec[key]))
-                    self._soft_vers_spec[key].append(fixed_env[key])
-                    _envs_versions[key] = _vers_str
-            self.env_string_dict_matrix.append(_envs_versions)
-
     def merge_outputs(self):
+        """ Merging all tests outputs """
         df_el_l = []
         df_el_flat_l = []
-        for ii, soft_d in enumerate(self.env_string_dict_matrix):
-            #self.res_all.append(deepcopy(soft_d))
-            el_dict = deepcopy(soft_d)
+        for ii, soft_d in enumerate(self.matrix_of_envs):
+            el_dict = self._soft_to_str(soft_d)
             el_dict["env"] = self.env_names[ii]
             if self.docker_status[ii] == "docker ok":
                 # merging results from tests and updating self.res_all, self.res_all_flat
@@ -369,23 +303,30 @@ class WorkflowRegtest:
                 el_dict["env"] = "N/A"
                 df_el_l.append(pd.DataFrame(el_dict, index=[0]))
                 df_el_flat_l.append(pd.DataFrame(el_dict, index=[0]))
-
         # TODO: not sure if I need both
         self.res_all_df = pd.concat(df_el_l).reset_index(drop=True)
-        self.res_all_flat_df = pd.concat(df_el_flat_l).reset_index(drop=True)
         self.res_all_df.to_csv(self.working_dir / 'output_all.csv', index=False)
 
         # saving detailed describtion about the environment
         soft_vers_description = {}
         for key, val in self._soft_vers_spec.items():
-            soft_vers_description[key] = [{"version": "version_{}".format(i), "description": str(spec)}
+            soft_vers_description[key] = [{"version": "ver_{}".format(i), "description": str(spec)}
                                           for (i, spec) in enumerate(val)]
         with (self.working_dir / 'envs_descr.json').open(mode='w') as f:
             json.dump(soft_vers_description, f)
 
+
+    def _soft_to_str(self, soft_dict):
+        soft_dict = deepcopy(soft_dict)
+        str_dict = {}
+        for (key, val) in soft_dict.items():
+            str_dict[key] = f"ver_{self._soft_vers_spec[key].index(val)}"
+        return str_dict
+
+
     def _merge_test_output(self, dict_env, env_name):
-        """Merge test outputs."""
-        for iir, test in enumerate(self._parameters['tests']):
+        """Merge test outputs for one specific environment"""
+        for iir, test in enumerate(self.params['tests']):
             with self.reports[env_name][iir].open() as f:
                 report = json.load(f)
             report = _check_dict(report, test["name"])
@@ -403,19 +344,221 @@ class WorkflowRegtest:
                 except ValueError: # if results are not list
                     df = df.merge(pd.DataFrame(report, index=[0]), how="outer")
                 df_flat = pd.concat([df_flat, pd.DataFrame(report_flat, index=[0])], axis=1)
+
         df_env = pd.DataFrame(dict_env, index=[0])
         df_flat = pd.concat([df_env, df_flat], axis=1)
-
         df_env = pd.concat([df_env] * len(df)).reset_index(drop=True)
         df = pd.concat([df_env, df], axis=1)
-
         return df, df_flat
 
+
     def dashboard_workflow(self):
+        """ Creating a simple dashboard for the results"""
         # copy html/js/css templates to the workflow specific directory
         js_dir = Path(__file__).absolute().parent / 'dashboard_template'
         for js_template in ["dashboard.js", "index.html", "style.css"]:
             shutil.copy2(js_dir / js_template, self.working_dir)
+
+
+    def validate_workflow_path(self, workflow_path):
+        """Validate existence of files and directories in workflow path."""
+        workflow_path = Path(workflow_path)
+
+        if not workflow_path.exists():
+            raise FileNotFoundError(f"workflow path, {self.workflow_path}, does not exist")
+        if not (workflow_path / 'testkraken_spec.yml').is_file():
+            raise FileNotFoundError(f"Missing required file with specification: "
+                                    f"{self.workflow_path / 'testkraken_spec.yml'}")
+        return workflow_path
+
+
+    def create_working_dir(self, working_dir, tmp_working_dir):
+        """ creating working directory"""
+        if working_dir:
+            working_dir = Path(working_dir).absolute()
+        elif tmp_working_dir:
+            working_dir = Path(tempfile.mkdtemp(
+                prefix='testkraken-{}'.format(self.workflow_path.name))).absolute()
+        else:
+            raise Exception("please provide working_dir or set tmp_working_dir=Tru,"
+                            "should this be implemented and use cwd??")
+        working_dir.mkdir(parents=True, exist_ok=True)
+        return working_dir
+
+
+    def validate_parameters(self):
+        """Validate parameters according to the testkraken specification."""
+        required = ['analysis', 'tests']
+        for el in required:
+            if el not in self.params.keys():
+                raise SpecificationError(f"Required key {el} not found in parameters")
+
+        # Validate required parameters.
+        # env and fixed_env
+        self._validate_envs()
+        # checking optional data and scripts
+        self._validate_data()
+        self._validate_scripts()
+        # checking analysis
+        self._validate_analysis()
+        # checking tests
+        self._validate_tests()
+
+        self.params.setdefault("post_build", None)
+        # if copy in post_build part that I'm changing the build_context
+        if self.params['post_build'] and "copy" in self.params["post_build"]:
+            self.build_context = self.workflow_path
+        else:
+            self.build_context = self.working_dir
+
+        self.params.setdefault('plots', [])
+        if self.params['plots']:
+            if not isinstance(self.params['plots'], (list, tuple)):
+                raise SpecificationError("Value of key 'plots' must be a list or a tuple")
+            else:
+                if any(not isinstance(j, dict) for j in self.params['plots']):
+                    raise SpecificationError("Every item in 'plots' must be a dictionary.")
+
+
+    def _validate_envs(self):
+        """ validate the environment parts (env and fixed_env) of parameters"""
+        self.params.setdefault('fixed_env', [])
+        self.params.setdefault('env', None)
+
+        if not (self.params["env"] or self.params["fixed_env"]):
+            raise Exception("env or fixed_env is required")
+
+        # checking basic types of env and fixed_env
+        if self.params["env"]:
+            if not isinstance(self.params["env"], dict):
+                raise SpecificationError("Value of key 'env' must be a dictionary.")
+            self.env_keys = list(self.params['env'].keys())
+        if self.params["fixed_env"]:
+            if not isinstance(self.params["fixed_env"], (list, dict)):
+                raise SpecificationError("Value of key 'fixed_env' must be a dictionary or a list.")
+            elif isinstance(self.params["fixed_env"], dict):
+                self.params["fixed_env"] = [self.params["fixed_env"]]
+            # if envs is not present, self.env_keys are taken from the first dictionary of fixed_env list
+            if not self.params["env"]:
+                self.env_keys = list(self.params["fixed_env"][0].keys())
+
+        # checking elements of params["env"]
+        if self.params["env"]:
+            for key, val in self.params["env"].items():
+                if not isinstance(val, (dict, list)):
+                    raise SpecificationError("Every value in 'env' must be a dictionary or list.")
+                if isinstance(val, dict) and {'common', 'varied'} == set(val.keys()):
+                    if not isinstance(val['common'], dict):
+                        raise SpecificationError("common part of {} should be a dictionary".format(key))
+                    elif not isinstance(val['varied'], (list, tuple)):
+                        raise SpecificationError("varied part of {} should be a list or tuple".format(key))
+                    # checking if common and varied have the same key
+                    elif any(set(val['common'].keys()).intersection(vd) for vd in val['varied']):
+                        # TODO: I should probably accept when conda_install and pip_install and just merge two strings
+                        raise SpecificationError("common and varied parts for {} have the same key".format(key))
+
+        # checking elements of params["fixed_env"]
+        for env in self.params["fixed_env"]:
+            if not isinstance(env, dict):
+                raise SpecificationError("Each element of fixed_env list must be a dictionary.")
+            elif set(env.keys()) != set(self.env_keys):
+                raise SpecificationError("Keys of all environments from 'fixed_env' must be same.")
+            for key, val in env.items():
+                if not isinstance(val, (dict, list)):
+                    raise SpecificationError("Every value in fixed_env element must be a dictionary or list.")
+
+
+    def _validate_data(self):
+        """ validate the data part of the parameters"""
+        # TODO will be extended
+        if "data" in self.params:
+            valid_types = ["workflow_path", "local"]
+            if "location" not in self.params["data"]:
+                raise Exception(f"data has to have location")
+            if "type" not in self.params["data"] \
+                    or self.params["data"]["type"] not in valid_types:
+                raise Exception(f"data has to have type from the list {valid_types}")
+            elif self.params["data"]["type"] == "workflow_path":
+                self.params["data"]["location"] = self.workflow_path / self.params["data"]["location"]
+            elif self.params["data"]["type"] == "local":
+                self.params["data"]["location"] = Path(self.params["data"]["location"]).absolute()
+        else:
+            self.params["data"] = {"type": "default", "location": self.workflow_path / "data"}
+
+        if not self.params["data"]["location"].exists():
+            raise Exception(f"{self.params['data']['location']} doesnt exist")
+
+
+    def _validate_scripts(self):
+        """ validate the data part of the parameters"""
+        if "scripts" in self.params:
+            self.params["scripts"] = Path(self.workflow_path) / self.params["scripts"]
+        else:
+            self.params["scripts"] = self.workflow_path / "scripts"
+        if not self.params["scripts"].exists():
+            raise Exception(f"{self.params['scripts']} doesnt exist")
+
+
+    def _validate_analysis(self):
+        """ validate the analysis part of the parameters"""
+        if not isinstance(self.params['analysis'], dict):
+            raise SpecificationError("Value of key 'analysis' must be a dictionaries")
+        else:
+            analysis_script = self.params['analysis'].get("script", "")
+            if analysis_script:
+                analysis_script = self.params["scripts"] / analysis_script
+                if not analysis_script.is_file():
+                    raise FileNotFoundError(
+                        "Script from analysis  does not exist: {}".format(analysis_script))
+                else:
+                    self.params['analysis']["script"] = analysis_script
+            else:
+                self.params['analysis']["script"] = ""
+            analysis_command = self.params['analysis'].get("command", None)
+            if not analysis_command or not isinstance(analysis_command, str):
+                raise SpecificationError("'command' must be a string.")
+            if not self.params['analysis'].get("inputs", None):
+                self.params['analysis']["inputs"] = []
+            elif not isinstance(self.params["analysis"]['inputs'], list):
+                raise SpecificationError("Value of key 'inputs' must be a list.")
+            else:
+                for inp_el in self.params['analysis']["inputs"]:
+                    self._validate_input_dict(inp_el)
+
+
+    def _validate_input_dict(self, input):
+        """ validate input dictionaries used in analysis"""
+        if isinstance(input, dict):
+            required = {"type", "value"}
+            not_found = required - set(input.keys())
+            if not_found:
+                raise SpecificationError(
+                    "Required key(s) not found in input dictionary: {}"
+                        .format(', '.join(not_found)))
+        else:
+            raise Exception("input element has to be a dictionary")
+
+
+    def _validate_tests(self):
+        """ validate the test part of the parameters"""
+        tests_path = Path(__file__).parent / "testing_functions"
+        if not isinstance(self.params['tests'], (list, tuple)):
+            raise SpecificationError("Value of key 'tests' must be an iterable of dictionaries")
+        else:
+            if any(not isinstance(j, dict) for j in self.params['tests']):
+                raise SpecificationError("Every item in 'tests' must be a dictionary.")
+        for el in self.params['tests']:
+            test_script = el.get("script", None)
+            if not test_script or not isinstance(test_script, str):
+                raise SpecificationError("'tests' have to have 'script' field and it has to be a str")
+            if (self.params['scripts'] / test_script).is_file():
+                el["script"] = self.params['scripts'] / test_script
+            elif (tests_path / el["script"]).is_file():
+                el["script"] = tests_path / el["script"]
+            else:
+                raise FileNotFoundError(
+                    "Script from test does not exist: {}".format(test_script))
+        # TODO: adding checks for each of the element of tests
 
 
 def _check_dict(d, test_name):
@@ -448,185 +591,6 @@ def _flatten_dict_test(d):
             for (i, el) in enumerate(d[key]):
                 d_flat["{}:{}".format(key, d["index_name"][i])] = el
         return d_flat
-
-
-def _validate_workflow_path(workflow_path):
-    """Validate existence of files and directories in workflow path."""
-    p = Path(workflow_path)
-    missing = []
-    if not (p / 'testkraken_spec.yml').is_file():
-        missing.append(('testkraken_spec.yml', 'file'))
-    if missing:
-        m = ", ".join("{} ({})".format(*ii) for ii in missing)
-        raise FileNotFoundError(
-            "Missing required files or directories in workflow path: {}"
-            .format(m))
-    return True
-
-
-def _validate_input_dict(input):
-    if isinstance(input, dict):
-        required = {"type", "value"}
-        not_found = required - set(input.keys())
-        if not_found:
-            raise SpecificationError(
-                "Required key(s) not found in input dictionary: {}"
-                    .format(', '.join(not_found)))
-    else:
-        raise Exception("input element has to be a dictionary")
-
-
-def _validate_envs(params):
-    params_env = params.get('env', None)
-    params_fixedenv = params.get('fixed_env', None)
-    if params_env:
-        if not isinstance(params_env, dict):
-            raise SpecificationError("Value of key 'env' must be a dictionary.")
-        else:
-            if any(not isinstance(j, (dict, list)) for j in params_env.values()):
-                raise SpecificationError("Every value in 'env' must be a dictionary or list.")
-            for key, val in params_env.items():
-                if isinstance(val, dict) and {'common', 'varied'} == set(val.keys()):
-                    if not isinstance(val['common'], dict):
-                        raise SpecificationError("common part of {} should be a dictionary".format(key))
-                    elif not isinstance(val['varied'], (list, tuple)):
-                        raise SpecificationError("varied part of {} should be a list or tuple".format(key))
-                    # checking if common and varied have the same key
-                    elif any(set(val['common'].keys()).intersection(vd) for vd in val['varied']):
-                        # TODO: I should probably accept when conda_install and pip_install and just merge two strings
-                        raise SpecificationError("common and varied parts for {} have the same key".format(key))
-
-    if params_fixedenv:
-        if not isinstance(params_fixedenv, (dict, list)):
-            raise SpecificationError("Value of key 'fixed_env' must be a dictionary or list.")
-        else:
-            if isinstance(params_fixedenv, dict) and params_env:
-                if set(params_fixedenv.keys()) != set(params_env.keys()):
-                    raise SpecificationError("Keys of 'fixed_env' must be same as keys of 'env'.")
-            elif isinstance(params['fixed_env'], list):
-                if params_env:
-                    if any(set(f.keys()) != set(params_env.keys()) for f in params_fixedenv):
-                        raise SpecificationError("Keys of 'fixed_env' must be same as keys of 'env'.")
-                else:
-                    if any(set(f.keys()) != set(params_fixedenv[0].keys()) for f in params_fixedenv[1:]):
-                        raise SpecificationError("Keys of all environments from 'fixed_env' must be same.")
-
-
-def _validate_post_build(params_postbuild):
-    new_context = False
-    if "copy" in params_postbuild:
-        new_context = True
-    # todo
-    return new_context
-
-def _validate_data(params, workflow_path):
-    # TODO will be extended
-    valid_types = ["workflow_path", "local"]
-    if "location" not in params["data"]:
-        raise Exception(f"data has to have location")
-    if "type" not in params["data"] or params["data"]["type"] not in valid_types:
-        raise Exception(f"data has to have type from the list {valid_types}")
-    elif params["data"]["type"] == "workflow_path":
-        params["data"]["location"] = workflow_path / params["data"]["location"]
-    elif params["data"]["type"] == "local":
-        params["data"]["location"] = Path(params["data"]["location"]).absolute()
-
-    if not params["data"]["location"].exists():
-        raise Exception(f"{params['data']['location']} doesnt exist")
-
-
-def _validate_scripts(params, workflow_path):
-    params["scripts"] = Path(workflow_path) / params["scripts"]
-    if not params["scripts"].exists():
-        raise Exception(f"{params['scripts']} doesnt exist")
-
-
-def _validate_parameters(params, workflow_path, tests_path):
-    """Validate parameters according to the testkraken specification."""
-    required = {'analysis', 'tests'}
-    not_found = required - set(params.keys())
-    if "env" not in params.keys() and "fixed_env" not in params.keys():
-        not_found.add("env or fixed_env")
-    if not_found:
-        raise SpecificationError(
-            "Required key(s) not found in parameters: {}"
-            .format(', '.join(not_found)))
-
-    # Validate required parameters.
-    # env and fixed_env
-    _validate_envs(params)
-    # checking optional data and scripts
-    if "data" not in params:
-        params["data"] = {"type": "default", "location": workflow_path / "data"}
-        if not params["data"]["location"].exists():
-            raise Exception(f"{params['data']['location']} doesnt exist")
-    else:
-        _validate_data(params, workflow_path)
-    if "scripts" not in params:
-        params["scripts"] = workflow_path / "scripts"
-        if not params["scripts"].exists():
-            raise Exception(f"{params['scripts']} doesnt exist")
-    else:
-        _validate_scripts(params, workflow_path)
-    # checking analysis
-    if not isinstance(params['analysis'], dict):
-        raise SpecificationError("Value of key 'analysis' must be a dictionaries")
-    else:
-        analysis_script = params['analysis'].get("script", "")
-        if analysis_script:
-            analysis_script = params["scripts"] / analysis_script
-            if not analysis_script.is_file():
-                raise FileNotFoundError(
-                    "Script from analysis  does not exist: {}".format(analysis_script))
-            else:
-                params['analysis']["script"] = analysis_script
-        else:
-            params['analysis']["script"] = ""
-        analysis_command = params['analysis'].get("command", None)
-        if not analysis_command or not isinstance(analysis_command, str):
-            raise SpecificationError("'command' must be a string.")
-        if not params['analysis'].get("inputs", None):
-            params['analysis']["inputs"] = []
-        elif not isinstance(params["analysis"]['inputs'], list):
-            raise SpecificationError("Value of key 'inputs' must be a list.")
-        else:
-            for inp_el in params['analysis']["inputs"]:
-                _validate_input_dict(inp_el)
-
-    # checking tests
-    if not isinstance(params['tests'], (list, tuple)):
-        raise SpecificationError("Value of key 'tests' must be an iterable of dictionaries")
-    else:
-        if any(not isinstance(j, dict) for j in params['tests']):
-            raise SpecificationError("Every item in 'tests' must be a dictionary.")
-    for el in params['tests']:
-        test_script = el.get("script", None)
-        if not test_script or not isinstance(test_script, str):
-            raise SpecificationError("'tests' have to have 'script' field and it has to be a str")
-        if (params['scripts'] / test_script).is_file():
-            el["script"] = params['scripts'] / test_script
-        elif (tests_path / el["script"]).is_file():
-            el["script"] = tests_path / el["script"]
-        else:
-            raise FileNotFoundError(
-                "Script from test does not exist: {}".format(test_script))
-    #TODO: adding checks for each of the element of tests
-
-    # Validate optional parameters.
-    new_context = None
-    if params.get('post_build', None):
-        new_context = _validate_post_build(params["post_build"])
-
-    if params.get('plots', None):
-        if not isinstance(params['plots'], (list, tuple)):
-            raise SpecificationError("Value of key 'fixed_env' must be a dictionary.")
-        else:
-            if any(not isinstance(j, dict) for j in params['plots']):
-                raise SpecificationError("Every item in 'plots' must be a dictionary.")
-
-    # todo: the validation functions probably should be just members of the class,
-    # todo: so don't have to return new_context, etc.
-    return True, new_context
 
 
 class SpecificationError(Exception):

@@ -19,7 +19,7 @@ DEFAULT_INSTRUCTIONS = {
 VALID_DOCKER_KEYS = ndr.Dockerfile._implementations.keys()
 
 
-def _instructions_to_neurodocker_specs(keys, env_spec):
+def _instructions_to_neurodocker_specs(env_spec):
     """Return dictionary compatible with Neurodocker given a list of
     instructions.
 
@@ -35,25 +35,25 @@ def _instructions_to_neurodocker_specs(keys, env_spec):
     """
     env_spec = copy.deepcopy(env_spec)
     instructions = []
-    if "base" not in keys:
+    if "base" not in env_spec.keys():
         raise ValueError("base image has to be provided")
 
-    for ii, key in enumerate(keys):
+    for key, val in env_spec.items():
         if key == "base":
-            base_image = env_spec[ii].get('image', None)
+            base_image = val.get('image', None)
             if base_image is None:
                 raise Exception("image has to be provided in base")
             this_instruction = ('base', base_image)
-            if 'pkg_manager' not in env_spec[ii].keys():
+            if 'pkg_manager' not in val.keys():
                 pkg_manager = 'apt'  # assume apt
                 for img in {'centos', 'fedora'}:
                     if img in base_image:
                         pkg_manager = 'yum'
             else:
-                pkg_manager = env_spec[ii]['pkg_manager']
+                pkg_manager = val['pkg_manager']
         elif key in VALID_DOCKER_KEYS:
             key_spec = copy.deepcopy(DEFAULT_INSTRUCTIONS.get(key, {}))
-            key_spec.update(env_spec[ii])
+            key_spec.update(val)
             this_instruction = (key, key_spec)
         else:
             raise Exception(f"{key} is not a valid key, must be "
@@ -72,7 +72,7 @@ def _get_dictionary_hash(d):
     return hashlib.sha1(json.dumps(d, sort_keys=True).encode()).hexdigest()
 
 
-def get_dict_of_neurodocker_dicts(env_keys, env_matrix, post_build=None):
+def get_dict_of_neurodocker_dicts(env_matrix, post_build=None):
     """Return dictionary of Neurodocker specifications.
 
     Parameters
@@ -89,8 +89,8 @@ def get_dict_of_neurodocker_dicts(env_keys, env_matrix, post_build=None):
     dictionaries.
     """
     nrd_dict = []
-    for ii, params in enumerate(env_matrix):
-        neurodocker_dict = _instructions_to_neurodocker_specs(env_keys, params)
+    for params in env_matrix:
+        neurodocker_dict = _instructions_to_neurodocker_specs(params)
         this_hash = _get_dictionary_hash(neurodocker_dict['instructions'])
         if (this_hash, neurodocker_dict) in nrd_dict:
             raise Exception("two identical environment specifications are found, "
