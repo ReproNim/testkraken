@@ -8,7 +8,7 @@ jobs:
       - checkout:
           path: /home/circleci/regtests
       - run:
-          name: Change to Python 3.6 and install python dependencies
+          name: Change to Miniconda3 and install python dependencies
           command: |
             curl -fsSLO https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
             bash Miniconda3-latest-Linux-x86_64.sh -b -p ~/conda
