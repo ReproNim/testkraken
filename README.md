@@ -95,7 +95,7 @@ Example that uses the concept can be found [here](https://github.com/ReproNim/te
 
 ### Data and Scripts locations
 
-There is a default place where `TestKraken` tries to find all the data files and all the scripts files - this is the root directory of the tested workflow. However, in the `testkraken_spec.yml` these locations might be changed.
+There is a default location where `TestKraken` tries to find all the data files and all the scripts files - this is the root directory of the tested workflow. However, these default locations can be changed via the `testkraken_spec.yml`.
 
 #### `data` element
 In order to specify how to get the data, the `data` entry has to have two keys - `type` and `location`. For now, only one `type` is implemented - `workflow_path`, but in the future this might be used to specify external repositories. For `type=workflow_path`, the location is simply the relative directory path to the workflow path. An example can look like this:
