@@ -12,9 +12,7 @@ import neurodocker as ndr
 
 # default setting for specific neurodocker keys,
 # this value will not have to be set in the parameters.yml, but can be overwritten
-DEFAULT_INSTRUCTIONS = {
-    "miniconda": {'create_env': 'testkraken', 'activate': True}
-}
+DEFAULT_INSTRUCTIONS = {"miniconda": {"create_env": "testkraken", "activate": True}}
 # all keys allowed by neurodocker for Docker
 VALID_DOCKER_KEYS = ndr.Dockerfile._implementations.keys()
 
@@ -40,29 +38,28 @@ def _instructions_to_neurodocker_specs(env_spec):
 
     for key, val in env_spec.items():
         if key == "base":
-            base_image = val.get('image', None)
+            base_image = val.get("image", None)
             if base_image is None:
                 raise Exception("image has to be provided in base")
-            this_instruction = ('base', base_image)
-            if 'pkg_manager' not in val.keys():
-                pkg_manager = 'apt'  # assume apt
-                for img in {'centos', 'fedora'}:
+            this_instruction = ("base", base_image)
+            if "pkg_manager" not in val.keys():
+                pkg_manager = "apt"  # assume apt
+                for img in {"centos", "fedora"}:
                     if img in base_image:
-                        pkg_manager = 'yum'
+                        pkg_manager = "yum"
             else:
-                pkg_manager = val['pkg_manager']
+                pkg_manager = val["pkg_manager"]
         elif key in VALID_DOCKER_KEYS:
             key_spec = copy.deepcopy(DEFAULT_INSTRUCTIONS.get(key, {}))
             key_spec.update(val)
             this_instruction = (key, key_spec)
         else:
-            raise Exception(f"{key} is not a valid key, must be "
-                            f"from the list {VALID_DOCKER_KEYS}")
+            raise Exception(
+                f"{key} is not a valid key, must be "
+                f"from the list {VALID_DOCKER_KEYS}"
+            )
         instructions.append(this_instruction)
-    return {
-        "pkg_manager": pkg_manager,
-        "instructions": tuple(instructions),
-    }
+    return {"pkg_manager": pkg_manager, "instructions": tuple(instructions)}
 
 
 def _get_dictionary_hash(d):
@@ -91,10 +88,12 @@ def get_dict_of_neurodocker_dicts(env_matrix, post_build=None):
     nrd_dict = []
     for params in env_matrix:
         neurodocker_dict = _instructions_to_neurodocker_specs(params)
-        this_hash = _get_dictionary_hash(neurodocker_dict['instructions'])
+        this_hash = _get_dictionary_hash(neurodocker_dict["instructions"])
         if (this_hash, neurodocker_dict) in nrd_dict:
-            raise Exception("two identical environment specifications are found, "
-                            "remove one parameters.yml file")
+            raise Exception(
+                "two identical environment specifications are found, "
+                "remove one parameters.yml file"
+            )
         # if framework provided the neurodocker_dict should be updated
         if post_build:
             neurodocker_dict = _post_build(neurodocker_dict, post_build)
@@ -104,13 +103,13 @@ def get_dict_of_neurodocker_dicts(env_matrix, post_build=None):
 
 def _post_build(neurodocker_dict, post_build):
     """ extra instructions for the nfm framework"""
-    instr_list = list(neurodocker_dict['instructions'])
+    instr_list = list(neurodocker_dict["instructions"])
     for key, val in post_build.items():
         if key == "miniconda":
             env_nm = None
             for i, el in enumerate(instr_list):
                 if el[0] == "miniconda":
-                    env_nm = el[1]['create_env']
+                    env_nm = el[1]["create_env"]
             if env_nm:
                 miniconda_dict = {"use_env": env_nm}
             else:
@@ -128,8 +127,15 @@ def write_dockerfile(nrd_jsonfile, dockerfile):
         This doesn't work, since nrd_main changes nrd attributes,
         using write_dockerfile_sp for now
     """
-    nrd_args = ["generate", "docker", nrd_jsonfile, "-o", dockerfile,
-               "--no-print", "--json"]
+    nrd_args = [
+        "generate",
+        "docker",
+        nrd_jsonfile,
+        "-o",
+        dockerfile,
+        "--no-print",
+        "--json",
+    ]
     # not sure if I need to use out_json anywhere, might remove "--json"
     out_json = nrd_main(nrd_args)
 
@@ -138,13 +144,20 @@ def write_dockerfile_sp(nrd_jsonfile, dockerfile):
     """ Generate and write Dockerfile to `dockerfile`, uses Neurodocker cli
         These is a tmp function, would prefer to use write_dockerfile
     """
-    nrd_args = ["neurodocker", "generate", "docker", nrd_jsonfile,
-                "-o", dockerfile, "--no-print", "--json"]
+    nrd_args = [
+        "neurodocker",
+        "generate",
+        "docker",
+        nrd_jsonfile,
+        "-o",
+        dockerfile,
+        "--no-print",
+        "--json",
+    ]
     # not sure if I need to use out_json anywhere, might remove "--json"
     out_json = subprocess.run(
-                nrd_args,
-                check=True,
-                stdout=subprocess.PIPE).stdout.decode()
+        nrd_args, check=True, stdout=subprocess.PIPE
+    ).stdout.decode()
 
 
 def build_image(dockerfile, build_context=None, tag=None, build_opts=None):
@@ -164,8 +177,8 @@ def build_image(dockerfile, build_context=None, tag=None, build_opts=None):
     build_opts : str
         String of options to pass to `docker build`.
     """
-    tag = '' if tag is None else "-t {}".format(tag)
-    build_opts = '' if build_opts is None else build_opts
+    tag = "" if tag is None else "-t {}".format(tag)
+    build_opts = "" if build_opts is None else build_opts
 
     cmd_base = "docker build {tag} {build_opts}"
     cmd = cmd_base.format(tag=tag, build_opts=build_opts)
@@ -188,9 +201,9 @@ def build_image(dockerfile, build_context=None, tag=None, build_opts=None):
 
 
 def docker_main(workflow_dir, neurodocker_dict, sha1, build_context=None):
-    dockerfile = os.path.join(workflow_dir, 'Dockerfile.{}'.format(sha1))
+    dockerfile = os.path.join(workflow_dir, "Dockerfile.{}".format(sha1))
     jsonpath = os.path.join(workflow_dir, f"nrd_spec_{sha1}.json")
-    with open(jsonpath, 'w') as fj:
+    with open(jsonpath, "w") as fj:
         json.dump(neurodocker_dict, fj)
     if not Path(dockerfile).exists():
         write_dockerfile_sp(nrd_jsonfile=jsonpath, dockerfile=dockerfile)
