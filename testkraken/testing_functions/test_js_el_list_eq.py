@@ -3,6 +3,7 @@ from __future__ import division
 import os, json, pdb
 import inspect
 
+
 def test_el_list_eq(file_out, file_ref=None, name=None, **kwargs):
     """ comparing elements of the lists saved in two json files: file_out, file_ref"""
 
@@ -12,7 +13,7 @@ def test_el_list_eq(file_out, file_ref=None, name=None, **kwargs):
     # loadin the reference results
     with open(file_ref) as f:
         obj_ref = json.load(f)
-    
+
     # creating name for the report file
     report_filename = "report_{}.json".format(name)
 
@@ -32,16 +33,17 @@ def test_el_list_eq(file_out, file_ref=None, name=None, **kwargs):
         json.dump(out, f)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from argparse import ArgumentParser, RawTextHelpFormatter
-    parser = ArgumentParser(description=__doc__,
-                            formatter_class=RawTextHelpFormatter)
-    parser.add_argument("-out", dest="file_out",
-                        help="file with the output for testing")
-    parser.add_argument("-ref", dest="file_ref",
-                        help="file with the reference output")
-    parser.add_argument("-name", dest="name",
-                        help="name of the test provided by a user")
+
+    parser = ArgumentParser(description=__doc__, formatter_class=RawTextHelpFormatter)
+    parser.add_argument(
+        "-out", dest="file_out", help="file with the output for testing"
+    )
+    parser.add_argument("-ref", dest="file_ref", help="file with the reference output")
+    parser.add_argument(
+        "-name", dest="name", help="name of the test provided by a user"
+    )
     args = parser.parse_args()
 
     test_el_list_eq(**vars(args))
