@@ -339,12 +339,17 @@ class WorkflowRegtest:
             el_dict = self._soft_to_str(soft_d)
             el_dict["env"] = self.env_names[ii]
             if self.docker_status[ii] == "docker ok":
-                # merging results from tests and updating self.res_all, self.res_all_flat
-                df_el, df_el_flat = self._merge_test_output(
-                    dict_env=el_dict, env_name=self.env_names[ii]
-                )
-                df_el_l.append(df_el)
-                df_el_flat_l.append(df_el_flat)
+                if self.params["tests"]:
+                    # merging results from tests and updating self.res_all, self.res_all_flat
+                    df_el, df_el_flat = self._merge_test_output(
+                        dict_env=el_dict, env_name=self.env_names[ii]
+                    )
+                    df_el_l.append(df_el)
+                    df_el_flat_l.append(df_el_flat)
+                else: # when tests not defined only env infor should be saved
+                    df_env = pd.DataFrame(el_dict, index=[0])
+                    df_el_l.append(df_env)
+                    df_el_flat_l.append(df_env)
             else:
                 el_dict["env"] = "N/A"
                 df_el_l.append(pd.DataFrame(el_dict, index=[0]))
@@ -439,12 +444,7 @@ class WorkflowRegtest:
 
     def validate_parameters(self):
         """Validate parameters according to the testkraken specification."""
-        required = ["analysis", "tests"]
-        for el in required:
-            if el not in self.params.keys():
-                raise SpecificationError(f"Required key {el} not found in parameters")
 
-        # Validate required parameters.
         # env and fixed_env
         self._validate_envs()
         # checking optional data and scripts
@@ -582,7 +582,9 @@ class WorkflowRegtest:
 
     def _validate_analysis(self):
         """ validate the analysis part of the parameters"""
-        if not isinstance(self.params["analysis"], dict):
+        if "analysis" not in self.params.keys():
+            raise SpecificationError(f"analysis is a required field in parameters")
+        elif not isinstance(self.params["analysis"], dict):
             raise SpecificationError("Value of key 'analysis' must be a dictionaries")
         else:
             analysis_script = self.params["analysis"].get("script", "")
@@ -626,6 +628,7 @@ class WorkflowRegtest:
     def _validate_tests(self):
         """ validate the test part of the parameters"""
         tests_path = Path(__file__).parent / "testing_functions"
+        self.params.setdefault("tests", [])
         if not isinstance(self.params["tests"], (list, tuple)):
             raise SpecificationError(
                 "Value of key 'tests' must be an iterable of dictionaries"
