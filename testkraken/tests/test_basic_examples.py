@@ -12,7 +12,7 @@ Workflows_main_dir = os.path.join(
 workflows_list = [
     os.path.join(Workflows_main_dir, workf)
     for workf in next(os.walk(Workflows_main_dir))[1]
-    if "pseudo" in workf or "sort" in workf or "fake" in workf or "simple_w" in workf
+    if "simple_w" in workf
 ]
 
 
