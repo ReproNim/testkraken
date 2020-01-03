@@ -143,8 +143,9 @@ class WorkflowRegtest:
 
     def _run_pydra(self, image, soft_ver_str):
         wf = pydra.Workflow(
-            name="wf", input_spec=["image"]
-        )  # , cache_dir="/Users/dorota/testkraken/ala")
+            name="wf", input_spec=["image"],
+            cache_dir=self.working_dir,
+        )
         wf.inputs.image = image
 
         # 1st task - analysis
@@ -205,10 +206,15 @@ class WorkflowRegtest:
 
         out_fields_run = []
         for el in self.params["tests"]:
-            if el["file"] in output_file_dict:
-                el["file"] = output_file_dict[el["file"]]
-            # this would have to be modified if we allow multiple files to one test
-            out_fields_run.append((f"file_{el['name']}", pydra.specs.File, el["file"]))
+            if isinstance(el["file"], str):
+                if el["file"] in output_file_dict:
+                    el["file"] = output_file_dict[el["file"]]
+                out_fields_run.append((f"file_{el['name']}", pydra.specs.File, el["file"]))
+            elif isinstance(el["file"], list):
+                for ii, file in enumerate(el["file"]):
+                    out_fields_run.append((f"file_{el['name']}_{ii}", pydra.specs.File, file))
+            else:
+                raise Exception(f"value for file in params['tests'] has to be a str or a list")
 
         output_spec_run = pydra.specs.SpecInfo(
             name="Output", fields=out_fields_run, bases=(pydra.specs.ShellOutSpec,)
@@ -230,7 +236,10 @@ class WorkflowRegtest:
         def outfiles_list(res):
             out_f = []
             for el in self.params["tests"]:
-                out_f.append(res[f"file_{el['name']}"])
+                if isinstance(el["file"], (tuple, list)):
+                    out_f.append(tuple([res[f"file_{el['name']}_{i}"] for i in range(len(el["file"]))]))
+                else:
+                    out_f.append(res[f"file_{el['name']}"])
             return out_f
 
         wf.add(outfiles_list(name="outfiles", res=wf.run.lzout.all_))
@@ -252,7 +261,7 @@ class WorkflowRegtest:
                 ),
                 (
                     "file_out",
-                    pydra.specs.File,
+                    (tuple, pydra.specs.File),
                     dc.field(
                         metadata={
                             "position": 2,
@@ -264,7 +273,7 @@ class WorkflowRegtest:
                 ),
                 (
                     "file_ref",
-                    pydra.specs.File,
+                    (tuple, pydra.specs.File),
                     dc.field(
                         metadata={
                             "position": 3,
@@ -299,9 +308,13 @@ class WorkflowRegtest:
         inp_val_test = {}
         inp_val_test["name_test"] = [el["name"] for el in self.params["tests"]]
         inp_val_test["script_test"] = [el["script"] for el in self.params["tests"]]
-        inp_val_test["file_ref"] = [
-            self.data_path / el["file"] for el in self.params["tests"]
-        ]
+        inp_val_test["file_ref"] = []
+        for el in self.params["tests"]:
+            if isinstance(el["file"], str):
+                inp_val_test["file_ref"].append(self.data_path / el["file"])
+            elif isinstance(el["file"], list):
+                inp_val_test["file_ref"].append(tuple([self.data_path / file for file in el["file"]]))
+
 
         task_test = pydra.ShellCommandTask(
             name="test",

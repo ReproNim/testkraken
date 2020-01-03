@@ -23,31 +23,32 @@ env:
 # One or more fixed environments to test. These environments are built as defined
 # and are not combined in any way. This configuration, for example, will
 # produce one Docker image.
-fixed_env:
-  base:
-    image: 'centos:7'
-    pkg-manager: yum
-  fsl:
-    version: 5.0.10
-  miniconda:
-    conda_install:
-      - python=2.7
-      - nipype
-      - pandas
-      - requests
-      - bz2file
+#fixed_env:
+#  base:
+#    image: 'centos:7'
+#    pkg-manager: yum
+#  fsl:
+#    version: 5.0.10
+#  miniconda:
+#    conda_install:
+#      - python=2.7
+#      - nipype
+#      - pandas
+#      - requests
+#      - bz2file
 
-# The command to run the script.
-command: python
-# The workflow script. The script must be useable on the command-line.
-script: run_demo_workflow.py
+analysis:
+  # The command to run the script.
+  command: python
+  # The workflow script. The script must be useable on the command-line.
+  script: run_demo_workflow.py
 
-# Inputs to the workflow script. The first item is always the CWLType of the
-# argument. See https://www.commonwl.org/v1.0/CommandLineTool.html#CWLType for
-# all available types.
-inputs:
-  - [string, --key, 11an55u9t2TAf0EV2pHN0vOd8Ww2Gie-tHp9xGULh_dA]
-  - [int, -n, '3']
+  # Inputs to the workflow script. The first item is always the CWLType of the
+  # argument. See https://www.commonwl.org/v1.0/CommandLineTool.html#CWLType for
+  # all available types.
+  inputs:
+    - {type: string, argstr: --key, value: 11an55u9t2TAf0EV2pHN0vOd8Ww2Gie-tHp9xGULh_dA}
+    - {type: int, argstr: -n, value: "2"}
 
 # Tests to compare the output of the script to reference data.
 tests:
