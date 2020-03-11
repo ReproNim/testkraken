@@ -1,7 +1,7 @@
 """Object to orchestrate worflow execution and output tests."""
 
 from copy import deepcopy
-import dataclasses as dc
+import attr
 import itertools
 import json, os
 from pathlib import Path
@@ -159,8 +159,8 @@ class WorkflowRegtest:
             inp_fields_run.append(
                 (
                     "script",
-                    pydra.specs.File,
-                    dc.field(
+                    attr.ib(
+                        type=pydra.specs.File,
                         metadata={
                             "position": 1,
                             "help_string": "script file",
@@ -189,7 +189,7 @@ class WorkflowRegtest:
             # updating metadata with values provided in parameters file
             metadata.update(inputs)
 
-            field = (name, tp, dc.field(metadata=metadata))
+            field = (name, attr.ib(type=tp, metadata=metadata))
             inp_fields_run.append(field)
 
             if tp is pydra.specs.File:
@@ -250,8 +250,8 @@ class WorkflowRegtest:
             fields=[
                 (
                     "script_test",
-                    pydra.specs.File,
-                    dc.field(
+                    attr.ib(
+                        type=pydra.specs.File,
                         metadata={
                             "position": 1,
                             "help_string": "test file",
@@ -261,8 +261,8 @@ class WorkflowRegtest:
                 ),
                 (
                     "file_out",
-                    (tuple, pydra.specs.File),
-                    dc.field(
+                    attr.ib(
+                        type=(tuple, pydra.specs.File),
                         metadata={
                             "position": 2,
                             "help_string": "out file",
@@ -273,8 +273,8 @@ class WorkflowRegtest:
                 ),
                 (
                     "file_ref",
-                    (tuple, pydra.specs.File),
-                    dc.field(
+                    attr.ib(
+                        type=(tuple, pydra.specs.File),
                         metadata={
                             "position": 3,
                             "argstr": "-ref",
@@ -285,8 +285,8 @@ class WorkflowRegtest:
                 ),
                 (
                     "name_test",
-                    str,
-                    dc.field(
+                    attr.ib(
+                        type=str,
                         metadata={
                             "position": 4,
                             "argstr": "-name",
@@ -296,7 +296,7 @@ class WorkflowRegtest:
                     ),
                 ),
             ],
-            bases=(pydra.specs.DockerSpec,),
+            bases=(pydra.specs.ShellSpec,),
         )
 
         output_spec_test = pydra.specs.SpecInfo(
