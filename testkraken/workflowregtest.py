@@ -329,7 +329,6 @@ class WorkflowRegtest:
         # setting wf output
         wf.set_output(
             [
-                ("out", wf.run.lzout.stdout),
                 ("outfiles", wf.outfiles.lzout.outfiles),
                 ("test_out", wf.test.lzout.stdout),
                 ("reports", wf.test.lzout.reports),
