@@ -162,6 +162,7 @@ class WorkflowRegtest:
                     attr.ib(
                         type=pydra.specs.File,
                         metadata={
+                            "argstr": "",
                             "position": 1,
                             "help_string": "script file",
                             "mandatory": True,
@@ -253,6 +254,7 @@ class WorkflowRegtest:
                     attr.ib(
                         type=pydra.specs.File,
                         metadata={
+                            "argstr": "",
                             "position": 1,
                             "help_string": "test file",
                             "mandatory": True,
