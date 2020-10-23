@@ -183,6 +183,7 @@ class WorkflowRegtest:
             output_file = inputs.pop("output_file", False)
             # default values for metadata
             metadata = {
+                "argstr": "",
                 "position": ind + 2,
                 "help_string": f"inp_{ind}",
                 "mandatory": True,
