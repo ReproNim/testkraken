@@ -484,7 +484,7 @@ class WorkflowRegtest:
         # env and fixed_env
         self._validate_envs()
         # checking optional data and scripts
-        self._validate_data()
+        self._validate_download_data()
         self._validate_scripts()
         # checking analysis
         self._validate_analysis()
@@ -578,19 +578,26 @@ class WorkflowRegtest:
                         "Every value in fixed_env element must be a dictionary or list."
                     )
 
-    def _validate_data(self):
+    def _validate_download_data(self):
         """ validate the data part of the parameters"""
         # TODO will be extended
         if "data" in self.params:
-            valid_types = ["workflow_path", "local"]
-            if "location" not in self.params["data"]:
-                raise Exception(f"data has to have location")
+            # validating fields
+            valid_types = ["workflow_path", "local", "datalad_repo"]
             if (
                 "type" not in self.params["data"]
                 or self.params["data"]["type"] not in valid_types
             ):
                 raise Exception(f"data has to have type from the list {valid_types}")
-            elif self.params["data"]["type"] == "workflow_path":
+            if self.params["data"]["type"] in ["workflow_path", "local"] \
+                    and "location" not in self.params["data"]:
+                raise Exception(f"data has to have location if type workflow_path or local")
+            if self.params["data"]["type"] in ["datalad_repo"] \
+                    and "url" not in self.params["data"]:
+                raise Exception(f"data has to have url field if type is datalad_repo")
+
+            # setting data location and downloading data if needed
+            if self.params["data"]["type"] == "workflow_path":
                 self.params["data"]["location"] = (
                     self.workflow_path / self.params["data"]["location"]
                 )
@@ -598,6 +605,10 @@ class WorkflowRegtest:
                 self.params["data"]["location"] = Path(
                     self.params["data"]["location"]
                 ).absolute()
+            elif self.params["data"]["type"] == "datalad_repo":
+                # TODO: download data
+                # TODO: setting self.params["data"]["location"]
+                pass
         else:
             self.params["data"] = {
                 "type": "default",
