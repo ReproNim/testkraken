@@ -15,7 +15,11 @@ import neurodocker as ndr
 DEFAULT_INSTRUCTIONS = {"miniconda": {"create_env": "testkraken", "activate": True}}
 # all keys allowed by neurodocker for Docker
 VALID_DOCKER_KEYS = ndr.Dockerfile._implementations.keys()
-
+# most of the keys require dictionaries
+# keys that require strings
+DOCKER_KEYS_STR = ["run", "run_bash"]
+# keys that require lists
+DOCKER_KEYS_LST = ["install"]
 
 def _instructions_to_neurodocker_specs(env_spec):
     """Return dictionary compatible with Neurodocker given a list of
@@ -50,8 +54,15 @@ def _instructions_to_neurodocker_specs(env_spec):
             else:
                 pkg_manager = val["pkg_manager"]
         elif key in VALID_DOCKER_KEYS:
-            key_spec = copy.deepcopy(DEFAULT_INSTRUCTIONS.get(key, {}))
-            key_spec.update(val)
+            if key in DOCKER_KEYS_STR:
+                key_spec = copy.deepcopy(DEFAULT_INSTRUCTIONS.get(key, ""))
+                key_spec += f" {val}"
+            elif key in DOCKER_KEYS_LST:
+                key_spec = copy.deepcopy(DEFAULT_INSTRUCTIONS.get(key, []))
+                key_spec += val.split()
+            else:
+                key_spec = copy.deepcopy(DEFAULT_INSTRUCTIONS.get(key, {}))
+                key_spec.update(val)
             this_instruction = (key, key_spec)
         else:
             raise Exception(
