@@ -3,14 +3,15 @@ env:
   - {image: debian:stretch, pkg-manager: apt}
   - {image: ubuntu:16.04, pkg-manager: apt}
   miniconda:
-  - {conda_install: [python=3.7, numpy]}
-  - {conda_install: [python=2.7, numpy]}
+    - {conda_install: [python=3.5]}
+    - {conda_install: [python=2.7]}
+  run_bash: source activate testkraken && pip install numpy
 
 analysis:
+  command: python
   inputs:
   - {type: File, argstr: -f, value: list2sort.json}
   script: sorting.py
-  command: python
 
 tests:
 - {file: array_sorted.npy, name: regr1, script: test_arr_eq.py}

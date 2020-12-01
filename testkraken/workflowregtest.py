@@ -64,7 +64,7 @@ class WorkflowRegtest:
         # lists of full specification (all versions for each software/key)
         self._soft_vers_spec = {}
         for key, val in self.params["env"].items():
-            # val should be dictionary with options, list of dictionaries,
+            # val should be string, dictionary with options, list of dictionaries,
             # or dictionary with "common" and "shared"
             if isinstance(val, list):
                 self._soft_vers_spec[key] = val
@@ -75,6 +75,8 @@ class WorkflowRegtest:
                     self._soft_vers_spec[key] = val["varied"]
                 else:
                     self._soft_vers_spec[key] = [val]
+            elif isinstance(val, str):
+                self._soft_vers_spec[key] = [val]
             else:
                 raise SpecificationError(
                     "value for {} has to be either list or dictionary".format(key)
@@ -516,7 +518,7 @@ class WorkflowRegtest:
         # checking elements of params["env"]
         if self.params["env"]:
             for key, val in self.params["env"].items():
-                if not isinstance(val, (dict, list)):
+                if not isinstance(val, (dict, str, list)):
                     raise SpecificationError(
                         "Every value in 'env' must be a dictionary or list."
                     )
