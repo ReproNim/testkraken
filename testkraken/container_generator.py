@@ -220,3 +220,4 @@ def docker_main(workflow_dir, neurodocker_dict, sha1, build_context=None):
         write_dockerfile_sp(nrd_jsonfile=jsonpath, dockerfile=dockerfile)
     tag = "repronim/testkraken:{}".format(sha1)
     build_image(dockerfile, build_context=build_context, tag=tag)
+    return tag

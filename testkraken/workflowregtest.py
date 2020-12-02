@@ -111,6 +111,7 @@ class WorkflowRegtest:
             and run a workflow in all environments.
         """
         self._build_docker_images()
+        self._build_docker_image_test()
         self._run_workflow_in_matrix_of_envs()
 
     def _build_docker_images(self):
@@ -131,6 +132,19 @@ class WorkflowRegtest:
                 self.docker_status.append(
                     "failed to build image with SHA1 {}: {}".format(sha1, e)
                 )
+
+
+    def _build_docker_image_test(self):
+        test_env = self.params.get("tests_env")
+        if test_env:
+            testenv_dict = cg._instructions_to_neurodocker_specs(test_env)
+            testenv_sha = cg._get_dictionary_hash(testenv_dict["instructions"])
+            self.test_image = cg.docker_main(self.working_dir, neurodocker_dict=testenv_dict,
+                                             sha1=testenv_sha, build_context=self.build_context)
+        else:
+            self.test_image = None
+
+
 
     def _run_workflow_in_matrix_of_envs(self):
         """Run workflow for all env combination, testing for all tests.
@@ -320,10 +334,15 @@ class WorkflowRegtest:
             elif isinstance(el["file"], list):
                 inp_val_test["file_ref"].append(tuple([self.data_path / file for file in el["file"]]))
 
+        if self.test_image:
+            container_info = ("docker", self.test_image)
+        else:
+            container_info = None
 
         task_test = pydra.ShellCommandTask(
             name="test",
             executable="python",
+            container_info=container_info,
             input_spec=input_spec_test,
             output_spec=output_spec_test,
             file_out=wf.outfiles.lzout.outfiles,
