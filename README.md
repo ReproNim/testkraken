@@ -143,5 +143,17 @@ tests:
 Example that uses the concept can be found [here](https://github.com/ReproNim/testkraken/blob/master/workflows4regtests/basic_examples/sorting_list_fixedenv/testkraken_spec.yml)
 
 
+#### `tests_env` element
+If the testing function requires software that doesn't go with the standard `TestKraken` installation, the test can be run within a container. The specification of the testing environment should follow the one used in `env` or `fixed_env`. Only one environment should be used for testing, so `common` and `varied` keys should not be used.
+Example:
+
+```yaml
+# Testing environment requires python3.7 and numpy package
+tests_env:
+  base: {image: debian:stretch, pkg-manager: apt}
+  miniconda: {conda_install: [python=3.7, numpy]}
+```
+Example that uses the concept can be found [here](https://github.com/ReproNim/testkraken/blob/master/workflows4regtests/basic_examples/sorting_array_testcontainer/testkraken_spec.yml)
+
 ## Thanks
 Huge thanks to Puck Reeders for creating the logo and Anisha Keshavan for help with the dashboard.
