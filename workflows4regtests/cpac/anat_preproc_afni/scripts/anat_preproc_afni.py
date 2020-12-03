@@ -1,11 +1,7 @@
 import os
-import time
 import nipype.pipeline.engine as pe
 import nipype.interfaces.utility as util
 from CPAC.utils import Configuration, Strategy
-import CPAC.utils.test_init as test_utils
-from CPAC.utils.interfaces.function import Function
-from CPAC.utils.datasource import resolve_resolution
 from CPAC.anat_preproc.anat_preproc import create_anat_preproc
 
 
@@ -142,17 +138,6 @@ def anat_preproc_afni(working_path, input_path, test_wf_name='test_anat_preproc_
 
     # run workflow
     workflow.run()
-
-    # if benchmark_path is not None:
-    #     out_path = os.path.join(config.workingDirectory, test_wf_name, 'anat_preproc', 'anat_skullstrip',
-    #                             input_path[input_path.rindex('/') + 1:input_path.rindex(
-    #                                 '.nii.gz')] + '_resample_skullstrip.nii.gz')
-    #
-    #     # calculate corretion between function output and benchmark output
-    #     corr = test_utils.pearson_correlation(out_path, benchmark_path)
-    #     print(f'\nCorrelation = {round(corr,3)}\n')
-    #
-    #     assert (corr > .99)
 
 
 if __name__ == '__main__':
