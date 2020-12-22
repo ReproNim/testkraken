@@ -14,6 +14,9 @@ from . import check_latest_version
 import testkraken.container_generator as cg
 import pydra
 
+from testkraken.data_management import get_tests_data_dir, process_path_obj
+import datalad.api as datalad
+
 
 class WorkflowRegtest:
     """Object to test a workflow in many environments.
@@ -212,6 +215,7 @@ class WorkflowRegtest:
 
             if tp is pydra.specs.File:
                 inp_val_run[name] = self.data_path / value
+                process_path_obj(value, self.data_path)
             else:
                 if output_file:
                     output_file_dict[name] = value
@@ -577,6 +581,23 @@ class WorkflowRegtest:
                     raise SpecificationError(
                         "Every value in fixed_env element must be a dictionary or list."
                     )
+    def download_datalad_repo(self,git_ref="master",ignore_dirty_data=False):
+        """
+        Makes sure datalad repository is downloaded. If a commit is
+        provided this should be checked out. Dirty data (data in the
+        repository that has not been committed is ignored if
+        ignore_dirty_data is set to True.
+        """
+
+        if not self.params["data"].get("url"):
+            raise ValueError(
+                "A value for url must be provided if the data "
+                "type is datalad_repo "
+                )
+        # Get directory name for repository
+        dl_dset = datalad.Dataset(str(self.params['data']['location']))
+        get_tests_data_dir(dl_dset,dset_url=self.params['data']['url'])
+
 
     def _validate_download_data(self):
         """ validate the data part of the parameters"""
@@ -606,9 +627,15 @@ class WorkflowRegtest:
                     self.params["data"]["location"]
                 ).absolute()
             elif self.params["data"]["type"] == "datalad_repo":
-                # TODO: download data
-                # TODO: setting self.params["data"]["location"]
-                pass
+                if self.params["data"].get("location"):
+                    self.params["data"]["location"] = Path(
+                        self.params["data"]["location"]
+                    ).absolute()
+                else:
+                    self.params["data"]["location"] = (
+                        self.workflow_path / "data"
+                    ).absolute()
+                self.download_datalad_repo()
         else:
             self.params["data"] = {
                 "type": "default",
