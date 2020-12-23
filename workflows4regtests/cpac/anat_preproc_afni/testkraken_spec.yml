@@ -22,12 +22,12 @@ tests:
   - file: working/test_anat_preproc_afni/anat_preproc/anat_reorient/anat_resample.nii.gz
     name: regr_reorient
     script: pearson_correlation.py
-  - file: working/test_anat_preproc_afni/anat_preproc/anat_skullstrip/anat_resample_skullstrip.nii.gz
-    name: regr_skullstrip
-    script: pearson_correlation.py
-  - file: working/test_anat_preproc_afni/anat_preproc/anat_brain_mask/anat_resample_skullstrip_calc.nii.gz
-    name: regr_mask
-    script: pearson_correlation.py
+  #- file: working/test_anat_preproc_afni/anat_preproc/anat_skullstrip/anat_resample_skullstrip.nii.gz
+  #  name: regr_skullstrip
+  #  script: pearson_correlation.py
+  #- file: working/test_anat_preproc_afni/anat_preproc/anat_brain_mask/anat_resample_skullstrip_calc.nii.gz
+  #  name: regr_mask
+  #  script: pearson_correlation.py
 
 
 tests_env:
