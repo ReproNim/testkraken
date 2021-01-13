@@ -1,14 +1,18 @@
 env:
   base:
   - {image: debian:stretch, pkg-manager: apt}
-    #  miniconda:
-    #    conda_install:
-    #      - afni-minimal
-    #  - {version: latest}
+#  - {image: ubuntu:16.04, pkg-manager: apt}
+  afni:
+  - {version: latest}
+
 
 data:
   type: datalad_repo
   url: https://github.com/afni/afni_data.git
+
+data_ref:
+  type: workflow_path
+  location: data_ref
 
 analysis:
   command: 3dcopy
