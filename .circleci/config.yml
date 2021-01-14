@@ -18,6 +18,7 @@ jobs:
             conda config --system --prepend channels conda-forge
             conda update -n base -yq conda
             conda update -yq --all
+            conda install git-annex
             pip install --no-cache-dir -e /home/circleci/regtests[dev]
 
       - run:

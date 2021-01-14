@@ -14,6 +14,9 @@ from . import check_latest_version
 import testkraken.container_generator as cg
 import pydra
 
+from testkraken.data_management import get_tests_data_dir, process_path_obj
+import datalad.api as datalad
+
 
 class WorkflowRegtest:
     """Object to test a workflow in many environments.
@@ -49,7 +52,6 @@ class WorkflowRegtest:
         with (self.workflow_path / "testkraken_spec.yml").open() as f:
             self.params = yaml.safe_load(f)
         self.validate_parameters()
-        self.data_path = self.params["data"]["location"]
 
         self.create_matrix_of_envs()
         self.neurodocker_specs = cg.get_dict_of_neurodocker_dicts(
@@ -191,9 +193,6 @@ class WorkflowRegtest:
         output_file_dict = {}
         for ind, inputs in enumerate(param_run["inputs"]):
             inputs = deepcopy(inputs)
-            tp = inputs.pop("type")
-            if tp == "File":
-                tp = pydra.specs.File
             value = inputs.pop("value")
             name = inputs.pop("name", f"inp_{ind}")
             output_file = inputs.pop("output_file", False)
@@ -204,6 +203,10 @@ class WorkflowRegtest:
                 "help_string": f"inp_{ind}",
                 "mandatory": True,
             }
+            tp = inputs.pop("type")
+            if tp == "File":
+                tp = pydra.specs.File
+                metadata["container_path"] = True
             # updating metadata with values provided in parameters file
             metadata.update(inputs)
 
@@ -211,7 +214,8 @@ class WorkflowRegtest:
             inp_fields_run.append(field)
 
             if tp is pydra.specs.File:
-                inp_val_run[name] = self.data_path / value
+                inp_val_run[name] = f"/data/{value}"
+                process_path_obj(value, self.data_path)
             else:
                 if output_file:
                     output_file_dict[name] = value
@@ -244,6 +248,7 @@ class WorkflowRegtest:
             image=wf.lzin.image,
             input_spec=input_spec_run,
             output_spec=output_spec_run,
+            bindings=[(self.data_path, "/data", "ro")],
             **inp_val_run,
         )
         wf.add(task_run)
@@ -299,6 +304,7 @@ class WorkflowRegtest:
                             "argstr": "-ref",
                             "help_string": "out file",
                             "mandatory": True,
+                            "container_path": True,
                         }
                     ),
                 ),
@@ -324,20 +330,22 @@ class WorkflowRegtest:
             bases=(pydra.specs.ShellOutSpec,),
         )
 
+        if self.test_image:
+            container_info = ("docker", self.test_image, [(self.data_ref_path, "/data_ref", "ro")])
+            file_ref_dir = Path("/data_ref")
+        else:
+            container_info = None
+            file_ref_dir = self.data_ref_path
+
         inp_val_test = {}
         inp_val_test["name_test"] = [el["name"] for el in self.params["tests"]]
         inp_val_test["script_test"] = [el["script"] for el in self.params["tests"]]
         inp_val_test["file_ref"] = []
         for el in self.params["tests"]:
             if isinstance(el["file"], str):
-                inp_val_test["file_ref"].append(self.data_path / el["file"])
+                inp_val_test["file_ref"].append(file_ref_dir / el["file"])
             elif isinstance(el["file"], list):
-                inp_val_test["file_ref"].append(tuple([self.data_path / file for file in el["file"]]))
-
-        if self.test_image:
-            container_info = ("docker", self.test_image)
-        else:
-            container_info = None
+                inp_val_test["file_ref"].append(tuple([file_ref_dir / file for file in el["file"]]))
 
         task_test = pydra.ShellCommandTask(
             name="test",
@@ -484,8 +492,15 @@ class WorkflowRegtest:
         # env and fixed_env
         self._validate_envs()
         # checking optional data and scripts
-        self._validate_data()
+        self._validate_download_data()
+        self.data_path = self.params["data"]["location"]
         self._validate_scripts()
+        # checking optional data_ref (if not data_ref provided, path is the same as data path)
+        if "data_ref" in self.params:
+            self._validate_download_data(data_nm="data_ref")
+            self.data_ref_path = self.params["data_ref"]["location"]
+        else:
+            self.data_ref_path = self.data_path
         # checking analysis
         self._validate_analysis()
         # checking tests
@@ -577,35 +592,69 @@ class WorkflowRegtest:
                     raise SpecificationError(
                         "Every value in fixed_env element must be a dictionary or list."
                     )
+    def download_datalad_repo(self,git_ref="master",ignore_dirty_data=False):
+        """
+        Makes sure datalad repository is downloaded. If a commit is
+        provided this should be checked out. Dirty data (data in the
+        repository that has not been committed is ignored if
+        ignore_dirty_data is set to True.
+        """
 
-    def _validate_data(self):
+        if not self.params["data"].get("url"):
+            raise ValueError(
+                "A value for url must be provided if the data "
+                "type is datalad_repo "
+                )
+        # Get directory name for repository
+        dl_dset = datalad.Dataset(str(self.params['data']['location']))
+        get_tests_data_dir(dl_dset,dset_url=self.params['data']['url'])
+
+
+    def _validate_download_data(self, data_nm="data"):
         """ validate the data part of the parameters"""
         # TODO will be extended
-        if "data" in self.params:
-            valid_types = ["workflow_path", "local"]
-            if "location" not in self.params["data"]:
-                raise Exception(f"data has to have location")
+        if data_nm in self.params:
+            # validating fields
+            valid_types = ["workflow_path", "local", "datalad_repo"]
             if (
-                "type" not in self.params["data"]
-                or self.params["data"]["type"] not in valid_types
+                "type" not in self.params[data_nm]
+                or self.params[data_nm]["type"] not in valid_types
             ):
                 raise Exception(f"data has to have type from the list {valid_types}")
-            elif self.params["data"]["type"] == "workflow_path":
-                self.params["data"]["location"] = (
-                    self.workflow_path / self.params["data"]["location"]
+            if self.params[data_nm]["type"] in ["workflow_path", "local"] \
+                    and "location" not in self.params[data_nm]:
+                raise Exception(f"data has to have location if type workflow_path or local")
+            if self.params[data_nm]["type"] in ["datalad_repo"] \
+                    and "url" not in self.params[data_nm]:
+                raise Exception(f"data has to have url field if type is datalad_repo")
+
+            # setting data location and downloading data if needed
+            if self.params[data_nm]["type"] == "workflow_path":
+                self.params[data_nm]["location"] = (
+                    self.workflow_path / self.params[data_nm]["location"]
                 )
-            elif self.params["data"]["type"] == "local":
-                self.params["data"]["location"] = Path(
-                    self.params["data"]["location"]
+            elif self.params[data_nm]["type"] == "local":
+                self.params[data_nm]["location"] = Path(
+                    self.params[data_nm]["location"]
                 ).absolute()
+            elif self.params[data_nm]["type"] == "datalad_repo":
+                if self.params[data_nm].get("location"):
+                    self.params[data_nm]["location"] = Path(
+                        self.params[data_nm]["location"]
+                    ).absolute()
+                else:
+                    self.params[data_nm]["location"] = (
+                        self.workflow_path / data_nm
+                    ).absolute()
+                self.download_datalad_repo()
         else:
-            self.params["data"] = {
+            self.params[data_nm] = {
                 "type": "default",
-                "location": self.workflow_path / "data",
+                "location": self.workflow_path / data_nm,
             }
 
-        if not self.params["data"]["location"].exists():
-            raise Exception(f"{self.params['data']['location']} doesnt exist")
+        if not self.params[data_nm]["location"].exists():
+            raise Exception(f"{self.params[data_nm]['location']} doesnt exist")
 
     def _validate_scripts(self):
         """ validate the data part of the parameters"""
