@@ -1,0 +1,28 @@
+env:
+  base:
+  - {image: debian:stretch, pkg-manager: apt}
+#  - {image: ubuntu:16.04, pkg-manager: apt}
+  afni:
+  - {version: latest}
+
+
+data:
+  type: datalad_repo
+  url: https://github.com/afni/afni_data.git
+
+data_ref:
+  type: workflow_path
+  location: data_ref
+
+analysis:
+  command: 3dcopy
+  inputs:
+  - {type: File, value: atlases/MNI152_2009_template.nii.gz}
+  - {type: str, name: copied_file, value: copied.nii.gz, output_file: True}
+
+tests:
+  # two ways of asking for output file that name had to be provided in inputs
+- {file: copied.nii.gz, name: regr1, script: test_obj_eq.py}
+- {file: copied.nii.gz, name: header, script: test_afni_scan_headers.py}
+- {file: copied_file, name: data, script: test_afni_scan_data.py}
+- {file: copied_file, name: diff_fake, script: test_afni_scan_data_diff_fake.py}
