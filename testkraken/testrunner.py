@@ -1,10 +1,14 @@
 """Running workflows and regression tests for all projects in chosen dictionary"""
 
 from testkraken.workflowregtest import WorkflowRegtest
-import os, pdb
+import os
+from pathlib import Path
 
 
 def runner(workflow_path, working_dir=None, tmp_dir=True):
+    workflow_path = Path(workflow_path).absolute()
+    if working_dir:
+        working_dir = Path(working_dir).absolute()
     print("Workflow Name: {}".format(os.path.basename(workflow_path)))
     wf = WorkflowRegtest(
         workflow_path=workflow_path, working_dir=working_dir, tmp_working_dir=tmp_dir
