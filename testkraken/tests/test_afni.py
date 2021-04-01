@@ -14,8 +14,12 @@ workflows_list = [
     for workf in next(os.walk(Workflows_main_dir))[1]
 ]
 
+workflows_list_xfail = [
+    pytest.param(el, marks=pytest.mark.xfail(reason="datalad might fail on CI"))
+    if "datalad" in el else el for el in workflows_list
+]
 
-@pytest.mark.parametrize("workflow_path", workflows_list)
+@pytest.mark.parametrize("workflow_path", workflows_list_xfail)
 def test_afni_examples(workflow_path):
     print(workflow_path)
     cwd = Path.cwd()
