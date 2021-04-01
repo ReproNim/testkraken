@@ -4,6 +4,7 @@ import click
 import sys
 
 from testkraken.workflowregtest import WorkflowRegtest
+from testkraken.testrunner import runner
 
 def _pdb_excepthook(type, value, tb):
     import traceback
@@ -27,16 +28,13 @@ def _pdb_excepthook(type, value, tb):
     is_flag=True,
     help="Fall into pdf debugging mode if unhandled exception happens.",
 )
-def main(path, working_dir=None, tmp_working_dir=True, pdb=False):
+def main(path, working_dir=None, pdb=False):
     """This script runs the workflow in PATH."""
     if pdb:
         sys.excepthook = _pdb_excepthook
     if working_dir:
         tmp_working_dir = False
-    wf = WorkflowRegtest(
-        workflow_path=path, working_dir=working_dir, tmp_working_dir=tmp_working_dir
-    )
-    print(f"\n running testkraken for {path}; working directory - {working_dir}")
-    wf.run()
-    wf.merge_outputs()
-    wf.dashboard_workflow()
+    else:
+        tmp_working_dir = True
+
+    runner(workflow_path=path, working_dir=working_dir, tmp_dir=tmp_working_dir)
