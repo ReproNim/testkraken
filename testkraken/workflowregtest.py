@@ -405,10 +405,15 @@ class WorkflowRegtest:
         # saving detailed describtion about the environment
         soft_vers_description = {}
         for key, val in self._soft_vers_spec.items():
-            soft_vers_description[key] = [
-                {"version": "ver_{}".format(i), "description": str(spec)}
-                for (i, spec) in enumerate(val)
-            ]
+            soft_vers_description[key] = []
+            for ii, spec in enumerate(val):
+                if isinstance(spec, dict) and "description" in spec:
+                    descr = spec["description"]
+                else:
+                    descr = str(spec)
+                soft_vers_description[key].append(
+                    {"version": "ver_{}".format(ii), "description": descr}
+                )
         with (self.working_dir / "envs_descr.json").open(mode="w") as f:
             json.dump(soft_vers_description, f)
 
