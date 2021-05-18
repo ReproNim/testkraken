@@ -8,7 +8,7 @@ env:
     - {conda_install: [python=3.7, xvfbwrapper], pip_install: [torch]}
     - {conda_install: [python=3.6, xvfbwrapper], pip_install: [torch]}
     - {conda_install: [python=3.8, xvfbwrapper], pip_install: [torch]}
-  run_bash: git clone --branch test/anat_preproc https://github.com/FCP-INDI/C-PAC && cd C-PAC && source activate testkraken && pip install -r requirements.txt && python setup.py install
+  run_bash: git clone --branch develop https://github.com/FCP-INDI/C-PAC && cd C-PAC && source activate testkraken && pip install -r requirements.txt && python setup.py install
 
 
 analysis:
@@ -31,4 +31,4 @@ tests_env:
   miniconda:
     conda_install: [python=3.7, xvfbwrapper]
     pip_install: [torch]
-  run_bash: git clone --branch test/anat_preproc https://github.com/FCP-INDI/C-PAC && cd C-PAC && source activate testkraken && pip install -r requirements.txt && python setup.py install
+  run_bash: git clone --branch develop https://github.com/FCP-INDI/C-PAC && cd C-PAC && source activate testkraken && pip install -r requirements.txt && python setup.py install
