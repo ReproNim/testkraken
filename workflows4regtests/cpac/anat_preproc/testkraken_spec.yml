@@ -6,8 +6,6 @@ env:
   - {version: latest}
   miniconda:
     - {conda_install: [python=3.7, xvfbwrapper], pip_install: [torch]}
-    - {conda_install: [python=3.6, xvfbwrapper], pip_install: [torch]}
-    - {conda_install: [python=3.8, xvfbwrapper], pip_install: [torch]}
   run_bash: git clone --branch develop https://github.com/FCP-INDI/C-PAC && cd C-PAC && source activate testkraken && pip install -r requirements.txt && python setup.py install
 
 
@@ -15,12 +13,13 @@ analysis:
   script: anat_preproc.py
   command: python
   inputs:
-  - {type: File, argstr: -i, value: .}
+  - {type: Directory, argstr: -i, value: ./HNU}
   - {type: Directory, argstr: -w, value: .}
+  - {type: File, argstr: -c, value: ../scripts/pipeline_config_anat_preproc.yml}
 
 
 tests:
-  - file: out/cpac_cpac-default-pipeline/sub-0025427_ses-1/anat/sub-0025427_ses-1_desc-brain_T1w.nii.gz
+  - file: reference/sub-0025427_ses-1_desc-brain_T1w.nii.gz
     name: regr_skullstrip
     script: pearson_correlation.py
 
