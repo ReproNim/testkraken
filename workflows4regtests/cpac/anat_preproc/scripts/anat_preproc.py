@@ -42,7 +42,9 @@ if __name__ == '__main__':
     parser.add_argument("-w", dest="working_path",
                         help="working_path")
 
-    args = parser.parse_args()
-    cfg = "pipeline_config_anat_preproc.yml"
+    parser.add_argument("-c", dest="config_path",
+                        help="config_path")
 
-    test_build_anat_preproc_stack(pipe_config=cfg, bids_dir=args.input_path, test_dir=args.working_path)
+    args = parser.parse_args()
+
+    test_build_anat_preproc_stack(pipe_config=args.config_path, bids_dir=args.input_path, test_dir=args.working_path)
