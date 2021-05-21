@@ -58,6 +58,7 @@ class WorkflowRegtest:
             self.matrix_of_envs, self.params["post_build"]
         )
         self.reports = {}
+        self.wf_outputs = {}
 
     def create_matrix_of_envs(self):
         """Create matrix of all combinations of environment variables.
@@ -158,6 +159,14 @@ class WorkflowRegtest:
             if status == "docker ok":
                 image = "repronim/testkraken:{}".format(sha)
                 self._run_pydra(image=image, soft_ver_str=name)
+
+        # running tests separately
+        for name, status, sha in zip(
+            self.env_names, self.docker_status, self.neurodocker_specs.keys()
+        ):
+            if status == "docker ok":
+                self._run_tests(soft_ver_str=name)
+
 
     def _run_pydra(self, image, soft_ver_str):
         wf = pydra.Workflow(
@@ -267,7 +276,24 @@ class WorkflowRegtest:
 
         wf.add(outfiles_list(name="outfiles", res=wf.run.lzout.all_))
 
-        # 3rd task - tests
+        # setting wf output
+        wf.set_output(
+            [
+                ("outfiles", wf.outfiles.lzout.outfiles),
+            ]
+        )
+        print(
+            f"\n running pydra workflow for {self.workflow_path} "
+            f"in working directory - {self.working_dir}"
+        )
+        with pydra.Submitter(plugin="cf") as sub:
+            sub(wf)
+        res = wf.result()
+        self.wf_outputs[soft_ver_str] = res.output.outfiles
+
+
+    def _run_tests(self, soft_ver_str):
+        # task running tests
         input_spec_test = pydra.specs.SpecInfo(
             name="Input",
             fields=[
@@ -341,11 +367,17 @@ class WorkflowRegtest:
         inp_val_test["name_test"] = [el["name"] for el in self.params["tests"]]
         inp_val_test["script_test"] = [el["script"] for el in self.params["tests"]]
         inp_val_test["file_ref"] = []
-        for el in self.params["tests"]:
-            if isinstance(el["file"], str):
-                inp_val_test["file_ref"].append(file_ref_dir / el["file"])
-            elif isinstance(el["file"], list):
-                inp_val_test["file_ref"].append(tuple([file_ref_dir / file for file in el["file"]]))
+
+        for (ii, el) in enumerate(self.params["tests"]):
+            # if ref_env in the spec, using reference file from the specific environment
+            # TODO: the form of ref_env should be updated, now it's env_0, etc.
+            if "ref_env" in el:
+                inp_val_test["file_ref"].append(self.wf_outputs[el["ref_env"]][ii])
+            else:
+                if isinstance(el["file"], str):
+                    inp_val_test["file_ref"].append(file_ref_dir / el["file"])
+                elif isinstance(el["file"], list):
+                    inp_val_test["file_ref"].append(tuple([file_ref_dir / file for file in el["file"]]))
 
         task_test = pydra.ShellCommandTask(
             name="test",
@@ -353,27 +385,14 @@ class WorkflowRegtest:
             container_info=container_info,
             input_spec=input_spec_test,
             output_spec=output_spec_test,
-            file_out=wf.outfiles.lzout.outfiles,
+            file_out=self.wf_outputs[soft_ver_str],
             **inp_val_test,
         ).split((("script_test", "name_test"), ("file_out", "file_ref")))
-        wf.add(task_test)
 
-        # setting wf output
-        wf.set_output(
-            [
-                ("outfiles", wf.outfiles.lzout.outfiles),
-                ("test_out", wf.test.lzout.stdout),
-                ("reports", wf.test.lzout.reports),
-            ]
-        )
-        print(
-            f"\n running pydra workflow for {self.workflow_path} "
-            f"in working directory - {self.working_dir}"
-        )
-        with pydra.Submitter(plugin="cf") as sub:
-            sub(wf)
-        res = wf.result()
-        self.reports[soft_ver_str] = res.output.reports
+        task_test()
+        res = task_test.result()
+        self.reports[soft_ver_str] = [el.output.reports for el in res]
+
 
     def merge_outputs(self):
         """ Merging all tests outputs """
