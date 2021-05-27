@@ -21,7 +21,7 @@ analysis:
 
 
 tests:
-  - file: work/cpac_sub-0025427_ses-1/brain_extraction_46/sub-0025427_ses-1_run-1_T1w_resample_calc.nii.gz
+  - file: work/cpac_sub-0025427_ses-1/brain_extraction_*/sub-0025427_ses-1_run-1_T1w_resample_calc.nii.gz
     name: regr_skullstrip
     script: pearson_correlation.py
 
