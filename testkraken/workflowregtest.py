@@ -59,6 +59,7 @@ class WorkflowRegtest:
         )
         self.reports = {}
         self.wf_outputs = {}
+        self.wf_dirs = {}
 
     def create_matrix_of_envs(self):
         """Create matrix of all combinations of environment variables.
@@ -289,6 +290,7 @@ class WorkflowRegtest:
         with pydra.Submitter(plugin="cf") as sub:
             sub(wf)
         res = wf.result()
+        self.wf_dirs[soft_ver_str] = wf.output_dir
         self.wf_outputs[soft_ver_str] = res.output.outfiles
 
 
@@ -330,7 +332,7 @@ class WorkflowRegtest:
                             "argstr": "-ref",
                             "help_string": "out file",
                             "mandatory": True,
-                            "container_path": True,
+                        #    "container_path": True,
                         }
                     ),
                 ),
@@ -356,12 +358,20 @@ class WorkflowRegtest:
             bases=(pydra.specs.ShellOutSpec,),
         )
 
+        if "data_ref" in self.params:
+            #self._validate_download_data(data_nm="data_ref")
+            if self.params["data_ref"]["type"] == "env_output":
+                self.data_ref_path = self.wf_dirs[self.params["data_ref"]["env_ref"]]
+            else:
+                self.data_ref_path = self.params["data_ref"]["location"]
+
+        else:
+            self.data_ref_path = self.data_path
+
         if self.test_image:
             container_info = ("docker", self.test_image, [(self.data_ref_path, "/data_ref", "ro")])
-            file_ref_dir = Path("/data_ref")
         else:
             container_info = None
-            file_ref_dir = self.data_ref_path
 
         inp_val_test = {}
         inp_val_test["name_test"] = [el["name"] for el in self.params["tests"]]
@@ -369,15 +379,10 @@ class WorkflowRegtest:
         inp_val_test["file_ref"] = []
 
         for (ii, el) in enumerate(self.params["tests"]):
-            # if ref_env in the spec, using reference file from the specific environment
-            # TODO: the form of ref_env should be updated, now it's env_0, etc.
-            if "ref_env" in el:
-                inp_val_test["file_ref"].append(self.wf_outputs[el["ref_env"]][ii])
-            else:
-                if isinstance(el["file"], str):
-                    inp_val_test["file_ref"].append(file_ref_dir / el["file"])
-                elif isinstance(el["file"], list):
-                    inp_val_test["file_ref"].append(tuple([file_ref_dir / file for file in el["file"]]))
+            if isinstance(el["file"], str):
+                inp_val_test["file_ref"].append(self.data_ref_path / el["file"])
+            elif isinstance(el["file"], list):
+                inp_val_test["file_ref"].append(tuple([self.data_ref_path / file for file in el["file"]]))
 
         task_test = pydra.ShellCommandTask(
             name="test",
@@ -521,10 +526,10 @@ class WorkflowRegtest:
         self._validate_scripts()
         # checking optional data_ref (if not data_ref provided, path is the same as data path)
         if "data_ref" in self.params:
-            self._validate_download_data(data_nm="data_ref")
-            self.data_ref_path = self.params["data_ref"]["location"]
-        else:
-            self.data_ref_path = self.data_path
+           self._validate_download_data(data_nm="data_ref")
+#            self.data_ref_path = self.params["data_ref"]["location"]
+#        else:
+#            self.data_ref_path = self.data_path
         # checking analysis
         self._validate_analysis()
         # checking tests
@@ -640,6 +645,8 @@ class WorkflowRegtest:
         if data_nm in self.params:
             # validating fields
             valid_types = ["workflow_path", "local", "datalad_repo"]
+            if data_nm == "data_ref":
+                valid_types.append("env_output")
             if (
                 "type" not in self.params[data_nm]
                 or self.params[data_nm]["type"] not in valid_types
@@ -671,13 +678,17 @@ class WorkflowRegtest:
                         self.workflow_path / data_nm
                     ).absolute()
                 self.download_datalad_repo()
+            elif self.params[data_nm]["type"] == "env_output":
+                self.params[data_nm]["location"] = None
+                if "env_ref" not in self.params[data_nm]:
+                    raise Exception(f"data_ref of typ env_output requires env field")
         else:
             self.params[data_nm] = {
                 "type": "default",
                 "location": self.workflow_path / data_nm,
             }
 
-        if not self.params[data_nm]["location"].exists():
+        if self.params[data_nm]["location"] and not self.params[data_nm]["location"].exists():
             raise Exception(f"{self.params[data_nm]['location']} doesnt exist")
 
     def _validate_scripts(self):
