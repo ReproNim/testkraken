@@ -6,6 +6,10 @@ env:
   - {conda_install: [python=3.7, numpy]}
   - {conda_install: [python=2.7, numpy]}
 
+data_ref:
+  type: workflow_path
+  location: data_ref
+
 analysis:
   inputs:
   - {type: File, argstr: -f, value: list2sort.json}
