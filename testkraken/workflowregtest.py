@@ -51,6 +51,8 @@ class WorkflowRegtest:
 
         with (self.workflow_path / "testkraken_spec.yml").open() as f:
             self.params = yaml.safe_load(f)
+        # environment for reference data (None is overwritten if specified in the spec)
+        self.ref_env = None
         self.validate_parameters()
 
         self.create_matrix_of_envs()
@@ -106,9 +108,26 @@ class WorkflowRegtest:
                         self._soft_vers_spec[key].append(val)
                         self._soft_str[key].append(f"ver_{len(self._soft_str[key])}")
 
-        self.env_names = [
-            "env_{}".format(ii) for ii, _ in enumerate(self.matrix_of_envs)
-        ]
+        # dictionary with dict(env_ind, {software_key: ver_ind})
+        self.env_dict = {}
+        for ii, soft_dict in enumerate(self.matrix_of_envs):
+            self.env_dict[f"env_{ii}"] = {}
+            for key, val in soft_dict.items():
+                ind = self._soft_vers_spec[key].index(val)
+                self.env_dict[f"env_{ii}"][key] = self._soft_str[key][ind]
+        # names of the envs: env_0, env_1,...
+        self.env_names = list(self.env_dict.keys())
+
+        # if data_ref is env_output, finding the specific environment that will be used
+        # for the reference data
+        if "data_ref" in self.params and self.params["data_ref"]["type"] == "env_output":
+            self.ref_env_ind = None
+            for key, val in self.env_dict.items():
+                if val == self.ref_env:
+                    self.ref_env_ind = key
+            if self.ref_env_ind is None:
+                raise Exception(f"reference environment is not among environment")
+
 
     def run(self):
         """The main method that runs generate all docker files, build images
@@ -165,7 +184,9 @@ class WorkflowRegtest:
         for name, status, sha in zip(
             self.env_names, self.docker_status, self.neurodocker_specs.keys()
         ):
-            if status == "docker ok":
+            # running tests only if docker container was created and if this is not
+            # the reference environment
+            if status == "docker ok" and (self.ref_env is None or name != self.ref_env_ind):
                 self._run_tests(soft_ver_str=name)
 
 
@@ -361,7 +382,7 @@ class WorkflowRegtest:
         if "data_ref" in self.params:
             #self._validate_download_data(data_nm="data_ref")
             if self.params["data_ref"]["type"] == "env_output":
-                self.data_ref_path = self.wf_dirs[self.params["data_ref"]["env_ref"]]
+                self.data_ref_path = self.wf_dirs[self.ref_env_ind]
             else:
                 self.data_ref_path = self.params["data_ref"]["location"]
 
@@ -406,7 +427,10 @@ class WorkflowRegtest:
         for ii, soft_d in enumerate(self.matrix_of_envs):
             el_dict = self._soft_to_str(soft_d)
             el_dict["env"] = self.env_names[ii]
-            if self.docker_status[ii] == "docker ok":
+            # if this is the reference  environment, nothing will be added
+            if self.ref_env and self.env_names[ii] == self.ref_env_ind:
+                pass
+            elif self.docker_status[ii] == "docker ok":
                 if self.params["tests"]:
                     # merging results from tests and updating self.res_all, self.res_all_flat
                     df_el, df_el_flat = self._merge_test_output(
@@ -680,8 +704,9 @@ class WorkflowRegtest:
                 self.download_datalad_repo()
             elif self.params[data_nm]["type"] == "env_output":
                 self.params[data_nm]["location"] = None
-                if "env_ref" not in self.params[data_nm]:
+                if "ref_env" not in self.params[data_nm]:
                     raise Exception(f"data_ref of typ env_output requires env field")
+                self.ref_env = self.params[data_nm]["ref_env"]
         else:
             self.params[data_nm] = {
                 "type": "default",

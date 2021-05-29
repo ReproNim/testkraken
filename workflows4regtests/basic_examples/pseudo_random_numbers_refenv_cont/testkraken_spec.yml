@@ -3,7 +3,7 @@ data:
   location: data_1
 data_ref:
   type: env_output
-  env_ref: env_0
+  ref_env: {base: ver_0, miniconda: ver_1}
 scripts:
   scripts_subdir/scripts
 env:
