@@ -4,6 +4,7 @@ from copy import deepcopy
 import attr
 import itertools
 import json, os
+from glob import glob
 from pathlib import Path
 import shutil
 import tempfile
@@ -443,10 +444,22 @@ class WorkflowRegtest:
         else:
             inp_val_test["file_ref"] = []
             for (ii, el) in enumerate(self.params["tests"]):
+                # dealing with wildcards in test file specs
+                if isinstance(el["file"], str) and "*" in el["file"]:
+                    files = list(glob(str((self.data_ref_path / el["file"]).expanduser())))
+                    files = [el.replace(str(self.data_ref_path), "")[1:] for el in files]
+
+                    if len(files) == 0:
+                        raise Exception(f"can't find any file that matches the patter {el['file']}")
+                    elif len(files) == 1:
+                        files = files[0]
+                else:
+                    files = el["file"]
+
                 if isinstance(el["file"], str):
-                    inp_val_test["file_ref"].append(self.data_ref_path / el["file"])
+                    inp_val_test["file_ref"].append(self.data_ref_path / files)
                 elif isinstance(el["file"], list):
-                    inp_val_test["file_ref"].append(tuple([self.data_ref_path / file for file in el["file"]]))
+                    inp_val_test["file_ref"].append(tuple([self.data_ref_path / file for file in files]))
 
         task_test = pydra.ShellCommandTask(
             name="test",
