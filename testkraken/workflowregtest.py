@@ -52,7 +52,7 @@ class WorkflowRegtest:
         with (self.workflow_path / "testkraken_spec.yml").open() as f:
             self.params = yaml.safe_load(f)
         # environment for reference data (None is overwritten if specified in the spec)
-        self.ref_env = None
+        self.ref_env_ind = None
         self.validate_parameters()
 
         self.create_matrix_of_envs()
@@ -94,39 +94,79 @@ class WorkflowRegtest:
         _soft_str_list = [
             [f"ver_{i}" for i in range(len(el))] for el in self._soft_vers_spec.values()
         ]
-        self._soft_str = dict(zip(self.env_keys, _soft_str_list))
+        self._soft_vers_str = dict(zip(self.env_keys, _soft_str_list))
 
-        # Add fixed environments.
+
+        # checking for reference environments in params[env]
+        ref_env_flag = False
+        if "data_ref" in self.params and self.params["data_ref"]["type"] == "env_output":
+            # checking for any items from params["env"] that has ref=True
+            ref_env = {}
+            for key, vers_l in self._soft_vers_spec.items():
+                soft_ref_ind = None
+                for ii, el in enumerate(vers_l):
+                    if isinstance(el, dict) and el.get("ref"):
+                        ref_env_flag = True
+                        if soft_ref_ind is None:
+                            soft_ref_ind = ii
+                        else:
+                            raise Exception(f"incorrect reference environment spec - more than two ref"
+                                            f" elements for {key}")
+                if soft_ref_ind is not None:
+                    ref_env[key] = f"ver_{soft_ref_ind}"
+                elif len(vers_l) == 1:
+                    ref_env[key] = "ver_0"
+                elif ref_env_flag:
+                    raise Exception(f"incorrect reference environment spec - "
+                                    f"no elements with ref=True found for {key}")
+
+
+        # Add fixed environments and checking for the reference envs
         fixed_env = deepcopy(self.params["fixed_env"])
+        fixenv_ref_ind = None
         if fixed_env:
             if isinstance(fixed_env, dict):
                 fixed_env = [fixed_env]
-            for env in fixed_env:
+            for ii, env in enumerate(fixed_env):
+                # checking if the any env has ref=True
+                if env.pop("ref", None):
+                    if fixenv_ref_ind is None:
+                        fixenv_ref_ind = ii
+                    else:
+                        raise Exception("can be only one reference environment")
                 self.matrix_of_envs.append(env)
                 for key, val in env.items():
                     if val not in self._soft_vers_spec[key]:
                         self._soft_vers_spec[key].append(val)
-                        self._soft_str[key].append(f"ver_{len(self._soft_str[key])}")
+                        self._soft_vers_str[key].append(f"ver_{len(self._soft_vers_str[key])}")
 
         # dictionary with dict(env_ind, {software_key: ver_ind})
+        # TODO: do I need it
         self.env_dict = {}
         for ii, soft_dict in enumerate(self.matrix_of_envs):
             self.env_dict[f"env_{ii}"] = {}
             for key, val in soft_dict.items():
                 ind = self._soft_vers_spec[key].index(val)
-                self.env_dict[f"env_{ii}"][key] = self._soft_str[key][ind]
-        # names of the envs: env_0, env_1,...
+                self.env_dict[f"env_{ii}"][key] = self._soft_vers_str[key][ind]
+
         self.env_names = list(self.env_dict.keys())
 
-        # if data_ref is env_output, finding the specific environment that will be used
-        # for the reference data
+        # setting ref_env_ind if data_ref["type"] is "env_output"
         if "data_ref" in self.params and self.params["data_ref"]["type"] == "env_output":
-            self.ref_env_ind = None
-            for key, val in self.env_dict.items():
-                if val == self.ref_env:
-                    self.ref_env_ind = key
+            if fixenv_ref_ind is not None and ref_env_flag:
+                raise Exception("reference environment can be either from env or fixenv, not both")
+            elif fixenv_ref_ind is None and not ref_env_flag:
+                raise Exception("no reference environment found")
+            elif fixenv_ref_ind is not None:
+                fixenv_ref_ind_rev = len(fixed_env) - fixenv_ref_ind
+                self.ref_env_ind = f"env_{len(self.matrix_of_envs) - fixenv_ref_ind_rev}"
+            else: # ref_env_flag=True
+                for env_ind, soft_ver in self.env_dict.items():
+                    if soft_ver == ref_env:
+                        self.ref_env_ind = env_ind
+                        break
             if self.ref_env_ind is None:
-                raise Exception(f"reference environment is not among environment")
+                raise Exception("something went wrong with finding the reference env")
 
 
     def run(self):
@@ -186,7 +226,7 @@ class WorkflowRegtest:
         ):
             # running tests only if docker container was created and if this is not
             # the reference environment
-            if status == "docker ok" and (self.ref_env is None or name != self.ref_env_ind):
+            if status == "docker ok" and name != self.ref_env_ind:
                 self._run_tests(soft_ver_str=name)
 
 
@@ -428,7 +468,7 @@ class WorkflowRegtest:
             el_dict = self._soft_to_str(soft_d)
             el_dict["env"] = self.env_names[ii]
             # if this is the reference  environment, nothing will be added
-            if self.ref_env and self.env_names[ii] == self.ref_env_ind:
+            if self.env_names[ii] == self.ref_env_ind:
                 pass
             elif self.docker_status[ii] == "docker ok":
                 if self.params["tests"]:
@@ -636,12 +676,12 @@ class WorkflowRegtest:
                 raise SpecificationError(
                     "Each element of fixed_env list must be a dictionary."
                 )
-            elif set(env.keys()) != set(self.env_keys):
+            elif (set(env.keys()) - {"ref"}) != set(self.env_keys):
                 raise SpecificationError(
                     "Keys of all environments from 'fixed_env' must be same."
                 )
             for key, val in env.items():
-                if not isinstance(val, (dict, list)):
+                if key not in ["ref"] and not isinstance(val, (dict, list)):
                     raise SpecificationError(
                         "Every value in fixed_env element must be a dictionary or list."
                     )
@@ -704,9 +744,6 @@ class WorkflowRegtest:
                 self.download_datalad_repo()
             elif self.params[data_nm]["type"] == "env_output":
                 self.params[data_nm]["location"] = None
-                if "ref_env" not in self.params[data_nm]:
-                    raise Exception(f"data_ref of typ env_output requires env field")
-                self.ref_env = self.params[data_nm]["ref_env"]
         else:
             self.params[data_nm] = {
                 "type": "default",

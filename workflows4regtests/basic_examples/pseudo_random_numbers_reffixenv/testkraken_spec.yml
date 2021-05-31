@@ -9,9 +9,13 @@ env:
   base:
   - {image: debian:stretch, pkg-manager: apt}
   miniconda:
-  - {conda_install: [python=3.7], ref: True}
   - {conda_install: [python=3.5]}
+  - {conda_install: [python=3.7]}
   - {conda_install: [python=2.7]}
+fixed_env:
+  ref: True
+  base: {image: ubuntu:16.04, pkg-manager: apt}
+  miniconda: {conda_install: [python=3.6]}
 
 analysis:
   command: python
@@ -21,7 +25,3 @@ analysis:
 tests:
 - {file: mean.json, name: regr_1, script: test_rand_almosteq.py}
 - {file: mean_2.json, name: regr_2, script: test_rand_almosteq.py}
-
-tests_env:
-  base: {image: debian:stretch, pkg-manager: apt}
-  miniconda: {conda_install: [python=3.7]}
