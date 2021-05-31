@@ -440,29 +440,10 @@ class WorkflowRegtest:
         inp_val_test["file_ref"] = []
 
         for (ii, el) in enumerate(self.params["tests"]):
-
-            # if ref_env in the spec, using reference file from the specific environment
-            # TODO: the form of ref_env should be updated, now it's env_0, etc.
-            if "ref_env" in el:
-                inp_val_test["file_ref"].append(self.wf_outputs[el["ref_env"]][ii])
-            else:
-                from glob import glob
-                if isinstance(el["file"], str) and "*" in el["file"]:
-
-                    files = list(glob(str((self.data_ref_path / el["file"]).expanduser())))
-                    files = [el.replace(str(self.data_ref_path), "")[1:] for el in files]
-                    if len(files) == 0:
-                        raise Exception(f"can't find any file that matches the patter {el['file']}")
-                    elif len(files) == 1:
-                        files = files[0]
-                else:
-                    files = el["file"]
-
-                if isinstance(files, str):
-                    inp_val_test["file_ref"].append(self.data_ref_path / files)
-                elif isinstance(files, list):
-                    inp_val_test["file_ref"].append(tuple([self.data_ref_path / file for file in files]))
-
+            if isinstance(el["file"], str):
+                inp_val_test["file_ref"].append(self.data_ref_path / el["file"])
+            elif isinstance(el["file"], list):
+                inp_val_test["file_ref"].append(tuple([self.data_ref_path / file for file in el["file"]]))
 
         task_test = pydra.ShellCommandTask(
             name="test",
