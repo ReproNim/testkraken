@@ -23,4 +23,4 @@ analysis:
 
 tests:
 - {file: mean.json, name: regr_1, script: test_rand_almosteq.py}
-- {file: mean_2.json, name: regr_2, script: test_rand_almosteq.py}
+- {file: new_dir/mean_2.json, name: regr_2, script: test_rand_almosteq.py}
