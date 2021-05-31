@@ -437,13 +437,16 @@ class WorkflowRegtest:
         inp_val_test = {}
         inp_val_test["name_test"] = [el["name"] for el in self.params["tests"]]
         inp_val_test["script_test"] = [el["script"] for el in self.params["tests"]]
-        inp_val_test["file_ref"] = []
 
-        for (ii, el) in enumerate(self.params["tests"]):
-            if isinstance(el["file"], str):
-                inp_val_test["file_ref"].append(self.data_ref_path / el["file"])
-            elif isinstance(el["file"], list):
-                inp_val_test["file_ref"].append(tuple([self.data_ref_path / file for file in el["file"]]))
+        if self.ref_env_ind is not None:
+            inp_val_test["file_ref"] = self.wf_outputs[self.ref_env_ind]
+        else:
+            inp_val_test["file_ref"] = []
+            for (ii, el) in enumerate(self.params["tests"]):
+                if isinstance(el["file"], str):
+                    inp_val_test["file_ref"].append(self.data_ref_path / el["file"])
+                elif isinstance(el["file"], list):
+                    inp_val_test["file_ref"].append(tuple([self.data_ref_path / file for file in el["file"]]))
 
         task_test = pydra.ShellCommandTask(
             name="test",

@@ -1,4 +1,4 @@
-import json
+import json, os
 import random
 
 def mean_random_numbers(k):
@@ -12,7 +12,8 @@ def mean_random_numbers(k):
     with open('mean.json', 'w') as outfile:
         json.dump(mean, outfile)
 
-    with open('mean_2.json', 'w') as outfile:
+    os.mkdir("new_dir")
+    with open('new_dir/mean_2.json', 'w') as outfile:
         json.dump(mean*2, outfile)
 
 
