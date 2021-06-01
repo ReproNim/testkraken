@@ -466,13 +466,14 @@ class WorkflowRegtest:
     def merge_outputs(self):
         """ Merging all tests outputs """
         df_el_l = []
-        df_el_flat_l = []
+        env_tests = []
         for ii, soft_d in enumerate(self.matrix_of_envs):
             el_dict = self._soft_to_str(soft_d)
             el_dict["env"] = self.env_names[ii]
             # if this is the reference  environment, nothing will be added
             if self.env_names[ii] == self.ref_env_ind:
-                pass
+                el_dict["env"] = el_dict["env"] = f"{el_dict['env']}: ref env"
+                df_el_l.append(pd.DataFrame(el_dict, index=[0]))
             elif self.docker_status[ii] == "docker ok":
                 if self.params["tests"]:
                     # merging results from tests and updating self.res_all, self.res_all_flat
@@ -480,18 +481,23 @@ class WorkflowRegtest:
                         dict_env=el_dict, env_name=self.env_names[ii]
                     )
                     df_el_l.append(df_el)
-                    df_el_flat_l.append(df_el_flat)
                 else: # when tests not defined only env infor should be saved
                     df_env = pd.DataFrame(el_dict, index=[0])
                     df_el_l.append(df_env)
-                    df_el_flat_l.append(df_env)
+                env_tests.append(el_dict["env"])
             else:
-                el_dict["env"] = "N/A"
+                el_dict["env"] = f"{el_dict['env']}: build failed"
                 df_el_l.append(pd.DataFrame(el_dict, index=[0]))
-                df_el_flat_l.append(pd.DataFrame(el_dict, index=[0]))
+
         # TODO: not sure if I need both
         self.res_all_df = pd.concat(df_el_l).reset_index(drop=True)
+        self.res_all_df.fillna('N/A', inplace=True)
+        if all([(el == "N/A") or pd.notna(el) for el in self.res_all_df["index_name"]]):
+            self.res_all_df.drop("index_name", axis=1, inplace=True)
         self.res_all_df.to_csv(self.working_dir / "output_all.csv", index=False)
+        # data frame with environments that were tested only
+        self.res_tests_df = self.res_all_df[self.res_all_df.env.isin(env_tests)]
+        self.res_tests_df.to_csv(self.working_dir / "output.csv", index=False)
 
         # saving detailed describtion about the environment
         soft_vers_description = {}
