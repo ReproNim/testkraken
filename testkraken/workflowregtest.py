@@ -492,7 +492,8 @@ class WorkflowRegtest:
         # TODO: not sure if I need both
         self.res_all_df = pd.concat(df_el_l).reset_index(drop=True)
         self.res_all_df.fillna('N/A', inplace=True)
-        if all([(el == "N/A") or pd.notna(el) for el in self.res_all_df["index_name"]]):
+        if "index_name" in  self.res_all_df and \
+                all([(el == "N/A") or pd.notna(el) for el in self.res_all_df["index_name"]]):
             self.res_all_df.drop("index_name", axis=1, inplace=True)
         self.res_all_df.to_csv(self.working_dir / "output_all.csv", index=False)
         # data frame with environments that were tested only
