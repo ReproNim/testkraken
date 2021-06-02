@@ -275,7 +275,7 @@ d3.json("envs_descr.json", function(data) {
 });
 
 //for barplots
-d3.csv("output_all.csv", function(data) {
+d3.csv("output.csv", function(data) {
         var keys_all = Object.keys(data[0]);
         keys_tests = [];
         // plotting only variable that starts with "regr" and "stat"
@@ -382,7 +382,7 @@ d3.csv("output_all.csv", function(data) {
 
 //TODO
 // scatter plots with axis
-d3.csv("output_all.csv", function(data) {
+d3.csv("output.csv", function(data) {
         var margin = { top: 30, right: 30, bottom: 30, left: 60 };
         var width = 430 - margin.left - margin.right;
         var height = 330 - margin.top - margin.bottom;

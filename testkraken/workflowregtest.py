@@ -51,6 +51,8 @@ class WorkflowRegtest:
 
         with (self.workflow_path / "testkraken_spec.yml").open() as f:
             self.params = yaml.safe_load(f)
+        # environment for reference data (None is overwritten if specified in the spec)
+        self.ref_env_ind = None
         self.validate_parameters()
 
         self.create_matrix_of_envs()
@@ -58,6 +60,8 @@ class WorkflowRegtest:
             self.matrix_of_envs, self.params["post_build"]
         )
         self.reports = {}
+        self.wf_outputs = {}
+        self.wf_dirs = {}
 
     def create_matrix_of_envs(self):
         """Create matrix of all combinations of environment variables.
@@ -90,23 +94,80 @@ class WorkflowRegtest:
         _soft_str_list = [
             [f"ver_{i}" for i in range(len(el))] for el in self._soft_vers_spec.values()
         ]
-        self._soft_str = dict(zip(self.env_keys, _soft_str_list))
+        self._soft_vers_str = dict(zip(self.env_keys, _soft_str_list))
 
-        # Add fixed environments.
+
+        # checking for reference environments in params[env]
+        ref_env_flag = False
+        if "data_ref" in self.params and self.params["data_ref"]["type"] == "env_output":
+            # checking for any items from params["env"] that has ref=True
+            ref_env = {}
+            for key, vers_l in self._soft_vers_spec.items():
+                soft_ref_ind = None
+                for ii, el in enumerate(vers_l):
+                    if isinstance(el, dict) and el.get("ref"):
+                        ref_env_flag = True
+                        if soft_ref_ind is None:
+                            soft_ref_ind = ii
+                        else:
+                            raise Exception(f"incorrect reference environment spec - more than two ref"
+                                            f" elements for {key}")
+                if soft_ref_ind is not None:
+                    ref_env[key] = f"ver_{soft_ref_ind}"
+                elif len(vers_l) == 1:
+                    ref_env[key] = "ver_0"
+                elif ref_env_flag:
+                    raise Exception(f"incorrect reference environment spec - "
+                                    f"no elements with ref=True found for {key}")
+
+
+        # Add fixed environments and checking for the reference envs
         fixed_env = deepcopy(self.params["fixed_env"])
+        fixenv_ref_ind = None
         if fixed_env:
             if isinstance(fixed_env, dict):
                 fixed_env = [fixed_env]
-            for env in fixed_env:
+            for ii, env in enumerate(fixed_env):
+                # checking if the any env has ref=True
+                if env.pop("ref", None):
+                    if fixenv_ref_ind is None:
+                        fixenv_ref_ind = ii
+                    else:
+                        raise Exception("can be only one reference environment")
                 self.matrix_of_envs.append(env)
                 for key, val in env.items():
                     if val not in self._soft_vers_spec[key]:
                         self._soft_vers_spec[key].append(val)
-                        self._soft_str[key].append(f"ver_{len(self._soft_str[key])}")
+                        self._soft_vers_str[key].append(f"ver_{len(self._soft_vers_str[key])}")
 
-        self.env_names = [
-            "env_{}".format(ii) for ii, _ in enumerate(self.matrix_of_envs)
-        ]
+        # dictionary with dict(env_ind, {software_key: ver_ind})
+        # TODO: do I need it
+        self.env_dict = {}
+        for ii, soft_dict in enumerate(self.matrix_of_envs):
+            self.env_dict[f"env_{ii}"] = {}
+            for key, val in soft_dict.items():
+                ind = self._soft_vers_spec[key].index(val)
+                self.env_dict[f"env_{ii}"][key] = self._soft_vers_str[key][ind]
+
+        self.env_names = list(self.env_dict.keys())
+
+        # setting ref_env_ind if data_ref["type"] is "env_output"
+        if "data_ref" in self.params and self.params["data_ref"]["type"] == "env_output":
+            if fixenv_ref_ind is not None and ref_env_flag:
+                raise Exception("reference environment can be either from env or fixenv, not both")
+            elif fixenv_ref_ind is None and not ref_env_flag:
+                raise Exception("no reference environment found")
+            elif fixenv_ref_ind is not None:
+                fixenv_ref_ind_rev = len(fixed_env) - fixenv_ref_ind
+                self.ref_env_ind = f"env_{len(self.matrix_of_envs) - fixenv_ref_ind_rev}"
+            else: # ref_env_flag=True
+                for env_ind, soft_ver in self.env_dict.items():
+                    if soft_ver == ref_env:
+                        self.ref_env_ind = env_ind
+                        break
+            if self.ref_env_ind is None:
+                raise Exception("something went wrong with finding the reference env")
+
 
     def run(self):
         """The main method that runs generate all docker files, build images
@@ -158,6 +219,16 @@ class WorkflowRegtest:
             if status == "docker ok":
                 image = "repronim/testkraken:{}".format(sha)
                 self._run_pydra(image=image, soft_ver_str=name)
+
+        # running tests separately
+        for name, status, sha in zip(
+            self.env_names, self.docker_status, self.neurodocker_specs.keys()
+        ):
+            # running tests only if docker container was created and if this is not
+            # the reference environment
+            if status == "docker ok" and name != self.ref_env_ind:
+                self._run_tests(soft_ver_str=name)
+
 
     def _run_pydra(self, image, soft_ver_str):
         wf = pydra.Workflow(
@@ -267,7 +338,25 @@ class WorkflowRegtest:
 
         wf.add(outfiles_list(name="outfiles", res=wf.run.lzout.all_))
 
-        # 3rd task - tests
+        # setting wf output
+        wf.set_output(
+            [
+                ("outfiles", wf.outfiles.lzout.outfiles),
+            ]
+        )
+        print(
+            f"\n running pydra workflow for {self.workflow_path} "
+            f"in working directory - {self.working_dir}"
+        )
+        with pydra.Submitter(plugin="cf") as sub:
+            sub(wf)
+        res = wf.result()
+        self.wf_dirs[soft_ver_str] = wf.output_dir
+        self.wf_outputs[soft_ver_str] = res.output.outfiles
+
+
+    def _run_tests(self, soft_ver_str):
+        # task running tests
         input_spec_test = pydra.specs.SpecInfo(
             name="Input",
             fields=[
@@ -304,7 +393,7 @@ class WorkflowRegtest:
                             "argstr": "-ref",
                             "help_string": "out file",
                             "mandatory": True,
-                            "container_path": True,
+                        #    "container_path": True,
                         }
                     ),
                 ),
@@ -330,22 +419,34 @@ class WorkflowRegtest:
             bases=(pydra.specs.ShellOutSpec,),
         )
 
+        if "data_ref" in self.params:
+            #self._validate_download_data(data_nm="data_ref")
+            if self.params["data_ref"]["type"] == "env_output":
+                self.data_ref_path = self.wf_dirs[self.ref_env_ind]
+            else:
+                self.data_ref_path = self.params["data_ref"]["location"]
+
+        else:
+            self.data_ref_path = self.data_path
+
         if self.test_image:
             container_info = ("docker", self.test_image, [(self.data_ref_path, "/data_ref", "ro")])
-            file_ref_dir = Path("/data_ref")
         else:
             container_info = None
-            file_ref_dir = self.data_ref_path
 
         inp_val_test = {}
         inp_val_test["name_test"] = [el["name"] for el in self.params["tests"]]
         inp_val_test["script_test"] = [el["script"] for el in self.params["tests"]]
-        inp_val_test["file_ref"] = []
-        for el in self.params["tests"]:
-            if isinstance(el["file"], str):
-                inp_val_test["file_ref"].append(file_ref_dir / el["file"])
-            elif isinstance(el["file"], list):
-                inp_val_test["file_ref"].append(tuple([file_ref_dir / file for file in el["file"]]))
+
+        if self.ref_env_ind is not None:
+            inp_val_test["file_ref"] = self.wf_outputs[self.ref_env_ind]
+        else:
+            inp_val_test["file_ref"] = []
+            for (ii, el) in enumerate(self.params["tests"]):
+                if isinstance(el["file"], str):
+                    inp_val_test["file_ref"].append(self.data_ref_path / el["file"])
+                elif isinstance(el["file"], list):
+                    inp_val_test["file_ref"].append(tuple([self.data_ref_path / file for file in el["file"]]))
 
         task_test = pydra.ShellCommandTask(
             name="test",
@@ -353,54 +454,51 @@ class WorkflowRegtest:
             container_info=container_info,
             input_spec=input_spec_test,
             output_spec=output_spec_test,
-            file_out=wf.outfiles.lzout.outfiles,
+            file_out=self.wf_outputs[soft_ver_str],
             **inp_val_test,
         ).split((("script_test", "name_test"), ("file_out", "file_ref")))
-        wf.add(task_test)
 
-        # setting wf output
-        wf.set_output(
-            [
-                ("outfiles", wf.outfiles.lzout.outfiles),
-                ("test_out", wf.test.lzout.stdout),
-                ("reports", wf.test.lzout.reports),
-            ]
-        )
-        print(
-            f"\n running pydra workflow for {self.workflow_path} "
-            f"in working directory - {self.working_dir}"
-        )
-        with pydra.Submitter(plugin="cf") as sub:
-            sub(wf)
-        res = wf.result()
-        self.reports[soft_ver_str] = res.output.reports
+        task_test()
+        res = task_test.result()
+        self.reports[soft_ver_str] = [el.output.reports for el in res]
+
 
     def merge_outputs(self):
         """ Merging all tests outputs """
         df_el_l = []
-        df_el_flat_l = []
+        env_tests = []
         for ii, soft_d in enumerate(self.matrix_of_envs):
             el_dict = self._soft_to_str(soft_d)
             el_dict["env"] = self.env_names[ii]
-            if self.docker_status[ii] == "docker ok":
+            # if this is the reference  environment, nothing will be added
+            if self.env_names[ii] == self.ref_env_ind:
+                el_dict["env"] = el_dict["env"] = f"{el_dict['env']}: ref env"
+                df_el_l.append(pd.DataFrame(el_dict, index=[0]))
+            elif self.docker_status[ii] == "docker ok":
                 if self.params["tests"]:
                     # merging results from tests and updating self.res_all, self.res_all_flat
                     df_el, df_el_flat = self._merge_test_output(
                         dict_env=el_dict, env_name=self.env_names[ii]
                     )
                     df_el_l.append(df_el)
-                    df_el_flat_l.append(df_el_flat)
                 else: # when tests not defined only env infor should be saved
                     df_env = pd.DataFrame(el_dict, index=[0])
                     df_el_l.append(df_env)
-                    df_el_flat_l.append(df_env)
+                env_tests.append(el_dict["env"])
             else:
-                el_dict["env"] = "N/A"
+                el_dict["env"] = f"{el_dict['env']}: build failed"
                 df_el_l.append(pd.DataFrame(el_dict, index=[0]))
-                df_el_flat_l.append(pd.DataFrame(el_dict, index=[0]))
+
         # TODO: not sure if I need both
         self.res_all_df = pd.concat(df_el_l).reset_index(drop=True)
+        self.res_all_df.fillna('N/A', inplace=True)
+        if "index_name" in  self.res_all_df and \
+                all([(el == "N/A") or pd.notna(el) for el in self.res_all_df["index_name"]]):
+            self.res_all_df.drop("index_name", axis=1, inplace=True)
         self.res_all_df.to_csv(self.working_dir / "output_all.csv", index=False)
+        # data frame with environments that were tested only
+        self.res_tests_df = self.res_all_df[self.res_all_df.env.isin(env_tests)]
+        self.res_tests_df.to_csv(self.working_dir / "output.csv", index=False)
 
         # saving detailed describtion about the environment
         soft_vers_description = {}
@@ -502,10 +600,10 @@ class WorkflowRegtest:
         self._validate_scripts()
         # checking optional data_ref (if not data_ref provided, path is the same as data path)
         if "data_ref" in self.params:
-            self._validate_download_data(data_nm="data_ref")
-            self.data_ref_path = self.params["data_ref"]["location"]
-        else:
-            self.data_ref_path = self.data_path
+           self._validate_download_data(data_nm="data_ref")
+#            self.data_ref_path = self.params["data_ref"]["location"]
+#        else:
+#            self.data_ref_path = self.data_path
         # checking analysis
         self._validate_analysis()
         # checking tests
@@ -588,12 +686,12 @@ class WorkflowRegtest:
                 raise SpecificationError(
                     "Each element of fixed_env list must be a dictionary."
                 )
-            elif set(env.keys()) != set(self.env_keys):
+            elif (set(env.keys()) - {"ref"}) != set(self.env_keys):
                 raise SpecificationError(
                     "Keys of all environments from 'fixed_env' must be same."
                 )
             for key, val in env.items():
-                if not isinstance(val, (dict, list)):
+                if key not in ["ref"] and not isinstance(val, (dict, list)):
                     raise SpecificationError(
                         "Every value in fixed_env element must be a dictionary or list."
                     )
@@ -621,6 +719,8 @@ class WorkflowRegtest:
         if data_nm in self.params:
             # validating fields
             valid_types = ["workflow_path", "local", "datalad_repo"]
+            if data_nm == "data_ref":
+                valid_types.append("env_output")
             if (
                 "type" not in self.params[data_nm]
                 or self.params[data_nm]["type"] not in valid_types
@@ -652,13 +752,15 @@ class WorkflowRegtest:
                         self.workflow_path / data_nm
                     ).absolute()
                 self.download_datalad_repo()
+            elif self.params[data_nm]["type"] == "env_output":
+                self.params[data_nm]["location"] = None
         else:
             self.params[data_nm] = {
                 "type": "default",
                 "location": self.workflow_path / data_nm,
             }
 
-        if not self.params[data_nm]["location"].exists():
+        if self.params[data_nm]["location"] and not self.params[data_nm]["location"].exists():
             raise Exception(f"{self.params[data_nm]['location']} doesnt exist")
 
     def _validate_scripts(self):
