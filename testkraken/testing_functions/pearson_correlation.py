@@ -5,6 +5,10 @@ import CPAC.utils.test_init as test_utils
 
 
 def pearson_correlation(file_out, file_ref=None, name=None, **kwargs):
+
+    assert Path(file_out[0]).exists(), f"no out file: {file_out[0]}"
+    assert Path(file_ref[0]).exists(), f"no ref file, {file_ref[0]}"
+
     corr = test_utils.pearson_correlation(file_out[0], file_ref[0])
     print(f'\nCorrelation = {round(corr,3)}\n')
 

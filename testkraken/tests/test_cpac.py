@@ -12,6 +12,7 @@ Workflows_main_dir = os.path.join(
 workflows_list = [
     os.path.join(Workflows_main_dir, workf)
     for workf in next(os.walk(Workflows_main_dir))[1]
+    if "afni" not in workf and "jon" not in workf
 ]
 
 
