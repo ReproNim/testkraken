@@ -1,0 +1,31 @@
+env:
+  base:
+  - {image: fcpindi/c-pac:latest, pkg-manager: apt}
+  - {image: fcpindi/c-pac:nightly, pkg-manager: apt}
+  - {image: jonclucas/c-pac_testkraken:abcd-hcp, pkg-manager: apt}
+  - {image: jonclucas/c-pac_testkraken:fmriprep, pkg-manager: apt}
+  miniconda:
+  - {conda_install: [python=3.7, xvfbwrapper], pip_install: [torch]}
+  - {conda_install: [python=3.6, xvfbwrapper], pip_install: [torch]}
+  run_bash: rm -rf /code || true && git clone --branch develop https://github.com/FCP-INDI/C-PAC /code && cd /code && source activate testkraken && pip install -r requirements.txt && pip install -e . && cp /code/dev/docker_data/* /code/ && rm -f /cpac_resources/default_pipeline.yml && cp /code/default_pipeline.yml /cpac_resources/default_pipeline.yml && cd
+
+analysis:
+  script: anat_preproc.py
+  command: python
+  inputs:
+  - {type: File, argstr: -i, value: ./HNU}
+  - {type: Directory, argstr: -w, value: .}
+  - {type: File, argstr: -c, value: pipeline_config_anat_preproc.yml}
+
+tests:
+  - file: work/cpac_sub-0025427_ses-1/brain_extraction_46/sub-0025427_ses-1_run-1_T1w_resample_calc.nii.gz
+    name: regr_skullstrip
+    script: pearson_correlation.py
+
+tests_env:
+  base: {image: debian:stretch, pkg-manager: apt}
+  install: git gcc g++ graphviz tree
+  miniconda:
+    conda_install: [python=3.7, xvfbwrapper]
+    pip_install: [torch]
+  run_bash: git clone --branch develop https://github.com/FCP-INDI/C-PAC && cd C-PAC && source activate testkraken && pip install -r requirements.txt && python setup.py install
